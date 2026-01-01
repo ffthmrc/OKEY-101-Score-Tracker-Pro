@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { 
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   AreaChart, Area
@@ -8,15 +8,19 @@ import { getInitialPlayers, getInitialRounds } from './constants';
 import { Player, RoundScore, PlayerStats } from './types';
 import { getGameAnalysis } from './geminiService';
 
+// Storage Keys
+const STORAGE_KEY_PLAYERS = 'ace_tracker_players_v1';
+const STORAGE_KEY_ROUNDS = 'ace_tracker_rounds_v1';
+
 // --- Sub-components ---
 
-const Badge = ({ rank, size = 'large' }: { rank: number, size?: 'small' | 'large' }) => {
-  const emojiSize = size === 'large' ? 'text-4xl md:text-5xl' : 'text-xl md:text-2xl';
+const Badge = ({ rank, size = 'small' }: { rank: number, size?: 'small' | 'large' }) => {
+  const emojiSize = size === 'large' ? 'text-2xl md:text-3xl' : 'text-xl md:text-2xl';
   switch (rank) {
-    case 1: return <span className={`${emojiSize} drop-shadow-lg select-none`} title="Winner">🏆</span>;
-    case 2: return <span className={`${emojiSize} drop-shadow-lg select-none`} title="Second">🥈</span>;
-    case 3: return <span className={`${emojiSize} drop-shadow-lg select-none`} title="Third">🥉</span>;
-    default: return <span className={`${emojiSize} drop-shadow-lg select-none`} title="Last Place">💩</span>;
+    case 1: return <span className={`${emojiSize} drop-shadow-sm select-none leading-none`} title="Winner">🏆</span>;
+    case 2: return <span className={`${emojiSize} drop-shadow-sm select-none leading-none`} title="Second">🥈</span>;
+    case 3: return <span className={`${emojiSize} drop-shadow-sm select-none leading-none`} title="Third">🥉</span>;
+    default: return <span className={`${emojiSize} drop-shadow-sm select-none leading-none`} title="Last Place">💩</span>;
   }
 };
 
@@ -27,78 +31,299 @@ interface StatCardProps {
 }
 
 const StatCard: React.FC<StatCardProps> = ({ player, stat, onRemove }) => (
-  <div className="group bg-white rounded-lg md:rounded-[1.5rem] shadow-sm p-1.5 md:p-6 border border-slate-100 flex flex-col items-center hover:shadow-md transition-all relative overflow-hidden text-center min-h-[110px] md:min-h-[240px] justify-center cursor-default">
+  <div className="group bg-white rounded-xl shadow-sm border border-slate-100 flex flex-col items-center hover:shadow-md transition-all relative overflow-hidden text-center cursor-default h-full min-h-[85px] md:min-h-[110px] justify-between py-2 md:py-3">
+    {/* Remove button */}
     <button 
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
         onRemove(player.id);
       }}
-      className="opacity-0 group-hover:opacity-100 absolute top-0.5 right-0.5 md:top-2 md:right-2 w-5 h-5 md:w-8 md:h-8 bg-slate-900 text-white rounded-full flex items-center justify-center transition-all hover:bg-red-500 z-40 shadow-sm border border-slate-800 active:scale-90"
-      title={`Remove ${player.name}`}
+      className="opacity-0 group-hover:opacity-100 absolute top-1 right-1 w-5 h-5 bg-slate-100 hover:bg-red-500 text-slate-400 hover:text-white rounded-full flex items-center justify-center transition-all z-40 border border-slate-200 shadow-sm"
     >
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5 md:h-4 md:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
       </svg>
     </button>
 
-    <div className="w-full mb-1 md:mb-4">
-      <h3 className="font-black text-slate-900 text-lg md:text-5xl leading-tight truncate px-1 uppercase tracking-tighter">{player.name}</h3>
+    <div className="w-full px-1">
+      <h3 className="font-black text-slate-900 text-[10px] md:text-xs truncate uppercase tracking-tighter leading-none">
+        {player.name}
+      </h3>
     </div>
 
-    <div className="flex items-center md:flex-col gap-1 md:gap-2">
-      <div className="text-base md:text-4xl font-black text-slate-500 tracking-tighter leading-none opacity-80">{stat.totalScore}</div>
-      <div className="h-6 md:h-14 flex items-center justify-center">
-        <Badge rank={stat.rank} size={window.innerWidth < 768 ? 'small' : 'large'} />
+    <div className="flex items-center justify-center leading-none h-6 md:h-8">
+      <Badge rank={stat.rank} size="small" />
+    </div>
+
+    <div className="w-full">
+      <div className="text-[13px] md:text-xl font-black text-slate-600 tracking-tighter leading-none">
+        {stat.totalScore}
       </div>
     </div>
     
-    <div className="absolute bottom-0 left-0 right-0 h-1 md:h-2" style={{ backgroundColor: player.color }} />
+    <div className="absolute bottom-0 left-0 right-0 h-1 md:h-1.5" style={{ backgroundColor: player.color }} />
   </div>
 );
 
-// --- Game Logic Container ---
+// --- Dice Component ---
 
-function GameDashboard({ onReset }: { onReset: () => void }) {
-  const [players, setPlayers] = useState<Player[]>(getInitialPlayers);
-  const [rounds, setRounds] = useState<RoundScore[]>(() => getInitialRounds(getInitialPlayers()));
-  
-  const [history, setHistory] = useState<{players: Player[], rounds: RoundScore[]}[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
+const DiceRoller = () => {
+  const [roll, setRoll] = useState(1);
+  const [isRolling, setIsRolling] = useState(false);
+  const [rotation, setRotation] = useState({ x: 0, y: 0 });
+  const [history, setRollHistory] = useState<{ value: number, time: string }[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
 
+  const rollDice = () => {
+    if (isRolling) return;
+    setIsRolling(true);
+    
+    const nextRoll = Math.floor(Math.random() * 6) + 1;
+    const newX = rotation.x + 720 + Math.floor(Math.random() * 360);
+    const newY = rotation.y + 720 + Math.floor(Math.random() * 360);
+    
+    setRotation({ x: newX, y: newY });
+
+    setTimeout(() => {
+      setRoll(nextRoll);
+      setRollHistory(prev => [{ value: nextRoll, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }, ...prev].slice(0, 50));
+      
+      const faceRotations: Record<number, {x: number, y: number}> = {
+        1: { x: 0, y: 0 },
+        2: { x: 0, y: 180 },
+        3: { x: 0, y: -90 },
+        4: { x: 0, y: 90 },
+        5: { x: -90, y: 0 },
+        6: { x: 90, y: 0 }
+      };
+      
+      const final = faceRotations[nextRoll];
+      setRotation({
+        x: Math.round(newX / 360) * 360 + final.x,
+        y: Math.round(newY / 360) * 360 + final.y
+      });
+      setIsRolling(false);
+    }, 600);
+  };
+
+  const handleClearHistory = () => {
+    if (window.confirm("Purge history logs?")) {
+      setRollHistory([]);
+    }
+  };
+
+  const Face = ({ num, rotate }: { num: number, rotate: string }) => {
+    const dotsMap: Record<number, number[]> = {
+      1: [4],
+      2: [0, 8],
+      3: [0, 4, 8],
+      4: [0, 2, 6, 8],
+      5: [0, 2, 4, 6, 8],
+      6: [0, 2, 3, 5, 6, 8]
+    };
+
+    return (
+      <div 
+        className="absolute w-full h-full bg-gradient-to-br from-[#fcd34d] to-[#d97706] border-2 border-[#92400e]/50 rounded-2xl flex items-center justify-center p-2 md:p-4 shadow-inner"
+        style={{ transform: rotate + ' translateZ(50px)', backfaceVisibility: 'hidden' }}
+      >
+        <div className="grid grid-cols-3 grid-rows-3 w-full h-full gap-0.5 md:gap-1">
+          {[...Array(9)].map((_, i) => (
+            <div key={i} className="flex items-center justify-center">
+              {dotsMap[num].includes(i) && (
+                <div className="w-8 h-8 md:w-10 md:h-10 bg-[#1e1b4b] rounded-full shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]" />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex-1 w-full bg-[#0a191f] flex flex-col relative overflow-hidden">
+      {/* Background radial gradient and grid */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_#162e38_0%,_#0a191f_100%)] pointer-events-none" />
+      <div className="absolute inset-0 opacity-10 bg-[linear-gradient(to_right,#808080_1px,transparent_1px),linear-gradient(to_bottom,#808080_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+
+      {/* 1. Main Dice King Emblem Section */}
+      <div className="flex-1 flex flex-col items-center justify-center z-10 p-4 mb-32">
+        
+        {/* HUGE Golden Circle Frame */}
+        <div className="relative w-80 h-80 md:w-[560px] md:h-[560px] flex items-center justify-center transition-all duration-500 scale-110 md:scale-100">
+          
+          {/* Animated Glow Rings */}
+          <div className="absolute inset-0 rounded-full border-[6px] border-[#fcd34d]/20 scale-105 animate-[spin_10s_linear_infinite]" />
+          <div className="absolute inset-0 rounded-full border-[2px] border-[#0ea5e9]/30 scale-110 animate-[spin_15s_linear_infinite_reverse]" />
+          <div className="absolute inset-0 rounded-full border-[14px] border-[#fcd34d] shadow-[0_0_60px_rgba(252,211,77,0.5)]" />
+
+          {/* DICE Text */}
+          <div className="absolute top-4 md:top-10 left-1/2 -translate-x-1/2 z-10">
+             <h1 className="text-6xl md:text-[140px] font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-slate-200 to-slate-400 drop-shadow-[0_8px_0px_#475569] tracking-[0.1em] italic uppercase">
+               Dice
+             </h1>
+          </div>
+
+          {/* The Crown - Bouncing on top of the circle rim */}
+          <div className="absolute -top-16 md:-top-24 left-1/2 -translate-x-1/2 z-30 drop-shadow-2xl animate-bounce">
+             <svg width="100" height="75" viewBox="0 0 60 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="md:w-40 md:h-32">
+                <path d="M30 0L42 12L60 6L54 34H6L0 6L18 12L30 0Z" fill="url(#crown_grad)" stroke="#92400e" strokeWidth="2"/>
+                <defs>
+                  <linearGradient id="crown_grad" x1="30" y1="0" x2="30" y2="34" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#FDE68A"/>
+                    <stop offset="1" stopColor="#B45309"/>
+                  </linearGradient>
+                </defs>
+             </svg>
+          </div>
+
+          {/* 3D Dice Scene */}
+          <div className="relative w-36 h-36 md:w-64 md:h-64 perspective-1000 z-20 mt-6">
+            <div 
+              className="relative w-full h-full transition-transform duration-700 ease-out preserve-3d"
+              style={{ transform: `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)` }}
+            >
+              <Face num={1} rotate="rotateY(0deg)" />
+              <Face num={2} rotate="rotateY(180deg)" />
+              <Face num={3} rotate="rotateY(90deg)" />
+              <Face num={4} rotate="rotateY(-90deg)" />
+              <Face num={5} rotate="rotateX(90deg)" />
+              <Face num={6} rotate="rotateX(-90deg)" />
+            </div>
+            <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 w-40 h-10 bg-[#0ea5e9]/25 blur-3xl rounded-full" />
+          </div>
+
+          {/* KING Text */}
+          <div className="absolute bottom-4 md:bottom-10 left-1/2 -translate-x-1/2 z-10">
+             <h1 className="text-6xl md:text-[140px] font-black text-transparent bg-clip-text bg-gradient-to-b from-[#fcd34d] to-[#d97706] drop-shadow-[0_8px_0px_#92400e] tracking-[0.1em] uppercase">
+               King
+             </h1>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Control Cluster */}
+      <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 z-20 flex flex-col items-center gap-6">
+        
+        {/* History Button - Repositioned to avoid overlap */}
+        <button 
+          onClick={() => setShowHistory(true)}
+          className="absolute left-6 bottom-8 md:left-12 md:bottom-12 w-14 h-14 md:w-24 md:h-24 bg-white/5 border border-white/20 rounded-full flex items-center justify-center text-white/40 hover:bg-white/15 hover:text-white transition-all active:scale-90 shadow-2xl backdrop-blur-md z-30"
+          aria-label="View History"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 md:h-12 md:w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
+
+        {/* Score and Roll Action */}
+        <div className="flex flex-col items-center gap-4 w-full max-w-[200px] md:max-w-[320px]">
+          {/* Score Badge - Matching Font Sizes */}
+          <div className="flex items-center justify-center gap-4 px-6 py-3 bg-black/80 border border-white/10 rounded-2xl backdrop-blur-xl shadow-2xl w-full">
+            <span className="text-slate-400 text-3xl font-black uppercase tracking-tight">Score</span>
+            <span className="text-[#fcd34d] text-3xl font-black drop-shadow-[0_0_15px_rgba(252,211,77,0.7)]">
+              {roll}
+            </span>
+          </div>
+          
+          {/* ROLL Button */}
+          <button 
+            onClick={rollDice}
+            disabled={isRolling}
+            className="w-full h-14 md:h-18 bg-gradient-to-b from-[#f59e0b] to-[#d97706] hover:from-[#fbbf24] hover:to-[#b45309] text-[#451a03] rounded-full flex items-center justify-center gap-4 shadow-[0_15px_30px_rgba(217,119,6,0.4)] active:scale-95 active:shadow-inner transition-all border-b-4 border-[#92400e] overflow-hidden group"
+          >
+            <div className="w-0 h-0 border-t-[8px] border-t-transparent border-l-[14px] border-l-[#451a03] border-b-[8px] border-b-transparent ml-1 group-active:translate-x-1 transition-transform" />
+            <span className="text-2xl md:text-3xl font-black tracking-[0.2em] uppercase">Roll</span>
+          </button>
+        </div>
+      </div>
+
+      {/* History Overlay - Blurred Background for Visibility */}
+      {showHistory && (
+        <div className="absolute inset-0 z-50 bg-[#0a191f]/90 backdrop-blur-[24px] flex flex-col p-6 animate-in fade-in zoom-in duration-300">
+          <div className="flex items-center justify-between mb-8 shrink-0">
+            <h3 className="text-[#fde68a] text-3xl font-black uppercase tracking-widest italic drop-shadow-lg">History Logs</h3>
+            <button onClick={() => setShowHistory(false)} className="bg-white/10 text-white hover:bg-white/20 p-2 rounded-full transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <div className="flex-1 overflow-auto space-y-4 pr-2 custom-scrollbar">
+            {history.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-white/20 italic">
+                <p className="text-xl">No battles recorded yet...</p>
+              </div>
+            ) : (
+              history.map((h, i) => (
+                <div key={i} className="flex items-center justify-between bg-black/40 p-6 rounded-[2rem] border border-white/10 shadow-2xl backdrop-blur-md">
+                  <div className="flex flex-col">
+                    <span className="text-white/30 font-mono text-[10px] uppercase tracking-[0.2em]">Entry #{history.length - i}</span>
+                    <span className="text-[#0ea5e9] text-sm font-black uppercase tracking-tighter">{h.time}</span>
+                  </div>
+                  <div className="flex items-center gap-6">
+                    <span className="text-white/40 text-sm font-bold uppercase tracking-widest">Result:</span>
+                    <span className="text-[#fcd34d] text-5xl font-black drop-shadow-[0_0_15px_rgba(252,211,77,0.5)]">{h.value}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Functional Clear History Button */}
+          <button 
+            onClick={handleClearHistory}
+            className="mt-6 w-full py-5 rounded-2xl bg-red-500/10 hover:bg-red-500/20 text-red-500 text-xs font-black uppercase tracking-[0.4em] border border-red-500/20 transition-all active:scale-[0.98]"
+          >
+            Clear All History
+          </button>
+        </div>
+      )}
+      
+      {/* CSS for 3D & Custom Scrollbar */}
+      <style>{`
+        .perspective-1000 { perspective: 1000px; }
+        .preserve-3d { transform-style: preserve-3d; }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+        .animate-bounce { animation: bounce 3s infinite; }
+        @keyframes bounce {
+          0%, 100% { transform: translate(-50%, 0); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
+          50% { transform: translate(-50%, -25px); animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+// --- Main UI Component ---
+
+interface GameDashboardProps {
+  players: Player[];
+  rounds: RoundScore[];
+  onPlayersChange: (p: Player[]) => void;
+  onRoundsChange: (r: RoundScore[]) => void;
+  onReset: () => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+}
+
+const GameDashboard: React.FC<GameDashboardProps> = ({ 
+  players, rounds, onPlayersChange, onRoundsChange, onReset, undo, redo, canUndo, canRedo 
+}) => {
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'table' | 'charts' | 'analysis'>('table');
+  const [activeTab, setActiveTab] = useState<'table' | 'charts' | 'analysis' | 'dice'>('table');
 
-  const pushState = useCallback((newPlayers: Player[], newRounds: RoundScore[]) => {
-    setPlayers(newPlayers);
-    setRounds(newRounds);
-    setHistory(prev => {
-      const nextHistory = prev.slice(0, historyIndex + 1);
-      return [...nextHistory, { players: newPlayers, rounds: newRounds }];
-    });
-    setHistoryIndex(prev => prev + 1);
-  }, [historyIndex]);
-
-  const undo = () => {
-    if (historyIndex > 0) {
-      const prevState = history[historyIndex - 1];
-      setPlayers(prevState.players);
-      setRounds(prevState.rounds);
-      setHistoryIndex(historyIndex - 1);
-    }
-  };
-
-  const redo = () => {
-    if (historyIndex < history.length - 1) {
-      const nextState = history[historyIndex + 1];
-      setPlayers(nextState.players);
-      setRounds(nextState.rounds);
-      setHistoryIndex(historyIndex + 1);
-    }
-  };
-
-  // Final overall stats
   const stats = useMemo(() => {
     const scoresMap = players.map(player => {
       const totalScore = rounds.reduce((sum, r) => {
@@ -107,9 +332,7 @@ function GameDashboard({ onReset }: { onReset: () => void }) {
       }, 0);
       return { id: player.id, name: player.name, totalScore };
     });
-
     const sorted = [...scoresMap].sort((a, b) => a.totalScore - b.totalScore);
-    
     return players.map(player => {
       const rank = sorted.findIndex(s => s.id === player.id) + 1;
       const pData = scoresMap.find(s => s.id === player.id)!;
@@ -124,7 +347,6 @@ function GameDashboard({ onReset }: { onReset: () => void }) {
     });
   }, [players, rounds]);
 
-  // Chart data (cumulative totals per round)
   const chartData = useMemo(() => {
     let runningTotals: Record<string, number> = {};
     players.forEach(p => runningTotals[p.id] = 0);
@@ -138,21 +360,10 @@ function GameDashboard({ onReset }: { onReset: () => void }) {
     });
   }, [players, rounds]);
 
-  /**
-   * RANKING Calculation Logic
-   * Revised: Each round 'r' is only ranked if it is "played" (has at least one score).
-   * Cumulative total is calculated from Round 1 up to Round 'r'.
-   */
   const cumulativeRanksPerRound = useMemo(() => {
     return rounds.map((r, i) => {
-      // Step 1: Check if the round is played (at least one numeric score exists)
       const isRoundPlayed = Object.values(r.scores).some(v => typeof v === 'number');
-
-      if (!isRoundPlayed) {
-        return { round: r.round, ranks: null };
-      }
-
-      // Step 2: Calculate cumulative totals up to this round
+      if (!isRoundPlayed) return { round: r.round, ranks: null };
       const currentRoundsSlice = rounds.slice(0, i + 1);
       const playersTotals = players.map(p => {
         const totalToThisRound = currentRoundsSlice.reduce((sum, rSlice) => {
@@ -161,19 +372,12 @@ function GameDashboard({ onReset }: { onReset: () => void }) {
         }, 0);
         return { id: p.id, total: totalToThisRound };
       });
-
-      // Step 3: Sort players by cumulative total (Lowest Total = Rank 1)
       const sortedByTotal = [...playersTotals].sort((a, b) => a.total - b.total);
-
       const ranksMap: Record<string, number> = {};
       sortedByTotal.forEach((item, index) => {
         ranksMap[item.id] = index + 1;
       });
-
-      return {
-        round: r.round,
-        ranks: ranksMap
-      };
+      return { round: r.round, ranks: ranksMap };
     });
   }, [players, rounds]);
 
@@ -182,22 +386,15 @@ function GameDashboard({ onReset }: { onReset: () => void }) {
     if (sanitized.indexOf('-', 1) !== -1) {
       sanitized = sanitized.slice(0, 1) + sanitized.slice(1).replace(/-/g, '');
     }
-
     const newRounds = rounds.map((r, idx) => 
       idx === roundIndex ? { ...r, scores: { ...r.scores, [playerId]: sanitized === '' ? null : (sanitized === '-' ? '-' as any : parseInt(sanitized, 10)) } } : r
     );
-    
-    const parsed = parseInt(sanitized, 10);
-    if (!isNaN(parsed) || sanitized === '') {
-      pushState(players, newRounds);
-    } else {
-      setRounds(newRounds);
-    }
+    onRoundsChange(newRounds);
   };
 
   const handleNameChange = (playerId: string, newName: string) => {
     const newPlayers = players.map(p => p.id === playerId ? { ...p, name: newName } : p);
-    pushState(newPlayers, rounds);
+    onPlayersChange(newPlayers);
   };
 
   const addPlayer = () => {
@@ -208,29 +405,28 @@ function GameDashboard({ onReset }: { onReset: () => void }) {
       name: `P${players.length + 1}`,
       color: colors[players.length % colors.length]
     };
-    pushState([...players, newPlayer], rounds.map(r => ({ ...r, scores: { ...r.scores, [newId]: null } })));
+    onPlayersChange([...players, newPlayer]);
+    onRoundsChange(rounds.map(r => ({ ...r, scores: { ...r.scores, [newId]: null } })));
   };
 
   const removePlayer = (id: string) => {
-    pushState(
-      players.filter(p => p.id !== id),
-      rounds.map(r => {
-        const s = { ...r.scores };
-        delete s[id];
-        return { ...r, scores: s };
-      })
-    );
+    onPlayersChange(players.filter(p => p.id !== id));
+    onRoundsChange(rounds.map(r => {
+      const s = { ...r.scores };
+      delete s[id];
+      return { ...r, scores: s };
+    }));
   };
 
   const addNewRound = () => {
     const emptyScores: Record<string, number | null> = {};
     players.forEach(p => emptyScores[p.id] = null);
-    pushState(players, [...rounds, { round: rounds.length + 1, scores: emptyScores }]);
+    onRoundsChange([...rounds, { round: rounds.length + 1, scores: emptyScores }]);
   };
 
   const removeLastRound = () => {
     if (rounds.length > 0) {
-      pushState(players, rounds.slice(0, -1));
+      onRoundsChange(rounds.slice(0, -1));
     }
   };
 
@@ -244,135 +440,102 @@ function GameDashboard({ onReset }: { onReset: () => void }) {
   };
 
   return (
-    <div className="min-h-screen pb-10 md:pb-20 font-sans selection:bg-indigo-100 selection:text-indigo-900 bg-slate-50/50">
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 h-12 md:h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 md:gap-3">
-            <div className="bg-slate-900 w-6 h-6 md:w-8 md:h-8 rounded-md flex items-center justify-center text-white shadow-lg">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <h1 className="text-xs md:text-lg font-black text-slate-900 uppercase tracking-tighter">Ace Tracker</h1>
+    <div className="h-screen font-sans bg-slate-50 flex flex-col overflow-hidden">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm px-4 h-11 md:h-14 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2 md:gap-3">
+          <div className="bg-slate-900 w-6 h-6 rounded flex items-center justify-center text-white">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
           </div>
-
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={onReset} 
-              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-black transition-all mr-2 uppercase tracking-tighter shadow-sm border border-red-100"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-              Reset Dashboard
-            </button>
-
-            <div className="flex bg-slate-50 border border-slate-100 rounded-lg p-0.5 gap-0.5">
-              <button onClick={undo} disabled={historyIndex <= 0} className="p-1 md:p-1.5 rounded-md hover:bg-white hover:shadow-sm disabled:opacity-20 transition-all"><svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 md:h-4 md:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg></button>
-              <button onClick={redo} disabled={historyIndex >= history.length - 1} className="p-1 md:p-1.5 rounded-md hover:bg-white hover:shadow-sm disabled:opacity-20 transition-all"><svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 md:h-4 md:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 10h-10a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" /></svg></button>
-            </div>
-
-            <div className="hidden md:flex bg-slate-100 p-1 rounded-lg font-bold text-xs ml-2">
-              <button onClick={() => setActiveTab('table')} className={`px-3 py-1.5 rounded-md transition-all ${activeTab === 'table' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}>Table</button>
-              <button onClick={() => setActiveTab('charts')} className={`px-3 py-1.5 rounded-md transition-all ${activeTab === 'charts' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}>Charts</button>
-              <button onClick={() => setActiveTab('analysis')} className={`px-3 py-1.5 rounded-md transition-all ${activeTab === 'analysis' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}>AI</button>
-            </div>
-          </div>
+          <h1 className="text-[11px] md:text-sm font-black text-slate-900 uppercase tracking-tighter">Ace Tracker</h1>
         </div>
 
-        <div className="md:hidden flex bg-white border-t border-slate-100 px-1 py-1 justify-around text-[8px] font-black uppercase tracking-widest text-slate-400">
-           <button onClick={() => setActiveTab('table')} className={`flex-1 py-1 rounded-md ${activeTab === 'table' ? 'text-indigo-600 bg-indigo-50/50' : ''}`}>Board</button>
-           <button onClick={() => setActiveTab('charts')} className={`flex-1 py-1 rounded-md ${activeTab === 'charts' ? 'text-indigo-600 bg-indigo-50/50' : ''}`}>Stats</button>
-           <button onClick={() => setActiveTab('analysis')} className={`flex-1 py-1 rounded-md ${activeTab === 'analysis' ? 'text-indigo-600 bg-indigo-50/50' : ''}`}>AI Insights</button>
+        <div className="flex items-center gap-2">
+          <button onClick={onReset} className="hidden md:block text-[10px] font-black text-red-600 bg-red-50 px-3 py-1.5 rounded-lg uppercase border border-red-100 hover:bg-red-500 hover:text-white transition-all">New Game</button>
+          <div className="flex bg-slate-50 rounded-lg p-0.5 border border-slate-100 shadow-inner">
+            <button onClick={undo} disabled={!canUndo} className="p-1 rounded disabled:opacity-20 hover:bg-white transition-colors"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg></button>
+            <button onClick={redo} disabled={!canRedo} className="p-1 rounded disabled:opacity-20 hover:bg-white transition-colors"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 10h-10a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" /></svg></button>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-1.5 md:px-6 mt-1.5 md:mt-4">
-        <section className="grid grid-cols-4 md:grid-cols-4 gap-1 md:gap-4 mb-2 md:mb-8">
-          {stats.map(stat => {
-            const p = players.find(player => player.id === stat.id);
-            if (!p) return null;
-            return <StatCard key={stat.id} player={p} stat={stat} onRemove={removePlayer} />;
-          })}
-        </section>
+      <nav className="flex bg-white border-b border-slate-100 px-2 py-1 justify-around text-[10px] font-black uppercase tracking-tight shrink-0">
+        {['table', 'charts', 'analysis', 'dice'].map(tab => (
+          <button key={tab} onClick={() => setActiveTab(tab as any)} className={`flex-1 py-2 rounded-md transition-all ${activeTab === tab ? 'text-indigo-600 bg-indigo-50 font-black' : 'text-slate-400'}`}>{tab}</button>
+        ))}
+      </nav>
 
-        <div className="bg-white rounded-xl md:rounded-[2rem] shadow-md md:shadow-lg border border-slate-100 overflow-hidden">
+      <main className="max-w-7xl mx-auto w-full px-2 md:px-6 py-2 md:py-3 flex flex-col flex-1 gap-2 md:gap-3 overflow-hidden">
+        {activeTab !== 'dice' && (
+          <section className="grid grid-cols-4 gap-2 md:gap-4 shrink-0">
+            {stats.map(stat => {
+              const p = players.find(player => player.id === stat.id);
+              if (!p) return null;
+              return <StatCard key={stat.id} player={p} stat={stat} onRemove={removePlayer} />;
+            })}
+          </section>
+        )}
+
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 flex-1 flex flex-col overflow-hidden">
           {activeTab === 'table' && (
-            <div className="p-1.5 md:p-8">
-              <div className="flex items-center justify-between mb-2 md:mb-6">
-                <div className="flex items-center gap-4">
-                  <h2 className="text-[10px] md:text-2xl font-black text-slate-900 tracking-tight uppercase">SCORE</h2>
-                  <button onClick={onReset} className="md:hidden text-[8px] font-black text-red-500 bg-red-50 px-2 py-1 rounded uppercase tracking-tighter border border-red-100">Reset All</button>
-                </div>
-                
-                <div className="flex items-center gap-4 md:gap-8">
-                  <button onClick={addPlayer} className="bg-indigo-600 text-white px-1.5 md:px-3 py-1 md:py-1.5 rounded-lg font-black hover:bg-indigo-700 transition-all shadow-sm text-[8px] md:text-xs flex items-center gap-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5 md:h-3.5 md:w-3.5" viewBox="0 0 20 20" fill="currentColor"><path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z" /></svg>
-                    Player
-                  </button>
-                  <div className="flex items-center bg-indigo-600 rounded-lg p-0.5 md:p-1 gap-1 md:gap-2 shadow-sm px-1 md:px-2">
-                    <button onClick={addNewRound} className="text-white hover:bg-indigo-500 p-1 md:p-1.5 rounded-md transition-colors"><svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5 md:h-4 md:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg></button>
-                    <span className="text-[8px] md:text-xs font-black text-white uppercase tracking-tighter select-none">Round</span>
-                    <button onClick={removeLastRound} className="text-white hover:bg-indigo-500 p-1 md:p-1.5 rounded-md transition-colors" disabled={rounds.length === 0}><svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5 md:h-4 md:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M20 12H4" /></svg></button>
+            <div className="p-2 md:p-3 flex flex-col h-full overflow-hidden">
+              <div className="flex items-center justify-between mb-2 px-1 shrink-0">
+                <h2 className="text-[11px] md:text-xs font-black text-slate-900 uppercase tracking-tight">Leaderboard</h2>
+                <div className="flex items-center gap-2">
+                  <button onClick={onReset} className="md:hidden text-[9px] font-black text-red-600 bg-red-50 px-2.5 py-1 rounded-md border border-red-100 uppercase transition-all active:bg-red-500 active:text-white">New Game</button>
+                  <button onClick={addPlayer} className="bg-indigo-600 text-white px-3 py-1 rounded-md text-[9px] md:text-[11px] font-black hover:bg-indigo-700 transition-colors uppercase tracking-tighter">+ Player</button>
+                  <div className="flex bg-slate-900 rounded-lg p-0.5 gap-1 items-center px-2">
+                    <button onClick={addNewRound} className="text-white text-xs font-bold p-1">+</button>
+                    <span className="text-[9px] font-black text-white uppercase tracking-tighter">Round</span>
+                    <button onClick={removeLastRound} disabled={rounds.length === 0} className="text-white text-xs font-bold p-1 disabled:opacity-30">-</button>
                   </div>
                 </div>
               </div>
               
-              <div className="overflow-x-auto -mx-1.5 md:mx-0 rounded-none md:rounded-[1.5rem] border-y md:border border-slate-100">
+              <div className="overflow-auto rounded-xl border border-slate-100 flex-1">
                 <table className="w-full text-left border-collapse min-w-[320px]">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-100">
-                      <th className="py-1.5 md:py-6 px-2 md:px-8 text-[7px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest sticky left-0 bg-slate-50 z-10 w-10 md:w-24">Rnd</th>
+                  <thead className="sticky top-0 z-20 bg-slate-50 shadow-sm">
+                    <tr className="border-b border-slate-100">
+                      <th className="py-2.5 px-3 text-[10px] font-black text-slate-400 uppercase w-12 md:w-20 tracking-tighter">Rnd</th>
                       {players.map(p => (
-                        <th key={p.id} className="py-1.5 md:py-6 px-1 md:px-6 text-center min-w-[70px] md:min-w-[160px]">
-                          <div className="flex flex-col items-center justify-center gap-1 md:gap-3">
-                            <div className="w-1.5 md:w-4 h-1.5 md:h-4 rounded-full shadow-sm" style={{ backgroundColor: p.color }} />
-                            <input 
-                              type="text" value={p.name} 
-                              onChange={(e) => handleNameChange(p.id, e.target.value)}
-                              className="text-[12px] md:text-3xl font-black text-slate-900 text-center bg-transparent border-0 border-b-2 border-transparent focus:border-indigo-500 focus:ring-0 w-16 md:w-36 transition-all p-1 hover:bg-slate-200/50 rounded-md uppercase tracking-tighter"
-                            />
-                          </div>
+                        <th key={p.id} className="py-2.5 text-center">
+                          <input 
+                            type="text" value={p.name} 
+                            onChange={(e) => handleNameChange(p.id, e.target.value)}
+                            maxLength={8}
+                            className="text-[11px] md:text-sm font-black text-center bg-transparent border-0 focus:ring-0 w-full truncate uppercase tracking-tighter"
+                            style={{ color: p.color }}
+                          />
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {rounds.map((r, rIdx) => (
-                      <tr key={rIdx} className="hover:bg-slate-50/50 transition-colors group">
-                        <td className="py-1 md:py-3 px-2 md:px-8 sticky left-0 bg-white group-hover:bg-slate-50/50 z-10 border-r border-slate-50">
-                          <span className="text-[8px] md:text-base font-black text-slate-400 group-hover:text-indigo-600 transition-colors whitespace-nowrap">R{r.round}</span>
-                        </td>
-                        {players.map(p => {
-                          const scores = Object.values(r.scores).filter(v => v !== null && typeof v === 'number') as number[];
-                          const currentVal = r.scores[p.id];
-                          const isLead = scores.length > 0 && typeof currentVal === 'number' && currentVal === Math.min(...scores);
-                          return (
-                            <td key={p.id} className="py-0.5 md:py-2 px-0.5 md:px-3">
-                              <input 
-                                type="text" inputMode="text" value={currentVal ?? ''}
-                                onChange={(e) => handleScoreChange(rIdx, p.id, e.target.value)}
-                                className={`w-full bg-slate-50/50 border-0 rounded-md md:rounded-xl px-1 md:px-4 py-1.5 md:py-3 text-center font-black text-slate-800 text-[10px] md:text-xl focus:ring-2 focus:ring-slate-900/5 focus:bg-white transition-all ${isLead ? 'bg-indigo-50 ring-1 ring-indigo-200 shadow-sm text-indigo-700 font-black' : ''}`}
-                                placeholder="—"
-                              />
-                            </td>
-                          );
-                        })}
+                      <tr key={rIdx} className="hover:bg-slate-50/40 transition-colors">
+                        <td className="py-2.5 px-3 text-[10px] font-black text-slate-300">R{r.round}</td>
+                        {players.map(p => (
+                          <td key={p.id} className="p-1">
+                            <input 
+                              type="text" value={r.scores[p.id] ?? ''}
+                              onChange={(e) => handleScoreChange(rIdx, p.id, e.target.value)}
+                              className="w-full bg-slate-50/50 border-0 rounded-lg py-1.5 md:py-2 text-center font-black text-slate-800 text-[12px] md:text-base focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all placeholder:text-slate-200"
+                              placeholder="0"
+                            />
+                          </td>
+                        ))}
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot className="bg-slate-900 font-black text-white">
+                  <tfoot className="sticky bottom-0 bg-slate-900 text-white z-20 shadow-[0_-4px_10px_rgba(0,0,0,0.1)]">
                     <tr>
-                      <td className="py-2 md:py-6 px-2 md:px-8 uppercase text-[6px] md:text-[10px] tracking-[0.2em] text-slate-500 sticky left-0 bg-slate-900 z-10">Total</td>
-                      {players.map(p => {
-                        const s = stats.find(stat => stat.id === p.id);
-                        return (
-                          <td key={p.id} className="py-2 md:py-6 px-1 md:px-4 text-center">
-                            <div className="flex flex-col items-center">
-                              <span className="text-[10px] md:text-3xl text-white tracking-tighter mb-0.5 md:mb-1 leading-none">{s?.totalScore}</span>
-                              <Badge rank={s?.rank || 0} size="small" />
-                            </div>
-                          </td>
-                        );
-                      })}
+                      <td className="py-2.5 px-3 text-[10px] font-black uppercase tracking-widest">Total</td>
+                      {players.map(p => (
+                        <td key={p.id} className="py-2.5 text-center text-[12px] md:text-xl font-black">
+                          {stats.find(s => s.id === p.id)?.totalScore}
+                        </td>
+                      ))}
                     </tr>
                   </tfoot>
                 </table>
@@ -381,91 +544,61 @@ function GameDashboard({ onReset }: { onReset: () => void }) {
           )}
 
           {activeTab === 'charts' && (
-            <div className="p-4 md:p-10">
-              <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1.8fr] gap-8 lg:gap-12">
-                {/* RANKING Table - NARROWER (NOW ON THE LEFT) */}
-                <div className="flex flex-col border-r border-slate-100 pr-0 lg:pr-8">
-                  <h2 className="text-[10px] md:text-2xl font-black text-slate-900 mb-6 tracking-tight uppercase">RANKING</h2>
-                  <div className="overflow-x-auto rounded-xl md:rounded-[1.5rem] border border-slate-100 shadow-sm bg-white">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-slate-50 border-b border-slate-100">
-                          <th className="py-2 md:py-4 px-1 md:px-2 w-8 md:w-16 text-center text-[7px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">Rnd</th>
-                          {players.map(p => (
-                            <th key={p.id} className="py-2 md:py-4 px-0.5 md:px-1 text-center text-[7px] md:text-[11px] font-black text-slate-700 uppercase truncate max-w-[40px] md:max-w-[80px]">
-                              {p.name}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-50">
-                        {cumulativeRanksPerRound.map((cr, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50/30 transition-colors h-10 md:h-14">
-                            <td className="py-1 md:py-2.5 px-1 md:px-2 text-center font-black text-slate-400 text-[8px] md:text-xs">R{cr.round}</td>
-                            {players.map(p => {
-                              const rank = cr.ranks ? cr.ranks[p.id] : null;
-                              
-                              if (rank === null) {
-                                return <td key={p.id} className="py-1 md:py-2.5 px-0.5 md:px-1"></td>;
-                              }
-
-                              const isFirst = rank === 1;
-                              const isLast = rank === players.length && players.length > 1;
-                              
-                              return (
-                                <td key={p.id} className="py-1 md:py-2.5 px-0.5 md:px-1 text-center">
-                                  <div className={`mx-auto w-5 h-5 md:w-8 md:h-8 flex items-center justify-center rounded-lg font-black text-[9px] md:text-base transition-all ${
-                                    isFirst ? 'bg-green-100 text-green-700 shadow-sm border border-green-200' : 
-                                    isLast ? 'bg-red-100 text-red-700 shadow-sm border border-red-200' : 
-                                    'bg-white text-slate-500 border border-slate-100'
-                                  }`}>
-                                    {rank}
-                                  </div>
-                                </td>
-                              );
-                            })}
+            <div className="p-2 md:p-3 flex-1 flex flex-col gap-3 overflow-hidden h-full">
+              <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1.9fr] gap-3 h-full overflow-hidden">
+                <div className="flex flex-col h-full overflow-hidden min-h-0">
+                  <h3 className="text-[10px] md:text-xs font-black text-slate-900 uppercase mb-2 ml-1 tracking-tighter">Ranking Progress</h3>
+                  <div className="rounded-2xl border border-slate-100 flex-1 bg-slate-50/30 min-h-0 overflow-hidden flex flex-col shadow-inner">
+                    <div className="overflow-auto flex-1">
+                      <table className="w-full text-center border-collapse text-[10px] md:text-xs">
+                        <thead className="bg-slate-100 sticky top-0 z-10 shadow-sm">
+                          <tr>
+                            <th className="py-2 px-2 font-black text-slate-400 uppercase tracking-tighter">Rnd</th>
+                            {players.map(p => (
+                              <th key={p.id} className="py-2 px-1 font-black truncate max-w-[50px] uppercase tracking-tighter" style={{ color: p.color }}>
+                                {p.name}
+                              </th>
+                            ))}
                           </tr>
-                        ))}
-                      </tbody>
-                      <tfoot className="bg-slate-100 border-t border-slate-200">
-                        <tr className="font-black">
-                          <td className="py-2 md:py-4 px-1 md:px-2 text-center text-[7px] md:text-[9px] text-slate-500 uppercase tracking-widest">SCR</td>
-                          {players.map(p => {
-                            const playerStat = stats.find(s => s.id === p.id);
-                            return (
-                              <td key={p.id} className="py-2 md:py-4 px-0.5 md:px-1 text-center">
-                                <div className="flex flex-col items-center">
-                                  <div className="scale-[0.6] md:scale-90 mb-0.5">
-                                    <Badge rank={playerStat?.rank || 0} size="small" />
-                                  </div>
-                                  <span className="text-[7px] md:text-[10px] text-slate-500 font-bold">{playerStat?.totalScore}</span>
-                                </div>
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      </tfoot>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 bg-white/50">
+                          {cumulativeRanksPerRound.map((cr, idx) => (
+                            <tr key={idx} className="h-9 md:h-11">
+                              <td className="py-0.5 text-slate-300 font-bold text-[9px]">R{cr.round}</td>
+                              {players.map(p => {
+                                const rank = cr.ranks ? cr.ranks[p.id] : null;
+                                return (
+                                  <td key={p.id} className="py-0.5 px-0.5">
+                                    {rank ? (
+                                      <span className={`w-6 h-6 md:w-8 md:h-8 inline-flex items-center justify-center rounded-lg font-black text-[10px] md:text-xs transition-all ${rank === 1 ? 'bg-green-100 text-green-700 shadow-sm border border-green-200' : 'bg-white text-slate-400 border border-slate-100 shadow-xs'}`}>
+                                        {rank}
+                                      </span>
+                                    ) : '-'}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
 
-                {/* Visual Trends Right - EXTENDED (NOW ON THE RIGHT) */}
-                <div className="flex flex-col h-full">
-                  <h2 className="text-[10px] md:text-2xl font-black text-slate-900 mb-6 tracking-tight uppercase">Visual Trends</h2>
-                  <div className="flex-1 min-h-[250px] md:min-h-[400px] w-full">
-                    {players.length > 0 && rounds.length > 0 && (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
-                          <defs>{players.map(p => (<linearGradient key={`g-${p.id}`} id={`c-${p.id}`} x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={p.color} stopOpacity={0.3}/><stop offset="95%" stopColor={p.color} stopOpacity={0}/></linearGradient>))}</defs>
-                          <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f1f5f9" />
-                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 7, fontWeight: 800}} />
-                          <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 7, fontWeight: 800}} />
-                          <Tooltip contentStyle={{ borderRadius: '0.4rem', border: 'none', boxShadow: '0 4px 12px -2px rgba(0,0,0,0.1)', padding: '6px' }} labelStyle={{ fontWeight: '900', fontSize: '0.65rem', marginBottom: '2px' }} />
-                          <Legend iconType="circle" wrapperStyle={{ paddingTop: '10px', fontSize: '8px' }} />
-                          {players.map(p => (<Area key={p.id} type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={2} fillOpacity={1} fill={`url(#c-${p.id})`} activeDot={{ r: 3, strokeWidth: 0 }} />))}
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    )}
+                <div className="flex flex-col h-full overflow-hidden min-h-0">
+                  <h3 className="text-[10px] md:text-xs font-black text-slate-900 uppercase mb-2 ml-1 tracking-tighter">Score Trends</h3>
+                  <div className="flex-1 min-h-0 bg-slate-50/30 rounded-2xl p-3 border border-slate-100 shadow-inner">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData} margin={{ top: 10, right: 15, left: -20, bottom: 0 }}>
+                        <defs>{players.map(p => (<linearGradient key={p.id} id={`c-${p.id}`} x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={p.color} stopOpacity={0.3}/><stop offset="95%" stopColor={p.color} stopOpacity={0}/></linearGradient>))}</defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                        <XAxis dataKey="name" tick={{fontSize: 9, fontWeight: 700, fill: '#94a3b8'}} axisLine={false} tickLine={false} />
+                        <YAxis tick={{fontSize: 9, fontWeight: 700, fill: '#94a3b8'}} axisLine={false} tickLine={false} />
+                        <Tooltip contentStyle={{ fontSize: '10px', fontWeight: 'bold', borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                        <Legend iconType="circle" wrapperStyle={{ fontSize: '9px', fontWeight: 900, paddingTop: '15px', color: '#64748b' }} />
+                        {players.map(p => (<Area key={p.id} type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={3} fill={`url(#c-${p.id})`} activeDot={{r: 6, strokeWidth: 2, stroke: '#fff'}} />))}
+                      </AreaChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
               </div>
@@ -473,43 +606,107 @@ function GameDashboard({ onReset }: { onReset: () => void }) {
           )}
 
           {activeTab === 'analysis' && (
-            <div className="p-4 md:p-10">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-[10px] md:text-2xl font-black text-slate-900 tracking-tight uppercase">AI Report</h2>
-                {isAnalyzing && <div className="flex items-center gap-1.5 bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md font-black animate-pulse shadow-sm text-[7px] md:text-sm"><span className="animate-spin">✨</span> Thinking...</div>}
+            <div className="p-4 md:p-6 flex-1 flex flex-col gap-4 overflow-hidden">
+              <div className="flex items-center justify-between shrink-0">
+                <h2 className="text-[12px] font-black uppercase tracking-widest text-slate-400">Match Insights</h2>
+                <button onClick={runAnalysis} disabled={isAnalyzing} className="bg-slate-900 text-white text-[10px] md:text-xs px-5 py-2 rounded-xl font-black hover:bg-black transition-all shadow-lg active:scale-95 disabled:opacity-50">
+                  {isAnalyzing ? "Processing..." : "Generate Analysis"}
+                </button>
               </div>
-              {!aiInsight && !isAnalyzing ? (
-                <div className="text-center py-8 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
-                  <div className="text-4xl mb-4">🎙️</div>
-                  <button onClick={runAnalysis} className="bg-slate-900 text-white px-6 py-2 rounded-lg font-black hover:bg-black transition-all shadow-lg text-[10px] md:text-base mt-2">Generate Report</button>
-                </div>
-              ) : (
-                <div className="max-w-4xl mx-auto">
-                   <div className="bg-slate-900 text-white p-4 md:p-10 rounded-xl whitespace-pre-wrap font-medium leading-relaxed text-[10px] md:text-xl italic shadow-lg relative overflow-hidden group">
-                     <div className="absolute top-0 right-0 w-24 md:w-48 h-24 md:h-48 bg-indigo-500 opacity-10 rounded-full -mr-12 md:-mr-24 -mt-12 md:-mt-24 group-hover:scale-110 transition-transform duration-1000"></div>
-                     <span className="relative z-10">{aiInsight}</span>
-                   </div>
-                   <div className="mt-4 flex justify-center">
-                      <button onClick={runAnalysis} className="text-[9px] md:text-sm font-black text-slate-400 hover:text-indigo-600 flex items-center gap-2 transition-colors uppercase tracking-widest"><svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg> Refresh</button>
-                   </div>
-                </div>
-              )}
+              <div className="bg-slate-50 p-5 md:p-8 rounded-3xl border border-slate-100 text-[13px] md:text-base italic leading-relaxed text-slate-700 flex-1 overflow-auto whitespace-pre-wrap font-medium shadow-inner">
+                {aiInsight || "Ready for some tactical wisdom? Tap 'Generate Analysis' to see the AI's breakdown of the standings!"}
+              </div>
             </div>
+          )}
+
+          {activeTab === 'dice' && (
+            <DiceRoller />
           )}
         </div>
       </main>
     </div>
   );
-}
+};
 
-// --- Main App Wrapper ---
+// --- App Root: State Lifted for Perfect Resets ---
 
 export default function App() {
-  const [gameKey, setGameKey] = useState(0);
+  const [players, setPlayers] = useState<Player[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY_PLAYERS);
+    return saved ? JSON.parse(saved) : getInitialPlayers();
+  });
+  
+  const [rounds, setRounds] = useState<RoundScore[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY_ROUNDS);
+    if (saved) return JSON.parse(saved);
+    return getInitialRounds(getInitialPlayers());
+  });
+
+  const [history, setHistory] = useState<{players: Player[], rounds: RoundScore[]}[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+
+  // Persistence management in App level
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_PLAYERS, JSON.stringify(players));
+    localStorage.setItem(STORAGE_KEY_ROUNDS, JSON.stringify(rounds));
+  }, [players, rounds]);
+
+  const pushState = useCallback((newPlayers: Player[], newRounds: RoundScore[]) => {
+    setPlayers(newPlayers);
+    setRounds(newRounds);
+    setHistory(prev => {
+      const nextHistory = prev.slice(0, historyIndex + 1);
+      return [...nextHistory, { players: newPlayers, rounds: newRounds }];
+    });
+    setHistoryIndex(prev => prev + 1);
+  }, [historyIndex]);
+
+  const undo = useCallback(() => {
+    if (historyIndex > 0) {
+      const prevState = history[historyIndex - 1];
+      setPlayers(prevState.players);
+      setRounds(prevState.rounds);
+      setHistoryIndex(historyIndex - 1);
+    }
+  }, [history, historyIndex]);
+
+  const redo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      const nextState = history[historyIndex + 1];
+      setPlayers(nextState.players);
+      setRounds(nextState.rounds);
+      setHistoryIndex(historyIndex + 1);
+    }
+  }, [history, historyIndex]);
 
   const handleReset = useCallback(() => {
-    setGameKey(prev => prev + 1);
+    if (window.confirm("Confirm: Start a New Game? All scores, names, and history will be permanently cleared.")) {
+      // 1. Clear storage immediately
+      localStorage.removeItem(STORAGE_KEY_PLAYERS);
+      localStorage.removeItem(STORAGE_KEY_ROUNDS);
+      
+      // 2. Overwrite state with initial defaults
+      const defaultPlayers = getInitialPlayers();
+      const defaultRounds = getInitialRounds(defaultPlayers);
+      
+      setPlayers(defaultPlayers);
+      setRounds(defaultRounds);
+      setHistory([]);
+      setHistoryIndex(-1);
+    }
   }, []);
 
-  return <GameDashboard key={gameKey} onReset={handleReset} />;
+  return (
+    <GameDashboard 
+      players={players} 
+      rounds={rounds} 
+      onPlayersChange={(p) => pushState(p, rounds)}
+      onRoundsChange={(r) => pushState(players, r)}
+      onReset={handleReset}
+      undo={undo}
+      redo={redo}
+      canUndo={historyIndex > 0}
+      canRedo={historyIndex < history.length - 1}
+    />
+  );
 }

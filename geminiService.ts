@@ -1,7 +1,10 @@
-
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { Player, RoundScore, PlayerStats } from "./types";
 
+/**
+ * Fix: Initializing GoogleGenAI inside the function as per guidelines to ensure 
+ * the most up-to-date API key is used, and removed unused imports.
+ */
 export const getGameAnalysis = async (
   players: Player[],
   rounds: RoundScore[],
