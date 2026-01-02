@@ -23,15 +23,12 @@ const PLAYER_COLORS = [
 const Badge = ({ rank, total, size = 'small' }: { rank: number, total: number, size?: 'small' | 'large' }) => {
   const emojiSize = size === 'large' ? 'text-xl md:text-3xl' : 'text-sm md:text-xl';
   
-  // Rank 1, 2, 3 always get medals if they exist
   if (rank === 1) return <span className={`${emojiSize} drop-shadow-sm select-none leading-none`} title="Winner">🏆</span>;
   if (rank === 2) return <span className={`${emojiSize} drop-shadow-sm select-none leading-none`} title="Second">🥈</span>;
   if (rank === 3) return <span className={`${emojiSize} drop-shadow-sm select-none leading-none`} title="Third">🥉</span>;
   
-  // Last place gets the 💩 icon if there are at least 4 players
   if (rank === total && total >= 4) return <span className={`${emojiSize} drop-shadow-sm select-none leading-none`} title="Last Place">💩</span>;
   
-  // Default for others
   return <span className={`${emojiSize} drop-shadow-sm select-none leading-none`} title="Ranking">💪</span>;
 };
 
@@ -362,7 +359,8 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
         ))}
       </nav>
 
-      <main className="max-w-7xl mx-auto w-full px-1.5 md:px-6 py-1.5 md:py-3 flex flex-col flex-1 gap-1.5 md:gap-3 overflow-hidden">
+      {/* pb-0 ensures main fills the bottom on mobile */}
+      <main className="max-w-7xl mx-auto w-full px-1.5 md:px-6 py-1.5 md:py-3 pb-0 md:pb-3 flex flex-col flex-1 gap-1.5 md:gap-3 overflow-hidden">
         {activeTab === 'table' && (
           <div className="w-full shrink-0 bg-slate-100/30 rounded-xl">
             <section className="grid grid-cols-4 gap-1 p-1 md:flex md:flex-nowrap md:gap-4 md:p-4">
@@ -379,9 +377,10 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
           </div>
         )}
 
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 flex-1 flex flex-col overflow-hidden">
+        {/* rounded-b-none on mobile helps it feel like it extends to the very end */}
+        <div className="bg-white rounded-xl rounded-b-none md:rounded-b-xl shadow-sm border border-slate-100 flex-1 flex flex-col overflow-hidden">
           {activeTab === 'table' && (
-            <div className="p-1.5 md:p-3 flex flex-col h-full overflow-hidden">
+            <div className="p-1.5 md:p-3 flex flex-col flex-1 overflow-hidden">
               <div className="flex items-center justify-between mb-1 px-1 shrink-0">
                 <h2 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-tight">Leaderboard</h2>
                 <div className="flex items-center gap-1">
@@ -399,8 +398,9 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                   </div>
                 </div>
               </div>
+              {/* Added flex-1 to the table container and min-h-full to the table to ensure footer is at bottom */}
               <div className="overflow-auto rounded-lg border border-slate-100 flex-1 bg-white">
-                <table className="w-full text-left border-collapse min-w-[280px]">
+                <table className="w-full text-left border-collapse min-w-[280px] min-h-full">
                   <thead className="sticky top-0 z-20 bg-slate-50 shadow-sm">
                     <tr className="border-b border-slate-100">
                       <th className="py-1 md:py-2.5 px-2 text-[8px] md:text-[10px] font-black text-slate-400 uppercase w-10 md:w-20 tracking-tighter">Rnd</th>
@@ -423,6 +423,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                       </tr>
                     ))}
                   </tbody>
+                  {/* Footer will now always stick to the bottom of the container thanks to min-h-full on table */}
                   <tfoot className="sticky bottom-0 bg-slate-900 text-white z-20 shadow-lg">
                     <tr>
                       <td className="py-1 md:py-2.5 px-2 text-[8px] md:text-[10px] font-black uppercase tracking-widest">Total</td>
