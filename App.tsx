@@ -11,58 +11,99 @@ import { Player, RoundScore, PlayerStats } from './types';
 const STORAGE_KEY_PLAYERS = 'ace_tracker_players_v1';
 const STORAGE_KEY_ROUNDS = 'ace_tracker_rounds_v1';
 
+// --- Helper for random colors ---
+const PLAYER_COLORS = [
+  '#6366f1', '#10b981', '#f59e0b', '#ef4444', 
+  '#8b5cf6', '#ec4899', '#06b6d4', '#f97316',
+  '#14b8a6', '#84cc16'
+];
+
 // --- Sub-components ---
 
-const Badge = ({ rank, size = 'small' }: { rank: number, size?: 'small' | 'large' }) => {
-  const emojiSize = size === 'large' ? 'text-2xl md:text-3xl' : 'text-xl md:text-2xl';
-  switch (rank) {
-    case 1: return <span className={`${emojiSize} drop-shadow-sm select-none leading-none`} title="Winner">🏆</span>;
-    case 2: return <span className={`${emojiSize} drop-shadow-sm select-none leading-none`} title="Second">🥈</span>;
-    case 3: return <span className={`${emojiSize} drop-shadow-sm select-none leading-none`} title="Third">🥉</span>;
-    default: return <span className={`${emojiSize} drop-shadow-sm select-none leading-none`} title="Last Place">💩</span>;
-  }
+const Badge = ({ rank, total, size = 'small' }: { rank: number, total: number, size?: 'small' | 'large' }) => {
+  const emojiSize = size === 'large' ? 'text-xl md:text-3xl' : 'text-sm md:text-xl';
+  
+  // Rank 1, 2, 3 always get medals if they exist
+  if (rank === 1) return <span className={`${emojiSize} drop-shadow-sm select-none leading-none`} title="Winner">🏆</span>;
+  if (rank === 2) return <span className={`${emojiSize} drop-shadow-sm select-none leading-none`} title="Second">🥈</span>;
+  if (rank === 3) return <span className={`${emojiSize} drop-shadow-sm select-none leading-none`} title="Third">🥉</span>;
+  
+  // Last place gets the 💩 icon if there are at least 4 players
+  if (rank === total && total >= 4) return <span className={`${emojiSize} drop-shadow-sm select-none leading-none`} title="Last Place">💩</span>;
+  
+  // Default for others
+  return <span className={`${emojiSize} drop-shadow-sm select-none leading-none`} title="Ranking">💪</span>;
 };
 
 interface StatCardProps {
   player: Player;
   stat: PlayerStats;
+  totalPlayers: number;
   onRemove: (id: string) => void;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ player, stat, onRemove }) => (
-  <div className="group bg-white rounded-xl shadow-sm border border-slate-100 flex flex-col items-center hover:shadow-md transition-all relative overflow-hidden text-center cursor-default h-full min-h-[85px] md:min-h-[110px] justify-between py-2 md:py-3">
-    <button 
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        onRemove(player.id);
-      }}
-      className="md:opacity-0 group-hover:opacity-100 absolute top-1 right-1 w-5 h-5 bg-slate-100 hover:bg-red-500 text-slate-400 hover:text-white rounded-full flex items-center justify-center transition-all z-40 border border-slate-200 shadow-sm"
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-      </svg>
-    </button>
+const StatCard: React.FC<StatCardProps> = ({ player, stat, totalPlayers, onRemove }) => {
+  const [isConfirming, setIsConfirming] = useState(false);
 
-    <div className="w-full px-1">
-      <h3 className="font-black text-slate-900 text-[10px] md:text-xs truncate uppercase tracking-tighter leading-none">
-        {player.name}
-      </h3>
-    </div>
+  useEffect(() => {
+    if (isConfirming) {
+      const timer = setTimeout(() => setIsConfirming(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isConfirming]);
 
-    <div className="flex items-center justify-center leading-none h-6 md:h-8">
-      <Badge rank={stat.rank} size="small" />
-    </div>
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isConfirming) {
+      onRemove(player.id);
+      setIsConfirming(false);
+    } else {
+      setIsConfirming(true);
+    }
+  };
 
-    <div className="w-full">
-      <div className="text-[13px] md:text-xl font-black text-slate-600 tracking-tighter leading-none">
-        {stat.totalScore}
+  return (
+    <div className={`group relative flex flex-col items-center justify-between rounded-lg border p-1 text-center transition-all md:p-3 h-full min-h-[70px] md:min-h-[120px] shadow-sm ${isConfirming ? 'border-red-500 bg-red-50 scale-105' : 'border-slate-100 bg-white hover:shadow-md'}`}>
+      
+      <button 
+        onClick={handleDelete}
+        className="absolute top-[-4px] right-[-4px] z-[110] p-1 transition-transform active:scale-90"
+        aria-label={isConfirming ? "Confirm Delete" : "Remove Player"}
+      >
+        <div className={`flex h-5 w-5 items-center justify-center rounded-full border border-white shadow-sm transition-all md:h-7 md:w-7 ${isConfirming ? 'bg-red-600 scale-110' : 'bg-red-500'}`}>
+          {isConfirming ? (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" />
+            </svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          )}
+        </div>
+      </button>
+
+      <div className="w-full px-0.5">
+        <h3 className={`font-black uppercase tracking-tighter leading-none transition-colors ${isConfirming ? 'text-red-700' : 'text-slate-900'} text-[9px] md:text-sm truncate`}>
+          {player.name}
+        </h3>
       </div>
+
+      <div className="flex items-center justify-center leading-none h-5 md:h-10">
+        <Badge rank={stat.rank} total={totalPlayers} size="small" />
+      </div>
+
+      <div className="w-full">
+        <div className={`font-black tracking-tighter leading-none transition-colors ${isConfirming ? 'text-red-800' : 'text-slate-600'} text-[12px] md:text-2xl`}>
+          {stat.totalScore}
+        </div>
+      </div>
+      
+      <div className="absolute bottom-0 left-0 right-0 h-1 md:h-2" style={{ backgroundColor: isConfirming ? '#dc2626' : player.color }} />
     </div>
-    
-    <div className="absolute bottom-0 left-0 right-0 h-1 md:h-1.5" style={{ backgroundColor: player.color }} />
-  </div>
-);
+  );
+};
 
 // --- Dice Component ---
 
@@ -186,6 +227,8 @@ interface GameDashboardProps {
   rounds: RoundScore[];
   onUpdateGameState: (p: Player[], r: RoundScore[]) => void;
   onReset: () => void;
+  onAddPlayer: () => void;
+  onRemovePlayer: (id: string) => void;
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
@@ -193,7 +236,7 @@ interface GameDashboardProps {
 }
 
 const GameDashboard: React.FC<GameDashboardProps> = ({ 
-  players, rounds, onUpdateGameState, onReset, undo, redo, canUndo, canRedo 
+  players, rounds, onUpdateGameState, onReset, onAddPlayer, onRemovePlayer, undo, redo, canUndo, canRedo 
 }) => {
   const [activeTab, setActiveTab] = useState<'table' | 'charts' | 'dice'>('table');
 
@@ -313,44 +356,57 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
         </div>
       </header>
 
-      <nav className="flex bg-white border-b border-slate-100 px-2 py-1 justify-around text-[10px] font-black uppercase tracking-tight shrink-0">
+      <nav className="flex bg-white border-b border-slate-100 px-2 py-1 justify-around text-[9px] md:text-[10px] font-black uppercase tracking-tight shrink-0">
         {['table', 'charts', 'dice'].map(tab => (
-          <button key={tab} onClick={() => setActiveTab(tab as any)} className={`flex-1 py-2 rounded-md transition-all ${activeTab === tab ? 'text-indigo-600 bg-indigo-50 font-black' : 'text-slate-400'}`}>{tab}</button>
+          <button key={tab} onClick={() => setActiveTab(tab as any)} className={`flex-1 py-1.5 md:py-2 rounded-md transition-all ${activeTab === tab ? 'text-indigo-600 bg-indigo-50 font-black' : 'text-slate-400'}`}>{tab}</button>
         ))}
       </nav>
 
-      <main className="max-w-7xl mx-auto w-full px-2 md:px-6 py-2 md:py-3 flex flex-col flex-1 gap-2 md:gap-3 overflow-hidden">
+      <main className="max-w-7xl mx-auto w-full px-1.5 md:px-6 py-1.5 md:py-3 flex flex-col flex-1 gap-1.5 md:gap-3 overflow-hidden">
         {activeTab === 'table' && (
-          <section className="grid grid-cols-4 gap-2 md:gap-4 shrink-0 overflow-x-auto pb-1">
-            {stats.map(stat => {
-              const p = players.find(player => player.id === stat.id);
-              if (!p) return null;
-              return <StatCard key={stat.id} player={p} stat={stat} onRemove={() => {}} />;
-            })}
-          </section>
+          <div className="w-full shrink-0 bg-slate-100/30 rounded-xl">
+            <section className="grid grid-cols-4 gap-1 p-1 md:flex md:flex-nowrap md:gap-4 md:p-4">
+              {stats.map(stat => {
+                const p = players.find(player => player.id === stat.id);
+                if (!p) return null;
+                return (
+                  <div key={stat.id}>
+                    <StatCard player={p} stat={stat} totalPlayers={players.length} onRemove={onRemovePlayer} />
+                  </div>
+                );
+              })}
+            </section>
+          </div>
         )}
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 flex-1 flex flex-col overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-100 flex-1 flex flex-col overflow-hidden">
           {activeTab === 'table' && (
-            <div className="p-2 md:p-3 flex flex-col h-full overflow-hidden">
-              <div className="flex items-center justify-between mb-2 px-1 shrink-0">
-                <h2 className="text-[11px] md:text-xs font-black text-slate-900 uppercase tracking-tight">Leaderboard</h2>
-                <div className="flex items-center gap-2">
-                  <div className="flex bg-slate-900 rounded-lg p-0.5 gap-1 items-center px-2">
-                    <button onClick={addNewRound} className="text-white text-xs font-bold p-1">+</button>
-                    <span className="text-[9px] font-black text-white uppercase tracking-tighter">Round</span>
-                    <button onClick={removeLastRound} disabled={rounds.length === 0} className="text-white text-xs font-bold p-1 disabled:opacity-30">-</button>
+            <div className="p-1.5 md:p-3 flex flex-col h-full overflow-hidden">
+              <div className="flex items-center justify-between mb-1 px-1 shrink-0">
+                <h2 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-tight">Leaderboard</h2>
+                <div className="flex items-center gap-1">
+                  <button 
+                    onClick={onAddPlayer}
+                    className="flex bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-md p-0.5 items-center px-2 text-white shadow-sm transition-all h-6 md:h-10"
+                  >
+                    <span className="text-xs font-bold mr-1">+</span>
+                    <span className="text-[8px] md:text-[10px] font-black uppercase tracking-tighter">Player</span>
+                  </button>
+                  <div className="flex bg-slate-900 rounded-md p-0.5 gap-0.5 items-center px-2 h-6 md:h-10">
+                    <button onClick={addNewRound} className="text-white text-xs font-bold p-0.5">+</button>
+                    <span className="text-[8px] md:text-[10px] font-black text-white uppercase tracking-tighter">Round</span>
+                    <button onClick={removeLastRound} disabled={rounds.length === 0} className="text-white text-xs font-bold p-0.5 disabled:opacity-30">-</button>
                   </div>
                 </div>
               </div>
-              <div className="overflow-auto rounded-xl border border-slate-100 flex-1">
-                <table className="w-full text-left border-collapse min-w-[320px]">
+              <div className="overflow-auto rounded-lg border border-slate-100 flex-1 bg-white">
+                <table className="w-full text-left border-collapse min-w-[280px]">
                   <thead className="sticky top-0 z-20 bg-slate-50 shadow-sm">
                     <tr className="border-b border-slate-100">
-                      <th className="py-2.5 px-3 text-[10px] font-black text-slate-400 uppercase w-12 md:w-20 tracking-tighter">Rnd</th>
+                      <th className="py-1 md:py-2.5 px-2 text-[8px] md:text-[10px] font-black text-slate-400 uppercase w-10 md:w-20 tracking-tighter">Rnd</th>
                       {players.map(p => (
-                        <th key={p.id} className="py-2.5 text-center">
-                          <input type="text" value={p.name} onChange={(e) => handleNameChange(p.id, e.target.value)} maxLength={8} className="text-[11px] md:text-sm font-black text-center bg-transparent border-0 focus:ring-0 w-full truncate uppercase tracking-tighter" style={{ color: p.color }} />
+                        <th key={p.id} className="py-1 md:py-2.5 text-center">
+                          <input type="text" value={p.name} onChange={(e) => handleNameChange(p.id, e.target.value)} maxLength={8} className="text-[9px] md:text-sm font-black text-center bg-transparent border-0 focus:ring-0 w-full truncate uppercase tracking-tighter" style={{ color: p.color }} />
                         </th>
                       ))}
                     </tr>
@@ -358,10 +414,10 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                   <tbody className="divide-y divide-slate-50">
                     {rounds.map((r, rIdx) => (
                       <tr key={rIdx} className="hover:bg-slate-50/40 transition-colors">
-                        <td className="py-2.5 px-3 text-[10px] font-black text-slate-300">R{r.round}</td>
+                        <td className="py-0.5 md:py-2 px-2 text-[8px] md:text-[10px] font-black text-slate-300">R{r.round}</td>
                         {players.map(p => (
-                          <td key={p.id} className="p-1">
-                            <input type="text" value={r.scores[p.id] ?? ''} onChange={(e) => handleScoreChange(rIdx, p.id, e.target.value)} className="w-full bg-slate-50/50 border-0 rounded-lg py-1.5 md:py-2 text-center font-black text-slate-800 text-[12px] md:text-base focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all placeholder:text-slate-200" placeholder="0" />
+                          <td key={p.id} className="p-0.5 md:p-1">
+                            <input type="text" value={r.scores[p.id] ?? ''} onChange={(e) => handleScoreChange(rIdx, p.id, e.target.value)} className="w-full bg-slate-50/50 border-0 rounded-md py-1 md:py-2 text-center font-black text-slate-800 text-[11px] md:text-base focus:bg-white focus:ring-1 focus:ring-indigo-200 transition-all placeholder:text-slate-200" placeholder="0" />
                           </td>
                         ))}
                       </tr>
@@ -369,9 +425,9 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                   </tbody>
                   <tfoot className="sticky bottom-0 bg-slate-900 text-white z-20 shadow-lg">
                     <tr>
-                      <td className="py-2.5 px-3 text-[10px] font-black uppercase tracking-widest">Total</td>
+                      <td className="py-1 md:py-2.5 px-2 text-[8px] md:text-[10px] font-black uppercase tracking-widest">Total</td>
                       {players.map(p => (
-                        <td key={p.id} className="py-2.5 text-center text-[12px] md:text-xl font-black">{stats.find(s => s.id === p.id)?.totalScore}</td>
+                        <td key={p.id} className="py-1 md:py-2.5 text-center text-[11px] md:text-xl font-black">{stats.find(s => s.id === p.id)?.totalScore}</td>
                       ))}
                     </tr>
                   </tfoot>
@@ -438,7 +494,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                           return (
                             <td key={p.id} className="py-1 px-3 border-r border-slate-200 last:border-0">
                               <div className="flex items-center justify-center">
-                                <Badge rank={playerStat?.rank ?? 4} size="small" />
+                                <Badge rank={playerStat?.rank ?? 4} total={players.length} size="small" />
                               </div>
                             </td>
                           );
@@ -526,12 +582,42 @@ export default function App() {
     if (window.confirm("Start New Game? This will wipe all current scores.")) {
       const defaultPlayers = getInitialPlayers();
       const defaultRounds = getInitialRounds(defaultPlayers);
-      setPlayers(defaultPlayers);
-      setRounds(defaultRounds);
-      setUndoStack([]);
-      setHistoryIndex(-1);
+      pushState(defaultPlayers, defaultRounds);
     }
-  }, []);
+  }, [pushState]);
+
+  const handleAddPlayer = useCallback(() => {
+    const newId = `p-${Date.now()}`;
+    const colorIndex = players.length % PLAYER_COLORS.length;
+    const newPlayer: Player = {
+      id: newId,
+      name: `P${players.length + 1}`,
+      color: PLAYER_COLORS[colorIndex]
+    };
+    
+    const newPlayers = [...players, newPlayer];
+    const newRounds = rounds.map(r => ({
+      ...r,
+      scores: { ...r.scores, [newId]: null }
+    }));
+    
+    pushState(newPlayers, newRounds);
+  }, [players, rounds, pushState]);
+
+  const handleRemovePlayer = useCallback((playerId: string) => {
+    if (players.length <= 1) {
+      alert("At least one player is required!");
+      return;
+    }
+    
+    const newPlayers = players.filter(p => p.id !== playerId);
+    const newRounds = rounds.map(r => {
+      const newScores = { ...r.scores };
+      delete newScores[playerId];
+      return { ...r, scores: newScores };
+    });
+    pushState(newPlayers, newRounds);
+  }, [players, rounds, pushState]);
 
   return (
     <GameDashboard 
@@ -539,6 +625,8 @@ export default function App() {
       rounds={rounds} 
       onUpdateGameState={pushState}
       onReset={handleReset}
+      onAddPlayer={handleAddPlayer}
+      onRemovePlayer={handleRemovePlayer}
       undo={undo}
       redo={redo}
       canUndo={historyIndex > 0}
