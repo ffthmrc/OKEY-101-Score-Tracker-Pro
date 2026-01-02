@@ -298,9 +298,18 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
         </div>
         <div className="flex items-center gap-2">
           <div className="flex bg-slate-50 rounded-lg p-0.5 border border-slate-100 shadow-inner">
-            <button onClick={undo} disabled={!canUndo} className="p-1 rounded disabled:opacity-20 hover:bg-white transition-colors"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg></button>
-            <button onClick={redo} disabled={!canRedo} className="p-1 rounded disabled:opacity-20 hover:bg-white transition-colors"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 10h-10a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" /></svg></button>
+            <button onClick={undo} disabled={!canUndo} title="Undo" className="p-1 rounded disabled:opacity-20 hover:bg-white transition-colors"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg></button>
+            <button onClick={redo} disabled={!canRedo} title="Redo" className="p-1 rounded disabled:opacity-20 hover:bg-white transition-colors"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 10h-10a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" /></svg></button>
           </div>
+          <button 
+            onClick={onReset}
+            className="h-7 md:h-8 px-2 md:px-3 rounded-lg bg-red-50 text-red-600 border border-red-100 text-[9px] md:text-[10px] font-black uppercase tracking-tighter hover:bg-red-100 transition-colors flex items-center gap-1.5 ml-1"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            <span className="hidden sm:inline">New Game</span>
+          </button>
         </div>
       </header>
 
@@ -373,7 +382,6 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
 
           {activeTab === 'charts' && (
             <div className="p-2 md:p-4 flex-1 flex flex-col gap-4 overflow-auto custom-scrollbar">
-              {/* SIRALAMA TABLE - Always show all rounds and make it compact */}
               <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm shrink-0">
                 <div className="bg-slate-50 border-b border-slate-200 py-1.5 px-4 text-center">
                   <h2 className="text-xs font-black text-slate-800 uppercase tracking-[0.2em]">SIRALAMA</h2>
@@ -402,7 +410,6 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                               const rank = row.ranks[p.id];
                               let bgClass = "bg-white text-slate-200";
                               
-                              // We always show the round, but only highlight if it has data
                               if (row.isVisible) {
                                 if (rank === 1) {
                                   bgClass = "bg-[#c6efce] text-[#006100]";
@@ -442,7 +449,6 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                 </div>
               </div>
 
-              {/* Performance Trend Graph */}
               <div className="bg-slate-50/30 rounded-2xl p-4 border border-slate-100 shadow-inner h-[220px] md:h-[300px] shrink-0">
                 <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Performance Trend</h2>
                 <ResponsiveContainer width="100%" height="90%">
@@ -517,7 +523,7 @@ export default function App() {
   }, [undoStack, historyIndex]);
 
   const handleReset = useCallback(() => {
-    if (window.confirm("Start New Game?")) {
+    if (window.confirm("Start New Game? This will wipe all current scores.")) {
       const defaultPlayers = getInitialPlayers();
       const defaultRounds = getInitialRounds(defaultPlayers);
       setPlayers(defaultPlayers);
