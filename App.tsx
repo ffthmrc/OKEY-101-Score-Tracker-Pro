@@ -107,12 +107,6 @@ const DiceRoller = () => {
     }, 600);
   };
 
-  const handleClearHistory = () => {
-    if (window.confirm("Purge history logs?")) {
-      setRollHistory([]);
-    }
-  };
-
   const Face = ({ num, rotate }: { num: number, rotate: string }) => {
     const dotsMap: Record<number, number[]> = {
       1: [4],
@@ -148,26 +142,26 @@ const DiceRoller = () => {
       <div className="absolute inset-0 opacity-10 bg-[linear-gradient(to_right,#808080_1px,transparent_1px),linear-gradient(to_bottom,#808080_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
 
       {/* 1. Main Dice King Emblem Section */}
-      <div className="flex-1 flex flex-col items-center justify-center z-10 p-4 mb-32">
+      <div className="flex-1 flex flex-col items-center justify-center z-10 p-4 mb-28 md:mb-32">
         
-        {/* HUGE Golden Circle Frame */}
-        <div className="relative w-80 h-80 md:w-[560px] md:h-[560px] flex items-center justify-center transition-all duration-500 scale-110 md:scale-100">
+        {/* ENLARGED Golden Circle Frame */}
+        <div className="relative w-80 h-80 md:w-[500px] md:h-[500px] flex items-center justify-center transition-all duration-500">
           
           {/* Animated Glow Rings */}
           <div className="absolute inset-0 rounded-full border-[6px] border-[#fcd34d]/20 scale-105 animate-[spin_10s_linear_infinite]" />
           <div className="absolute inset-0 rounded-full border-[2px] border-[#0ea5e9]/30 scale-110 animate-[spin_15s_linear_infinite_reverse]" />
-          <div className="absolute inset-0 rounded-full border-[14px] border-[#fcd34d] shadow-[0_0_60px_rgba(252,211,77,0.5)]" />
+          <div className="absolute inset-0 rounded-full border-[12px] border-[#fcd34d] shadow-[0_0_40px_rgba(252,211,77,0.4)]" />
 
-          {/* DICE Text */}
-          <div className="absolute top-4 md:top-10 left-1/2 -translate-x-1/2 z-10">
-             <h1 className="text-6xl md:text-[140px] font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-slate-200 to-slate-400 drop-shadow-[0_8px_0px_#475569] tracking-[0.1em] italic uppercase">
+          {/* DICE Text - Metallic Styling */}
+          <div className="absolute top-6 md:top-12 left-1/2 -translate-x-1/2 z-10">
+             <h1 className="text-6xl md:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-slate-300 to-slate-500 drop-shadow-[0_6px_0px_#475569] tracking-[0.1em] italic uppercase">
                Dice
              </h1>
           </div>
 
           {/* The Crown - Bouncing on top of the circle rim */}
-          <div className="absolute -top-16 md:-top-24 left-1/2 -translate-x-1/2 z-30 drop-shadow-2xl animate-bounce">
-             <svg width="100" height="75" viewBox="0 0 60 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="md:w-40 md:h-32">
+          <div className="absolute -top-12 md:-top-20 left-1/2 -translate-x-1/2 z-30 drop-shadow-2xl animate-bounce">
+             <svg width="80" height="60" viewBox="0 0 60 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="md:w-32 md:h-24">
                 <path d="M30 0L42 12L60 6L54 34H6L0 6L18 12L30 0Z" fill="url(#crown_grad)" stroke="#92400e" strokeWidth="2"/>
                 <defs>
                   <linearGradient id="crown_grad" x1="30" y1="0" x2="30" y2="34" gradientUnits="userSpaceOnUse">
@@ -178,8 +172,8 @@ const DiceRoller = () => {
              </svg>
           </div>
 
-          {/* 3D Dice Scene */}
-          <div className="relative w-36 h-36 md:w-64 md:h-64 perspective-1000 z-20 mt-6">
+          {/* 3D Dice Scene - In the heart of the circle */}
+          <div className="relative w-36 h-36 md:w-56 md:h-56 perspective-1000 z-20 mt-4">
             <div 
               className="relative w-full h-full transition-transform duration-700 ease-out preserve-3d"
               style={{ transform: `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)` }}
@@ -191,60 +185,60 @@ const DiceRoller = () => {
               <Face num={5} rotate="rotateX(90deg)" />
               <Face num={6} rotate="rotateX(-90deg)" />
             </div>
-            <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 w-40 h-10 bg-[#0ea5e9]/25 blur-3xl rounded-full" />
+            <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 w-32 h-8 bg-[#0ea5e9]/20 blur-3xl rounded-full" />
           </div>
 
-          {/* KING Text */}
-          <div className="absolute bottom-4 md:bottom-10 left-1/2 -translate-x-1/2 z-10">
-             <h1 className="text-6xl md:text-[140px] font-black text-transparent bg-clip-text bg-gradient-to-b from-[#fcd34d] to-[#d97706] drop-shadow-[0_8px_0px_#92400e] tracking-[0.1em] uppercase">
+          {/* KING Text - Golden Styling */}
+          <div className="absolute bottom-6 md:bottom-12 left-1/2 -translate-x-1/2 z-10">
+             <h1 className="text-6xl md:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-b from-[#fcd34d] to-[#d97706] drop-shadow-[0_6px_0px_#92400e] tracking-[0.1em] uppercase">
                King
              </h1>
           </div>
         </div>
       </div>
 
-      {/* 2. Control Cluster */}
+      {/* 2. Unified Control Cluster - Adjusted for better spacing */}
       <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 z-20 flex flex-col items-center gap-6">
         
-        {/* History Button - Repositioned to avoid overlap */}
+        {/* History Button - Bottom Left */}
         <button 
           onClick={() => setShowHistory(true)}
-          className="absolute left-6 bottom-8 md:left-12 md:bottom-12 w-14 h-14 md:w-24 md:h-24 bg-white/5 border border-white/20 rounded-full flex items-center justify-center text-white/40 hover:bg-white/15 hover:text-white transition-all active:scale-90 shadow-2xl backdrop-blur-md z-30"
+          className="absolute left-6 bottom-8 md:left-12 md:bottom-12 w-12 h-12 md:w-20 md:h-20 bg-white/5 border border-white/20 rounded-full flex items-center justify-center text-white/40 hover:bg-white/15 hover:text-white transition-all active:scale-90 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-md"
           aria-label="View History"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 md:h-12 md:w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 md:h-10 md:w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </button>
 
         {/* Score and Roll Action */}
-        <div className="flex flex-col items-center gap-4 w-full max-w-[200px] md:max-w-[320px]">
+        <div className="flex flex-col items-center gap-4 w-full max-w-[180px] md:max-w-[280px]">
           {/* Score Badge - Matching Font Sizes */}
-          <div className="flex items-center justify-center gap-4 px-6 py-3 bg-black/80 border border-white/10 rounded-2xl backdrop-blur-xl shadow-2xl w-full">
-            <span className="text-slate-400 text-3xl font-black uppercase tracking-tight">Score</span>
-            <span className="text-[#fcd34d] text-3xl font-black drop-shadow-[0_0_15px_rgba(252,211,77,0.7)]">
+          <div className="flex items-center justify-center gap-3 px-6 py-2 bg-black/60 border border-white/10 rounded-2xl backdrop-blur-xl shadow-2xl w-full">
+            <span className="text-slate-400 text-2xl font-black uppercase tracking-tight">Score</span>
+            <span className="text-[#fcd34d] text-2xl font-black drop-shadow-[0_0_12px_rgba(252,211,77,0.6)]">
               {roll}
             </span>
           </div>
           
-          {/* ROLL Button */}
+          {/* ROLL Button - Orange, Shorter, Pro Style */}
           <button 
             onClick={rollDice}
             disabled={isRolling}
-            className="w-full h-14 md:h-18 bg-gradient-to-b from-[#f59e0b] to-[#d97706] hover:from-[#fbbf24] hover:to-[#b45309] text-[#451a03] rounded-full flex items-center justify-center gap-4 shadow-[0_15px_30px_rgba(217,119,6,0.4)] active:scale-95 active:shadow-inner transition-all border-b-4 border-[#92400e] overflow-hidden group"
+            className="w-full h-14 md:h-16 bg-gradient-to-b from-[#f59e0b] to-[#d97706] hover:from-[#fbbf24] hover:to-[#b45309] text-[#451a03] rounded-full flex items-center justify-center gap-4 shadow-[0_12px_24px_rgba(217,119,6,0.4)] active:scale-95 active:shadow-inner transition-all border-b-4 border-[#92400e] overflow-hidden group"
           >
             <div className="w-0 h-0 border-t-[8px] border-t-transparent border-l-[14px] border-l-[#451a03] border-b-[8px] border-b-transparent ml-1 group-active:translate-x-1 transition-transform" />
-            <span className="text-2xl md:text-3xl font-black tracking-[0.2em] uppercase">Roll</span>
+            <span className="text-xl md:text-2xl font-black tracking-[0.25em] uppercase">Roll</span>
           </button>
         </div>
       </div>
 
-      {/* History Overlay - Blurred Background for Visibility */}
+      {/* History Overlay */}
       {showHistory && (
-        <div className="absolute inset-0 z-50 bg-[#0a191f]/90 backdrop-blur-[24px] flex flex-col p-6 animate-in fade-in zoom-in duration-300">
+        <div className="absolute inset-0 z-50 bg-[#0a191f]/98 flex flex-col p-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <div className="flex items-center justify-between mb-8 shrink-0">
-            <h3 className="text-[#fde68a] text-3xl font-black uppercase tracking-widest italic drop-shadow-lg">History Logs</h3>
-            <button onClick={() => setShowHistory(false)} className="bg-white/10 text-white hover:bg-white/20 p-2 rounded-full transition-colors">
+            <h3 className="text-[#fde68a] text-2xl font-black uppercase tracking-widest italic">History Logs</h3>
+            <button onClick={() => setShowHistory(false)} className="text-white/40 hover:text-white p-2">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -254,28 +248,27 @@ const DiceRoller = () => {
           <div className="flex-1 overflow-auto space-y-4 pr-2 custom-scrollbar">
             {history.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-white/20 italic">
-                <p className="text-xl">No battles recorded yet...</p>
+                <p>No battles recorded yet...</p>
               </div>
             ) : (
               history.map((h, i) => (
-                <div key={i} className="flex items-center justify-between bg-black/40 p-6 rounded-[2rem] border border-white/10 shadow-2xl backdrop-blur-md">
+                <div key={i} className="flex items-center justify-between bg-white/5 p-5 rounded-3xl border border-white/10 shadow-lg">
                   <div className="flex flex-col">
-                    <span className="text-white/30 font-mono text-[10px] uppercase tracking-[0.2em]">Entry #{history.length - i}</span>
-                    <span className="text-[#0ea5e9] text-sm font-black uppercase tracking-tighter">{h.time}</span>
+                    <span className="text-white/20 font-mono text-xs uppercase tracking-widest">Entry #{history.length - i}</span>
+                    <span className="text-[#0ea5e9] text-xs font-black uppercase">{h.time}</span>
                   </div>
-                  <div className="flex items-center gap-6">
-                    <span className="text-white/40 text-sm font-bold uppercase tracking-widest">Result:</span>
-                    <span className="text-[#fcd34d] text-5xl font-black drop-shadow-[0_0_15px_rgba(252,211,77,0.5)]">{h.value}</span>
+                  <div className="flex items-center gap-4">
+                    <span className="text-white/30 text-xs font-bold uppercase tracking-widest">Result:</span>
+                    <span className="text-[#fcd34d] text-4xl font-black drop-shadow-[0_0_10px_rgba(252,211,77,0.4)]">{h.value}</span>
                   </div>
                 </div>
               ))
             )}
           </div>
 
-          {/* Functional Clear History Button */}
           <button 
-            onClick={handleClearHistory}
-            className="mt-6 w-full py-5 rounded-2xl bg-red-500/10 hover:bg-red-500/20 text-red-500 text-xs font-black uppercase tracking-[0.4em] border border-red-500/20 transition-all active:scale-[0.98]"
+            onClick={() => { if(window.confirm("Purge history?")) setRollHistory([]); }}
+            className="mt-6 w-full py-5 text-xs font-black uppercase tracking-[0.3em] text-red-500 border-t border-white/10 hover:bg-red-500/10 transition-colors"
           >
             Clear All History
           </button>
@@ -292,11 +285,11 @@ const DiceRoller = () => {
         }
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
         .animate-bounce { animation: bounce 3s infinite; }
         @keyframes bounce {
           0%, 100% { transform: translate(-50%, 0); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
-          50% { transform: translate(-50%, -25px); animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+          50% { transform: translate(-50%, -15px); animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
         }
       `}</style>
     </div>
