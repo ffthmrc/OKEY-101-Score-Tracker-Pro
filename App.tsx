@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { 
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   AreaChart, Area
@@ -32,14 +32,14 @@ interface StatCardProps {
 
 const StatCard: React.FC<StatCardProps> = ({ player, stat, onRemove }) => (
   <div className="group bg-white rounded-xl shadow-sm border border-slate-100 flex flex-col items-center hover:shadow-md transition-all relative overflow-hidden text-center cursor-default h-full min-h-[85px] md:min-h-[110px] justify-between py-2 md:py-3">
-    {/* Remove button - More visible for accessibility */}
+    {/* Remove button */}
     <button 
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
         onRemove(player.id);
       }}
-      className="absolute top-1 right-1 w-6 h-6 bg-slate-100 md:opacity-0 group-hover:opacity-100 hover:bg-red-500 text-slate-400 hover:text-white rounded-full flex items-center justify-center transition-all z-40 border border-slate-200 shadow-sm"
+      className="opacity-0 group-hover:opacity-100 absolute top-1 right-1 w-5 h-5 bg-slate-100 hover:bg-red-500 text-slate-400 hover:text-white rounded-full flex items-center justify-center transition-all z-40 border border-slate-200 shadow-sm"
     >
       <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
@@ -107,12 +107,6 @@ const DiceRoller = () => {
     }, 600);
   };
 
-  const handleClearHistory = () => {
-    if (window.confirm("Purge history logs?")) {
-      setRollHistory([]);
-    }
-  };
-
   const Face = ({ num, rotate }: { num: number, rotate: string }) => {
     const dotsMap: Record<number, number[]> = {
       1: [4],
@@ -125,14 +119,14 @@ const DiceRoller = () => {
 
     return (
       <div 
-        className="absolute w-full h-full bg-gradient-to-br from-[#fcd34d] to-[#d97706] border-2 border-[#92400e]/50 rounded-2xl flex items-center justify-center p-2 md:p-4 shadow-inner"
+        className="absolute w-full h-full bg-[#fcd34d] border-2 border-[#b45309]/30 rounded-2xl flex items-center justify-center p-2 md:p-4 shadow-inner"
         style={{ transform: rotate + ' translateZ(50px)', backfaceVisibility: 'hidden' }}
       >
         <div className="grid grid-cols-3 grid-rows-3 w-full h-full gap-0.5 md:gap-1">
           {[...Array(9)].map((_, i) => (
             <div key={i} className="flex items-center justify-center">
               {dotsMap[num].includes(i) && (
-                <div className="w-8 h-8 md:w-10 md:h-10 bg-[#1e1b4b] rounded-full shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]" />
+                <div className="w-8 h-8 md:w-10 md:h-10 bg-[#1e1b4b] rounded-full shadow-inner" />
               )}
             </div>
           ))}
@@ -142,163 +136,115 @@ const DiceRoller = () => {
   };
 
   return (
-    <div className="flex-1 w-full bg-[#041d1e] flex flex-col relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_#0b2c2e_0%,_#041d1e_100%)] pointer-events-none" />
-      <div className="absolute inset-0 opacity-15 bg-[linear-gradient(to_right,#164e63_1px,transparent_1px),linear-gradient(to_bottom,#164e63_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
+    <div className="flex-1 w-full bg-[#310000] flex flex-col relative overflow-hidden">
+      {/* Background radial gradient */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_#5a0000_0%,_#1a0000_100%)] pointer-events-none" />
 
-      <div className="flex-1 flex flex-col items-center justify-center z-10 p-4 mb-32 relative">
-        <div className="relative w-full aspect-square max-w-[400px] md:max-w-[650px] flex items-center justify-center">
-          <div className="absolute inset-0 rounded-full border-[15px] md:border-[25px] border-[#fcd34d] shadow-[0_0_80px_rgba(252,211,77,0.5),inset_0_0_40px_rgba(180,83,9,0.5)] z-0" />
-          <div className="absolute inset-[-4px] rounded-full border-[2px] border-[#fbbf24] z-0 opacity-50" />
-          <div className="absolute inset-8 rounded-full border-[4px] border-cyan-400/40 animate-[spin_12s_linear_infinite] shadow-[0_0_40px_rgba(34,211,238,0.3)]" />
-          <div className="absolute inset-12 rounded-full border-[1px] border-cyan-300/20 animate-[spin_18s_linear_infinite_reverse]" />
-
-          <svg viewBox="0 0 500 500" className="absolute inset-0 w-full h-full z-20 pointer-events-none">
-            <path id="topCurve" fill="none" d="M 80,250 A 170,170 0 0 1 420,250" />
-            <text className="text-[78px] md:text-[115px] font-black italic tracking-[0.15em] uppercase">
-              <textPath href="#topCurve" startOffset="50%" textAnchor="middle" fill="url(#silverGrad)" className="drop-shadow-[0_10px_0px_#334155]">
-                DICE
-              </textPath>
-            </text>
-            <defs>
-              <linearGradient id="silverGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#FFFFFF" />
-                <stop offset="50%" stopColor="#CBD5E1" />
-                <stop offset="100%" stopColor="#64748B" />
-              </linearGradient>
-            </defs>
-          </svg>
-
-          <svg viewBox="0 0 500 500" className="absolute inset-0 w-full h-full z-20 pointer-events-none">
-            <path id="bottomCurve" fill="none" d="M 80,250 A 170,170 0 0 0 420,250" />
-            <text className="text-[78px] md:text-[120px] font-black tracking-[0.12em] uppercase">
-              <textPath href="#bottomCurve" startOffset="50%" textAnchor="middle" fill="url(#goldGrad)">
-                KING
-              </textPath>
-            </text>
-            <defs>
-              <linearGradient id="goldGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#FDE68A" />
-                <stop offset="50%" stopColor="#F59E0B" />
-                <stop offset="100%" stopColor="#B45309" />
-              </linearGradient>
-            </defs>
-          </svg>
-
-          <div className="absolute top-[32%] left-1/2 -translate-x-1/2 z-40 drop-shadow-[0_20px_40px_rgba(0,0,0,0.6)] animate-crown-float">
-             <svg width="110" height="85" viewBox="0 0 80 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="md:w-48 md:h-36">
-                <path d="M40 0L55 20L80 10L70 50H10L0 10L25 20L40 0Z" fill="url(#premiumGold)" stroke="#92400e" strokeWidth="2.5"/>
-                <circle cx="40" cy="35" r="5.5" fill="#ef4444" className="animate-pulse shadow-md" />
-                <circle cx="22" cy="40" r="3.5" fill="#0ea5e9" />
-                <circle cx="58" cy="40" r="3.5" fill="#0ea5e9" />
-                <defs>
-                  <linearGradient id="premiumGold" x1="40" y1="0" x2="40" y2="50" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#FDE68A"/>
-                    <stop offset="0.6" stopColor="#F59E0B"/>
-                    <stop offset="1" stopColor="#B45309"/>
-                  </linearGradient>
-                </defs>
-             </svg>
+      {/* 1. Main Dice Scene (Centered in remaining space) */}
+      <div className="flex-1 flex flex-col items-center justify-center z-10 p-4 mb-24 md:mb-32">
+        <div className="relative w-40 h-40 md:w-56 md:h-56 perspective-1000">
+          <div 
+            className="relative w-full h-full transition-transform duration-700 ease-out preserve-3d"
+            style={{ transform: `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)` }}
+          >
+            <Face num={1} rotate="rotateY(0deg)" />
+            <Face num={2} rotate="rotateY(180deg)" />
+            <Face num={3} rotate="rotateY(90deg)" />
+            <Face num={4} rotate="rotateY(-90deg)" />
+            <Face num={5} rotate="rotateX(90deg)" />
+            <Face num={6} rotate="rotateX(-90deg)" />
           </div>
-
-          <div className="relative w-36 h-36 md:w-60 md:h-60 perspective-1000 z-30 mt-8">
-            <div 
-              className="relative w-full h-full transition-transform duration-700 ease-out preserve-3d"
-              style={{ transform: `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)` }}
-            >
-              <Face num={1} rotate="rotateY(0deg)" />
-              <Face num={2} rotate="rotateY(180deg)" />
-              <Face num={3} rotate="rotateY(90deg)" />
-              <Face num={4} rotate="rotateY(-90deg)" />
-              <Face num={5} rotate="rotateX(90deg)" />
-              <Face num={6} rotate="rotateX(-90deg)" />
-            </div>
-            <div className="absolute -bottom-14 left-1/2 -translate-x-1/2 w-48 h-12 bg-cyan-400/25 blur-3xl rounded-full" />
-          </div>
+          <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-32 h-6 bg-black/50 blur-xl rounded-full" />
         </div>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 p-8 md:p-14 z-20 flex flex-col items-center gap-6">
+      {/* 2. Unified Control Cluster (History at bottom-left, Score & ROLL centered at bottom) */}
+      <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 z-20 flex flex-col items-center gap-4">
+        
+        {/* History Button - Corner Positioned */}
         <button 
           onClick={() => setShowHistory(true)}
-          className="absolute left-8 bottom-12 md:left-20 md:bottom-20 w-16 h-16 md:w-28 md:h-28 bg-white/5 border border-white/20 rounded-full flex items-center justify-center text-white/40 hover:bg-white/10 hover:text-white transition-all active:scale-90 shadow-[0_20px_60px_rgba(0,0,0,0.6)] backdrop-blur-xl z-30"
+          className="absolute left-6 bottom-6 md:left-10 md:bottom-10 w-12 h-12 md:w-16 md:h-16 bg-white/5 border border-white/5 rounded-full flex items-center justify-center text-white/40 hover:bg-white/10 hover:text-white transition-all active:scale-90"
           aria-label="View History"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 md:h-14 md:w-14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 md:h-8 md:w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </button>
 
-        <div className="flex flex-col items-center gap-5 w-full max-w-[220px] md:max-w-[360px]">
-          <div className="flex items-center justify-center gap-5 px-8 py-3 bg-black/90 border border-white/10 rounded-2xl backdrop-blur-3xl shadow-[0_20px_40px_rgba(0,0,0,0.5)] w-full ring-1 ring-white/10">
-            <span className="text-slate-500 text-3xl font-black uppercase tracking-tighter">Score</span>
-            <span className="text-[#fcd34d] text-4xl font-black drop-shadow-[0_0_20px_rgba(252,211,77,0.8)]">
-              {roll}
-            </span>
-          </div>
+        {/* King's Score & Roll Cluster */}
+        <div className="flex flex-col items-center gap-2 md:gap-4 w-full max-w-[200px] md:max-w-[320px]">
+          <h2 className="text-[#fde68a] text-xl md:text-3xl font-serif tracking-tight drop-shadow-lg uppercase font-medium">
+            King's Score: <span className="font-bold">{roll}</span>
+          </h2>
           
           <button 
             onClick={rollDice}
             disabled={isRolling}
-            className="w-full h-16 md:h-24 bg-gradient-to-b from-[#f59e0b] via-[#d97706] to-[#b45309] text-[#451a03] rounded-full flex items-center justify-center gap-5 shadow-[0_25px_50px_rgba(180,83,9,0.5)] active:scale-95 transition-all border-b-8 border-[#78350f] overflow-hidden group relative"
+            className="w-full h-14 md:h-16 bg-gradient-to-b from-[#92400e] to-[#451a03] hover:from-[#b45309] hover:to-[#78350f] text-white rounded-full flex items-center justify-center gap-4 shadow-2xl active:scale-95 transition-all border border-[#f59e0b]/20"
           >
-            <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="w-0 h-0 border-t-[10px] border-t-transparent border-l-[18px] border-l-[#451a03] border-b-[10px] border-b-transparent ml-1" />
-            <span className="text-3xl md:text-5xl font-black tracking-[0.2em] uppercase">Roll</span>
+            <div className="w-0 h-0 border-t-[8px] border-t-transparent border-l-[14px] border-l-white border-b-[8px] border-b-transparent ml-1" />
+            <span className="text-xl md:text-2xl font-black tracking-[0.15em] uppercase">Roll</span>
           </button>
         </div>
       </div>
 
+      {/* History Overlay */}
       {showHistory && (
-        <div className="absolute inset-0 z-50 bg-[#041d1e]/85 backdrop-blur-[40px] flex flex-col p-10 animate-in fade-in zoom-in duration-300">
-          <div className="flex items-center justify-between mb-12 shrink-0">
-            <h3 className="text-[#fcd34d] text-4xl font-black uppercase tracking-[0.1em] italic drop-shadow-lg">Battle History</h3>
-            <button onClick={() => setShowHistory(false)} className="bg-white/10 text-white hover:bg-white/20 p-4 rounded-[2rem] border border-white/20 transition-all active:scale-95">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="absolute inset-0 z-50 bg-[#1a0000]/98 flex flex-col p-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="flex items-center justify-between mb-8 shrink-0">
+            <h3 className="text-[#fde68a] text-xl font-black uppercase tracking-widest">Roll History</h3>
+            <button onClick={() => setShowHistory(false)} className="text-white/40 hover:text-white p-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
-          <div className="flex-1 overflow-auto space-y-5 pr-4 custom-scrollbar">
+          
+          <div className="flex-1 overflow-auto space-y-3 pr-2 custom-scrollbar">
             {history.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-white/10 italic">
-                <p className="text-3xl font-black uppercase tracking-widest">No Rolls Recorded</p>
+              <div className="h-full flex flex-col items-center justify-center text-white/20 italic">
+                <p>No rolls yet...</p>
               </div>
             ) : (
               history.map((h, i) => (
-                <div key={i} className="flex items-center justify-between bg-black/50 p-10 rounded-[3rem] border border-white/10 shadow-2xl backdrop-blur-xl group hover:bg-white/5 transition-all">
-                  <div className="flex flex-col">
-                    <span className="text-white/30 font-mono text-[11px] uppercase tracking-[0.4em] mb-2">Turn #{history.length - i}</span>
-                    <span className="text-[#0ea5e9] text-sm font-black uppercase tracking-widest">{h.time}</span>
+                <div key={i} className="flex items-center justify-between bg-white/5 p-4 rounded-2xl border border-white/5 group hover:bg-white/10 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <span className="text-white/20 font-mono text-xs">{history.length - i}.</span>
+                    <span className="text-white/40 text-[10px] font-bold uppercase tracking-tighter">{h.time}</span>
                   </div>
-                  <div className="flex items-center gap-10">
-                    <span className="text-white/40 text-xs font-bold uppercase tracking-widest">Result</span>
-                    <span className="text-[#fcd34d] text-6xl font-black drop-shadow-[0_0_25px_rgba(252,211,77,0.7)]">{h.value}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-white/30 text-[10px] font-black uppercase">Result:</span>
+                    <span className="text-[#fcd34d] text-2xl font-black drop-shadow-sm">{h.value}</span>
                   </div>
                 </div>
               ))
             )}
           </div>
+
           <button 
-            onClick={handleClearHistory}
-            className="mt-12 w-full py-8 rounded-[2.5rem] bg-red-600/15 hover:bg-red-600 text-red-500 hover:text-white text-sm font-black uppercase tracking-[0.5em] border border-red-500/20 transition-all active:scale-95 shadow-xl"
+            onClick={() => { if(window.confirm("Clear all history?")) setRollHistory([]); }}
+            className="mt-6 w-full py-4 text-[10px] font-black uppercase tracking-widest text-red-400 hover:text-red-300 transition-colors border-t border-white/10"
           >
-            Purge History Logs
+            Clear All History
           </button>
         </div>
       )}
       
+      {/* CSS for 3D & Custom Scrollbar */}
       <style>{`
         .perspective-1000 { perspective: 1000px; }
         .preserve-3d { transform-style: preserve-3d; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 20px; }
-        .animate-crown-float { animation: crownFloat 4s ease-in-out infinite; }
-        @keyframes crownFloat {
-          0%, 100% { transform: translate(-50%, 0) rotate(0deg); }
-          50% { transform: translate(-50%, -20px) rotate(1.5deg); }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 10px;
         }
       `}</style>
     </div>
@@ -310,8 +256,8 @@ const DiceRoller = () => {
 interface GameDashboardProps {
   players: Player[];
   rounds: RoundScore[];
-  // Consolidated update function to prevent state clashing
-  onUpdateGameState: (newPlayers: Player[], newRounds: RoundScore[]) => void;
+  onPlayersChange: (p: Player[]) => void;
+  onRoundsChange: (r: RoundScore[]) => void;
   onReset: () => void;
   undo: () => void;
   redo: () => void;
@@ -320,7 +266,7 @@ interface GameDashboardProps {
 }
 
 const GameDashboard: React.FC<GameDashboardProps> = ({ 
-  players, rounds, onUpdateGameState, onReset, undo, redo, canUndo, canRedo 
+  players, rounds, onPlayersChange, onRoundsChange, onReset, undo, redo, canUndo, canRedo 
 }) => {
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -391,12 +337,12 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
     const newRounds = rounds.map((r, idx) => 
       idx === roundIndex ? { ...r, scores: { ...r.scores, [playerId]: sanitized === '' ? null : (sanitized === '-' ? '-' as any : parseInt(sanitized, 10)) } } : r
     );
-    onUpdateGameState(players, newRounds);
+    onRoundsChange(newRounds);
   };
 
   const handleNameChange = (playerId: string, newName: string) => {
     const newPlayers = players.map(p => p.id === playerId ? { ...p, name: newName } : p);
-    onUpdateGameState(newPlayers, rounds);
+    onPlayersChange(newPlayers);
   };
 
   const addPlayer = () => {
@@ -407,34 +353,28 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
       name: `P${players.length + 1}`,
       color: colors[players.length % colors.length]
     };
-    const newPlayersList = [...players, newPlayer];
-    const newRoundsList = rounds.map(r => ({
-      ...r,
-      scores: { ...r.scores, [newId]: null }
-    }));
-    onUpdateGameState(newPlayersList, newRoundsList);
+    onPlayersChange([...players, newPlayer]);
+    onRoundsChange(rounds.map(r => ({ ...r, scores: { ...r.scores, [newId]: null } })));
   };
 
   const removePlayer = (id: string) => {
-    if (players.length <= 1) return; // Prevent removing last player
-    const newPlayersList = players.filter(p => p.id !== id);
-    const newRoundsList = rounds.map(r => {
+    onPlayersChange(players.filter(p => p.id !== id));
+    onRoundsChange(rounds.map(r => {
       const s = { ...r.scores };
       delete s[id];
       return { ...r, scores: s };
-    });
-    onUpdateGameState(newPlayersList, newRoundsList);
+    }));
   };
 
   const addNewRound = () => {
     const emptyScores: Record<string, number | null> = {};
     players.forEach(p => emptyScores[p.id] = null);
-    onUpdateGameState(players, [...rounds, { round: rounds.length + 1, scores: emptyScores }]);
+    onRoundsChange([...rounds, { round: rounds.length + 1, scores: emptyScores }]);
   };
 
   const removeLastRound = () => {
     if (rounds.length > 0) {
-      onUpdateGameState(players, rounds.slice(0, -1));
+      onRoundsChange(rounds.slice(0, -1));
     }
   };
 
@@ -460,13 +400,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Header Reset Button */}
-          <button 
-            onClick={onReset} 
-            className="text-[10px] font-black text-red-600 bg-red-50 px-3 py-1.5 rounded-lg uppercase border border-red-100 hover:bg-red-500 hover:text-white transition-all shadow-sm active:scale-95"
-          >
-            New Game
-          </button>
+          <button onClick={onReset} className="hidden md:block text-[10px] font-black text-red-600 bg-red-50 px-3 py-1.5 rounded-lg uppercase border border-red-100 hover:bg-red-500 hover:text-white transition-all">New Game</button>
           <div className="flex bg-slate-50 rounded-lg p-0.5 border border-slate-100 shadow-inner">
             <button onClick={undo} disabled={!canUndo} className="p-1 rounded disabled:opacity-20 hover:bg-white transition-colors"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg></button>
             <button onClick={redo} disabled={!canRedo} className="p-1 rounded disabled:opacity-20 hover:bg-white transition-colors"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 10h-10a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" /></svg></button>
@@ -482,7 +416,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
 
       <main className="max-w-7xl mx-auto w-full px-2 md:px-6 py-2 md:py-3 flex flex-col flex-1 gap-2 md:gap-3 overflow-hidden">
         {activeTab !== 'dice' && (
-          <section className="grid grid-cols-4 gap-2 md:gap-4 shrink-0 overflow-x-auto pb-1">
+          <section className="grid grid-cols-4 gap-2 md:gap-4 shrink-0">
             {stats.map(stat => {
               const p = players.find(player => player.id === stat.id);
               if (!p) return null;
@@ -497,11 +431,12 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
               <div className="flex items-center justify-between mb-2 px-1 shrink-0">
                 <h2 className="text-[11px] md:text-xs font-black text-slate-900 uppercase tracking-tight">Leaderboard</h2>
                 <div className="flex items-center gap-2">
-                  <button onClick={addPlayer} className="bg-indigo-600 text-white px-3 py-1.5 rounded-md text-[9px] md:text-[11px] font-black hover:bg-indigo-700 transition-colors uppercase tracking-tighter shadow-sm active:scale-95">+ Player</button>
-                  <div className="flex bg-slate-900 rounded-lg p-0.5 gap-1 items-center px-2 shadow-sm">
-                    <button onClick={addNewRound} className="text-white text-xs font-bold p-1 hover:scale-110 active:scale-90 transition-transform">+</button>
+                  <button onClick={onReset} className="md:hidden text-[9px] font-black text-red-600 bg-red-50 px-2.5 py-1 rounded-md border border-red-100 uppercase transition-all active:bg-red-500 active:text-white">New Game</button>
+                  <button onClick={addPlayer} className="bg-indigo-600 text-white px-3 py-1 rounded-md text-[9px] md:text-[11px] font-black hover:bg-indigo-700 transition-colors uppercase tracking-tighter">+ Player</button>
+                  <div className="flex bg-slate-900 rounded-lg p-0.5 gap-1 items-center px-2">
+                    <button onClick={addNewRound} className="text-white text-xs font-bold p-1">+</button>
                     <span className="text-[9px] font-black text-white uppercase tracking-tighter">Round</span>
-                    <button onClick={removeLastRound} disabled={rounds.length === 0} className="text-white text-xs font-bold p-1 disabled:opacity-30 hover:scale-110 active:scale-90 transition-transform">-</button>
+                    <button onClick={removeLastRound} disabled={rounds.length === 0} className="text-white text-xs font-bold p-1 disabled:opacity-30">-</button>
                   </div>
                 </div>
               </div>
@@ -556,7 +491,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
             </div>
           )}
 
-          {activeTab === 'charts' && (activeTab as any) === 'charts' && (
+          {activeTab === 'charts' && (
             <div className="p-2 md:p-3 flex-1 flex flex-col gap-3 overflow-hidden h-full">
               <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1.9fr] gap-3 h-full overflow-hidden">
                 <div className="flex flex-col h-full overflow-hidden min-h-0">
@@ -658,17 +593,15 @@ export default function App() {
   const [history, setHistory] = useState<{players: Player[], rounds: RoundScore[]}[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
-  // Persistence management
+  // Persistence management in App level
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_PLAYERS, JSON.stringify(players));
     localStorage.setItem(STORAGE_KEY_ROUNDS, JSON.stringify(rounds));
   }, [players, rounds]);
 
-  // Robust consolidated update function
-  const updateGameState = useCallback((newPlayers: Player[], newRounds: RoundScore[]) => {
+  const pushState = useCallback((newPlayers: Player[], newRounds: RoundScore[]) => {
     setPlayers(newPlayers);
     setRounds(newRounds);
-    
     setHistory(prev => {
       const nextHistory = prev.slice(0, historyIndex + 1);
       return [...nextHistory, { players: newPlayers, rounds: newRounds }];
@@ -696,18 +629,18 @@ export default function App() {
 
   const handleReset = useCallback(() => {
     if (window.confirm("Confirm: Start a New Game? All scores, names, and history will be permanently cleared.")) {
+      // 1. Clear storage immediately
+      localStorage.removeItem(STORAGE_KEY_PLAYERS);
+      localStorage.removeItem(STORAGE_KEY_ROUNDS);
+      
+      // 2. Overwrite state with initial defaults
       const defaultPlayers = getInitialPlayers();
       const defaultRounds = getInitialRounds(defaultPlayers);
       
-      // Update states
       setPlayers(defaultPlayers);
       setRounds(defaultRounds);
       setHistory([]);
       setHistoryIndex(-1);
-      
-      // Clear storage
-      localStorage.removeItem(STORAGE_KEY_PLAYERS);
-      localStorage.removeItem(STORAGE_KEY_ROUNDS);
     }
   }, []);
 
@@ -715,7 +648,8 @@ export default function App() {
     <GameDashboard 
       players={players} 
       rounds={rounds} 
-      onUpdateGameState={updateGameState}
+      onPlayersChange={(p) => pushState(p, rounds)}
+      onRoundsChange={(r) => pushState(players, r)}
       onReset={handleReset}
       undo={undo}
       redo={redo}
