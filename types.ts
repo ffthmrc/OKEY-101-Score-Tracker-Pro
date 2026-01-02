@@ -18,3 +18,10 @@ export interface PlayerStats {
   wins: number;
   lastRoundRank: number;
 }
+
+export interface MatchRecord {
+  id: string;
+  timestamp: string;
+  players: Player[];
+  finalScores: Record<string, number>;
+}
