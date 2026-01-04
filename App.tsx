@@ -177,7 +177,7 @@ const DiceRoller = () => {
             <Face num={1} rotate="rotateY(0deg)" />
             <Face num={2} rotate="rotateY(180deg)" />
             <Face num={3} rotate="rotateY(90deg)" />
-            <Face num={4} rotate="rotateY(-90deg)" />
+            <Face num={4} rotate="rotateY(90deg)" />
             <Face num={5} rotate="rotateX(90deg)" />
             <Face num={6} rotate="rotateX(-90deg)" />
           </div>
@@ -236,6 +236,24 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
   players, rounds, onUpdateGameState, onReset, onAddPlayer, onRemovePlayer, undo, redo, canUndo, canRedo 
 }) => {
   const [activeTab, setActiveTab] = useState<'table' | 'charts' | 'dice'>('table');
+  const [isResetConfirming, setIsResetConfirming] = useState(false);
+
+  // Auto-reset confirmation state after 4 seconds
+  useEffect(() => {
+    if (isResetConfirming) {
+      const timer = setTimeout(() => setIsResetConfirming(false), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [isResetConfirming]);
+
+  const handleResetClick = () => {
+    if (isResetConfirming) {
+      onReset();
+      setIsResetConfirming(false);
+    } else {
+      setIsResetConfirming(true);
+    }
+  };
 
   const stats: PlayerStats[] = useMemo(() => {
     const scoresMap = players.map(player => {
@@ -342,13 +360,14 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
             <button onClick={redo} disabled={!canRedo} title="Redo" className="p-1 rounded disabled:opacity-20 hover:bg-white transition-colors"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 10h-10a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" /></svg></button>
           </div>
           <button 
-            onClick={onReset}
-            className="h-7 md:h-8 px-2 md:px-3 rounded-lg bg-red-50 text-red-600 border border-red-100 text-[9px] md:text-[10px] font-black uppercase tracking-tighter hover:bg-red-100 transition-colors flex items-center gap-1.5 ml-1"
+            onClick={handleResetClick}
+            className={`h-7 md:h-8 px-2 md:px-3 rounded-lg border text-[9px] md:text-[10px] font-black uppercase tracking-tighter transition-all flex items-center gap-1.5 ml-1 ${isResetConfirming ? 'bg-red-600 text-white border-red-700 scale-105 shadow-lg' : 'bg-red-50 text-red-600 border-red-100 hover:bg-red-100'}`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className={`h-3.5 w-3.5 ${isResetConfirming ? 'animate-pulse' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
-            <span className="hidden sm:inline">New Game</span>
+            <span className="hidden sm:inline">{isResetConfirming ? "SURE?" : "New Game"}</span>
+            {isResetConfirming && <span className="inline sm:hidden font-black">SURE?</span>}
           </button>
         </div>
       </header>
@@ -359,7 +378,6 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
         ))}
       </nav>
 
-      {/* pb-0 ensures main fills the bottom on mobile */}
       <main className="max-w-7xl mx-auto w-full px-1.5 md:px-6 py-1.5 md:py-3 pb-0 md:pb-3 flex flex-col flex-1 gap-1.5 md:gap-3 overflow-hidden">
         {activeTab === 'table' && (
           <div className="w-full shrink-0 bg-slate-100/30 rounded-xl">
@@ -377,7 +395,6 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
           </div>
         )}
 
-        {/* rounded-b-none on mobile helps it feel like it extends to the very end */}
         <div className="bg-white rounded-xl rounded-b-none md:rounded-b-xl shadow-sm border border-slate-100 flex-1 flex flex-col overflow-hidden">
           {activeTab === 'table' && (
             <div className="p-1.5 md:p-3 flex flex-col flex-1 overflow-hidden">
@@ -398,7 +415,6 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                   </div>
                 </div>
               </div>
-              {/* Added flex-1 to the table container and min-h-full to the table to ensure footer is at bottom */}
               <div className="overflow-auto rounded-lg border border-slate-100 flex-1 bg-white">
                 <table className="w-full text-left border-collapse min-w-[280px] min-h-full">
                   <thead className="sticky top-0 z-20 bg-slate-50 shadow-sm">
@@ -423,7 +439,6 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                       </tr>
                     ))}
                   </tbody>
-                  {/* Footer will now always stick to the bottom of the container thanks to min-h-full on table */}
                   <tfoot className="sticky bottom-0 bg-slate-900 text-white z-20 shadow-lg">
                     <tr>
                       <td className="py-1 md:py-2.5 px-2 text-[8px] md:text-[10px] font-black uppercase tracking-widest">Total</td>
@@ -441,7 +456,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
             <div className="p-2 md:p-4 flex-1 flex flex-col gap-4 overflow-auto custom-scrollbar">
               <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm shrink-0">
                 <div className="bg-slate-50 border-b border-slate-200 py-1.5 px-4 text-center">
-                  <h2 className="text-xs font-black text-slate-800 uppercase tracking-[0.2em]">SIRALAMA</h2>
+                  <h2 className="text-xs font-black text-slate-800 uppercase tracking-[0.2em]">RANKING</h2>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-center border-collapse">
@@ -580,11 +595,9 @@ export default function App() {
   }, [undoStack, historyIndex]);
 
   const handleReset = useCallback(() => {
-    if (window.confirm("Start New Game? This will wipe all current scores.")) {
-      const defaultPlayers = getInitialPlayers();
-      const defaultRounds = getInitialRounds(defaultPlayers);
-      pushState(defaultPlayers, defaultRounds);
-    }
+    const defaultPlayers = getInitialPlayers();
+    const defaultRounds = getInitialRounds(defaultPlayers);
+    pushState(defaultPlayers, defaultRounds);
   }, [pushState]);
 
   const handleAddPlayer = useCallback(() => {
