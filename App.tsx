@@ -20,26 +20,29 @@ const PLAYER_COLORS = [
 
 // --- Sub-components ---
 
-const Badge = ({ rank, total, size = 'small' }: { rank: number, total: number, size?: 'small' | 'large' }) => {
+const Badge = ({ rank, total, visible, size = 'small' }: { rank: number, total: number, visible: boolean, size?: 'small' | 'large' }) => {
+  if (!visible) return <div className={`${size === 'large' ? 'h-[30px] md:h-[45px]' : 'h-4 md:h-6'}`} />;
+  
   const emojiSize = size === 'large' ? 'text-xl md:text-3xl' : 'text-sm md:text-xl';
   
-  if (rank === 1) return <span className={`${emojiSize} drop-shadow-sm select-none leading-none`} title="Winner">🏆</span>;
-  if (rank === 2) return <span className={`${emojiSize} drop-shadow-sm select-none leading-none`} title="Second">🥈</span>;
-  if (rank === 3) return <span className={`${emojiSize} drop-shadow-sm select-none leading-none`} title="Third">🥉</span>;
+  if (rank === 1) return <span className={`${emojiSize} drop-shadow-sm select-none leading-none animate-in zoom-in duration-300`} title="Winner">🏆</span>;
+  if (rank === 2) return <span className={`${emojiSize} drop-shadow-sm select-none leading-none animate-in zoom-in duration-300`} title="Second">🥈</span>;
+  if (rank === 3) return <span className={`${emojiSize} drop-shadow-sm select-none leading-none animate-in zoom-in duration-300`} title="Third">🥉</span>;
   
-  if (rank === total && total >= 4) return <span className={`${emojiSize} drop-shadow-sm select-none leading-none`} title="Last Place">💩</span>;
+  if (rank === total && total >= 4) return <span className={`${emojiSize} drop-shadow-sm select-none leading-none animate-in zoom-in duration-300`} title="Last Place">💩</span>;
   
-  return <span className={`${emojiSize} drop-shadow-sm select-none leading-none`} title="Ranking">💪</span>;
+  return <span className={`${emojiSize} drop-shadow-sm select-none leading-none animate-in zoom-in duration-300`} title="Ranking">💪</span>;
 };
 
 interface StatCardProps {
   player: Player;
   stat: PlayerStats;
   totalPlayers: number;
+  gameStarted: boolean;
   onRemove: (id: string) => void;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ player, stat, totalPlayers, onRemove }) => {
+const StatCard: React.FC<StatCardProps> = ({ player, stat, totalPlayers, gameStarted, onRemove }) => {
   const [isConfirming, setIsConfirming] = useState(false);
 
   useEffect(() => {
@@ -88,7 +91,7 @@ const StatCard: React.FC<StatCardProps> = ({ player, stat, totalPlayers, onRemov
       </div>
 
       <div className="flex items-center justify-center leading-none h-5 md:h-10">
-        <Badge rank={stat.rank} total={totalPlayers} size="small" />
+        <Badge rank={stat.rank} total={totalPlayers} visible={gameStarted} size="small" />
       </div>
 
       <div className="w-full">
@@ -177,7 +180,7 @@ const DiceRoller = () => {
             <Face num={1} rotate="rotateY(0deg)" />
             <Face num={2} rotate="rotateY(180deg)" />
             <Face num={3} rotate="rotateY(90deg)" />
-            <Face num={4} rotate="rotateY(90deg)" />
+            <Face num={4} rotate="rotateY(-90deg)" />
             <Face num={5} rotate="rotateX(90deg)" />
             <Face num={6} rotate="rotateX(-90deg)" />
           </div>
@@ -254,6 +257,11 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
       setIsResetConfirming(true);
     }
   };
+
+  // Check if any non-null input has been made across all rounds
+  const hasGameStarted = useMemo(() => {
+    return rounds.some(r => Object.values(r.scores).some(score => typeof score === 'number'));
+  }, [rounds]);
 
   const stats: PlayerStats[] = useMemo(() => {
     const scoresMap = players.map(player => {
@@ -355,15 +363,32 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
           <h1 className="text-[11px] md:text-sm font-black text-slate-900 uppercase tracking-tighter">Ace Tracker</h1>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex bg-slate-50 rounded-lg p-0.5 border border-slate-100 shadow-inner">
-            <button onClick={undo} disabled={!canUndo} title="Undo" className="p-1 rounded disabled:opacity-20 hover:bg-white transition-colors"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg></button>
-            <button onClick={redo} disabled={!canRedo} title="Redo" className="p-1 rounded disabled:opacity-20 hover:bg-white transition-colors"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 10h-10a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" /></svg></button>
+          {/* Enhanced Visibility Emoji Undo/Redo Controls */}
+          <div className="flex bg-slate-100/90 rounded-lg p-0.5 border border-slate-300 shadow-inner">
+            <button 
+              onClick={undo} 
+              disabled={!canUndo} 
+              title="Backward / Undo" 
+              className="px-2 py-1 md:px-3 md:py-1.5 rounded-md transition-all active:scale-90 disabled:opacity-20 disabled:grayscale disabled:scale-100 hover:bg-white flex items-center justify-center"
+            >
+              <span className="text-sm md:text-xl" role="img" aria-label="Backward">⏪</span>
+            </button>
+            <div className="w-px h-5 md:h-7 bg-slate-300 self-center mx-1" />
+            <button 
+              onClick={redo} 
+              disabled={!canRedo} 
+              title="Forward / Redo" 
+              className="px-2 py-1 md:px-3 md:py-1.5 rounded-md transition-all active:scale-90 disabled:opacity-20 disabled:grayscale disabled:scale-100 hover:bg-white flex items-center justify-center"
+            >
+              <span className="text-sm md:text-xl" role="img" aria-label="Forward">⏩</span>
+            </button>
           </div>
+          
           <button 
             onClick={handleResetClick}
-            className={`h-7 md:h-8 px-2 md:px-3 rounded-lg border text-[9px] md:text-[10px] font-black uppercase tracking-tighter transition-all flex items-center gap-1.5 ml-1 ${isResetConfirming ? 'bg-red-600 text-white border-red-700 scale-105 shadow-lg' : 'bg-red-50 text-red-600 border-red-100 hover:bg-red-100'}`}
+            className={`h-8 md:h-10 px-2 md:px-3 rounded-lg border text-[9px] md:text-[10px] font-black uppercase tracking-tighter transition-all flex items-center gap-1.5 ml-1 ${isResetConfirming ? 'bg-red-600 text-white border-red-700 scale-105 shadow-lg' : 'bg-red-50 text-red-600 border-red-100 hover:bg-red-100'}`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className={`h-3.5 w-3.5 ${isResetConfirming ? 'animate-pulse' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 md:h-5 md:w-5 ${isResetConfirming ? 'animate-pulse' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
             <span className="hidden sm:inline">{isResetConfirming ? "SURE?" : "New Game"}</span>
@@ -387,7 +412,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                 if (!p) return null;
                 return (
                   <div key={stat.id}>
-                    <StatCard player={p} stat={stat} totalPlayers={players.length} onRemove={onRemovePlayer} />
+                    <StatCard player={p} stat={stat} totalPlayers={players.length} gameStarted={hasGameStarted} onRemove={onRemovePlayer} />
                   </div>
                 );
               })}
@@ -510,7 +535,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                           return (
                             <td key={p.id} className="py-1 px-3 border-r border-slate-200 last:border-0">
                               <div className="flex items-center justify-center">
-                                <Badge rank={playerStat?.rank ?? 4} total={players.length} size="small" />
+                                <Badge rank={playerStat?.rank ?? 4} total={players.length} visible={hasGameStarted} size="small" />
                               </div>
                             </td>
                           );
