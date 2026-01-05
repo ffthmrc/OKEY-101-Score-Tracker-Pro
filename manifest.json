@@ -1,0 +1,24 @@
+{
+  "name": "OKEY 101 Score Tracker Pro",
+  "short_name": "OKEY 101",
+  "description": "Professional score tracking for OKEY 101 game",
+  "start_url": "/OKEY-101-Score-Tracker-Pro/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4CAF50",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/OKEY-101-Score-Tracker-Pro/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/OKEY-101-Score-Tracker-Pro/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
