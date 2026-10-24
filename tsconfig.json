@@ -24,6 +24,8 @@
       ]
     },
     "allowImportingTsExtensions": true,
-    "noEmit": true
-  }
+    "noEmit": true,
+    "erasableSyntaxOnly": true
+  },
+  "exclude": ["node_modules", "dist", "data"]
 }

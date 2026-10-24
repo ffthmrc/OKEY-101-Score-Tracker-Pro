@@ -4,19 +4,12 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   AreaChart, Area
 } from 'recharts';
-import { getInitialPlayers, getInitialRounds } from './constants';
 import { Player, RoundScore, PlayerStats } from './types';
-
-// Storage Keys
-const STORAGE_KEY_PLAYERS = 'ace_tracker_players_v1';
-const STORAGE_KEY_ROUNDS = 'ace_tracker_rounds_v1';
-
-// --- Helper for random colors ---
-const PLAYER_COLORS = [
-  '#6366f1', '#10b981', '#f59e0b', '#ef4444', 
-  '#8b5cf6', '#ec4899', '#06b6d4', '#f97316',
-  '#14b8a6', '#84cc16'
-];
+import type { CellValue } from './shared/protocol';
+import { parseScoreInput } from './shared/game';
+import { useRoom } from './useRoom';
+import { ConfirmDialog, JoinDialog } from './Dialogs';
+import { ArchivePanel } from './ArchivePanel';
 
 // --- Sub-components ---
 
@@ -40,9 +33,13 @@ interface StatCardProps {
   totalPlayers: number;
   gameStarted: boolean;
   onRemove: (id: string) => void;
+  canRemove: boolean;
+  occupied: boolean;
+  isMine: boolean;
+  onVacate?: (id: string) => void;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ player, stat, totalPlayers, gameStarted, onRemove }) => {
+const StatCard: React.FC<StatCardProps> = ({ player, stat, totalPlayers, gameStarted, onRemove, canRemove, occupied, isMine, onVacate }) => {
   const [isConfirming, setIsConfirming] = useState(false);
 
   useEffect(() => {
@@ -64,9 +61,17 @@ const StatCard: React.FC<StatCardProps> = ({ player, stat, totalPlayers, gameSta
   };
 
   return (
-    <div className={`group relative flex flex-col items-center justify-between rounded-lg border p-1 text-center transition-all md:p-3 h-full min-h-[70px] md:min-h-[120px] shadow-sm ${isConfirming ? 'border-red-500 bg-red-50 scale-105' : 'border-slate-100 bg-white hover:shadow-md'}`}>
-      
-      <button 
+    <div className={`group relative flex flex-col items-center justify-between rounded-lg border p-1 text-center transition-all md:p-3 h-full min-h-[70px] md:min-h-[120px] shadow-sm ${isConfirming ? 'border-red-500 bg-red-50 scale-105' : 'border-slate-100 bg-white hover:shadow-md'} ${isMine ? 'ring-2 ring-indigo-400' : ''}`}>
+
+      {/* Sandalye durumu: dolu = yeşil nokta; odayı kuran boşaltabilir */}
+      <div className="absolute top-0.5 left-0.5 md:top-1 md:left-1 flex items-center gap-0.5">
+        <span className={`h-1.5 w-1.5 md:h-2 md:w-2 rounded-full ${occupied ? 'bg-emerald-500' : 'bg-slate-200'}`} title={occupied ? 'Oturuyor' : 'Boş sandalye'} />
+        {onVacate && occupied && !isMine && (
+          <button onClick={() => onVacate(player.id)} className="text-[9px] md:text-xs leading-none text-slate-300 hover:text-red-500" title="Sandalyeyi boşalt" aria-label="Sandalyeyi boşalt">⏏</button>
+        )}
+      </div>
+
+      {canRemove && <button
         onClick={handleDelete}
         className="absolute top-[-4px] right-[-4px] z-[110] p-1 transition-transform active:scale-90"
         aria-label={isConfirming ? "Confirm Delete" : "Remove Player"}
@@ -82,7 +87,7 @@ const StatCard: React.FC<StatCardProps> = ({ player, stat, totalPlayers, gameSta
             </svg>
           )}
         </div>
-      </button>
+      </button>}
 
       <div className="w-full px-0.5">
         <h3 className={`font-black uppercase tracking-tighter leading-none transition-colors ${isConfirming ? 'text-red-700' : 'text-slate-900'} text-[9px] md:text-sm truncate`}>
@@ -222,10 +227,17 @@ const DiceRoller = () => {
 
 // --- Main UI Component ---
 
+interface GameActions {
+  setScore: (roundIndex: number, playerId: string, value: CellValue) => void;
+  setName: (playerId: string, name: string) => void;
+  addRound: () => void;
+  removeRound: () => void;
+}
+
 interface GameDashboardProps {
   players: Player[];
   rounds: RoundScore[];
-  onUpdateGameState: (p: Player[], r: RoundScore[]) => void;
+  actions: GameActions;
   onReset: () => void;
   onAddPlayer: () => void;
   onRemovePlayer: (id: string) => void;
@@ -233,12 +245,20 @@ interface GameDashboardProps {
   redo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  canEdit: boolean;
+  isAdmin: boolean;
+  occupied: Record<string, boolean>;
+  mySeat: string | null;
+  onVacate: (id: string) => void;
+  roomBar: React.ReactNode;
+  archive: React.ReactNode;
 }
 
-const GameDashboard: React.FC<GameDashboardProps> = ({ 
-  players, rounds, onUpdateGameState, onReset, onAddPlayer, onRemovePlayer, undo, redo, canUndo, canRedo 
+const GameDashboard: React.FC<GameDashboardProps> = ({
+  players, rounds, actions, onReset, onAddPlayer, onRemovePlayer, undo, redo, canUndo, canRedo,
+  canEdit, isAdmin, occupied, mySeat, onVacate, roomBar, archive
 }) => {
-  const [activeTab, setActiveTab] = useState<'table' | 'charts' | 'dice'>('table');
+  const [activeTab, setActiveTab] = useState<'table' | 'charts' | 'dice' | 'archive'>('table');
   const [isResetConfirming, setIsResetConfirming] = useState(false);
 
   // Auto-reset confirmation state after 4 seconds
@@ -323,36 +343,19 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
   }, [players, rounds]);
 
   const handleScoreChange = (roundIndex: number, playerId: string, value: string) => {
-    let sanitized = value.replace(/[^0-9-]/g, '');
-    if (sanitized.indexOf('-', 1) !== -1) {
-      sanitized = sanitized.charAt(0) + sanitized.slice(1).replace(/-/g, '');
-    }
-
-    const newRounds = rounds.map((r, idx) => 
-      idx === roundIndex ? { 
-        ...r, 
-        scores: { 
-          ...r.scores, 
-          [playerId]: sanitized === '' ? null : (sanitized === '-' ? '-' as any : parseInt(sanitized, 10)) 
-        } 
-      } : r
-    );
-    onUpdateGameState(players, newRounds);
+    actions.setScore(roundIndex, playerId, parseScoreInput(value));
   };
 
   const handleNameChange = (playerId: string, newName: string) => {
-    const newPlayers = players.map(p => p.id === playerId ? { ...p, name: newName } : p);
-    onUpdateGameState(newPlayers, rounds);
+    actions.setName(playerId, newName);
   };
 
   const addNewRound = () => {
-    const emptyScores: Record<string, number | null> = {};
-    players.forEach(p => emptyScores[p.id] = null);
-    onUpdateGameState(players, [...rounds, { round: rounds.length + 1, scores: emptyScores }]);
+    actions.addRound();
   };
 
   const removeLastRound = () => {
-    if (rounds.length > 0) onUpdateGameState(players, rounds.slice(0, -1));
+    if (rounds.length > 0) actions.removeRound();
   };
 
   return (
@@ -365,9 +368,9 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
         <div className="flex items-center gap-2">
           {/* Enhanced Visibility Emoji Undo/Redo Controls */}
           <div className="flex bg-slate-100/90 rounded-lg p-0.5 border border-slate-300 shadow-inner">
-            <button 
-              onClick={undo} 
-              disabled={!canUndo} 
+            <button
+              onClick={undo}
+              disabled={!canUndo || !canEdit}
               title="Backward / Undo" 
               className="px-2 py-1 md:px-3 md:py-1.5 rounded-md transition-all active:scale-90 disabled:opacity-20 disabled:grayscale disabled:scale-100 hover:bg-white flex items-center justify-center"
             >
@@ -375,8 +378,8 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
             </button>
             <div className="w-px h-5 md:h-7 bg-slate-300 self-center mx-1" />
             <button 
-              onClick={redo} 
-              disabled={!canRedo} 
+              onClick={redo}
+              disabled={!canRedo || !canEdit}
               title="Forward / Redo" 
               className="px-2 py-1 md:px-3 md:py-1.5 rounded-md transition-all active:scale-90 disabled:opacity-20 disabled:grayscale disabled:scale-100 hover:bg-white flex items-center justify-center"
             >
@@ -384,9 +387,10 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
             </button>
           </div>
           
-          <button 
+          <button
             onClick={handleResetClick}
-            className={`h-8 md:h-10 px-2 md:px-3 rounded-lg border text-[9px] md:text-[10px] font-black uppercase tracking-tighter transition-all flex items-center gap-1.5 ml-1 ${isResetConfirming ? 'bg-red-600 text-white border-red-700 scale-105 shadow-lg' : 'bg-red-50 text-red-600 border-red-100 hover:bg-red-100'}`}
+            disabled={!canEdit}
+            className={`h-8 md:h-10 px-2 md:px-3 rounded-lg border text-[9px] md:text-[10px] font-black uppercase tracking-tighter transition-all flex items-center gap-1.5 ml-1 disabled:opacity-30 ${isResetConfirming ? 'bg-red-600 text-white border-red-700 scale-105 shadow-lg' : 'bg-red-50 text-red-600 border-red-100 hover:bg-red-100'}`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 md:h-5 md:w-5 ${isResetConfirming ? 'animate-pulse' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -397,8 +401,10 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
         </div>
       </header>
 
+      {roomBar}
+
       <nav className="flex bg-white border-b border-slate-100 px-2 py-1 justify-around text-[9px] md:text-[10px] font-black uppercase tracking-tight shrink-0">
-        {['table', 'charts', 'dice'].map(tab => (
+        {['table', 'charts', 'dice', 'archive'].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab as any)} className={`flex-1 py-1.5 md:py-2 rounded-md transition-all ${activeTab === tab ? 'text-indigo-600 bg-indigo-50 font-black' : 'text-slate-400'}`}>{tab}</button>
         ))}
       </nav>
@@ -412,7 +418,10 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                 if (!p) return null;
                 return (
                   <div key={stat.id}>
-                    <StatCard player={p} stat={stat} totalPlayers={players.length} gameStarted={hasGameStarted} onRemove={onRemovePlayer} />
+                    <StatCard
+                      player={p} stat={stat} totalPlayers={players.length} gameStarted={hasGameStarted} onRemove={onRemovePlayer}
+                      canRemove={isAdmin} occupied={!!occupied[p.id]} isMine={mySeat === p.id} onVacate={isAdmin ? onVacate : undefined}
+                    />
                   </div>
                 );
               })}
@@ -426,17 +435,17 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
               <div className="flex items-center justify-between mb-1 px-1 shrink-0">
                 <h2 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-tight">Leaderboard</h2>
                 <div className="flex items-center gap-1">
-                  <button 
+                  {isAdmin && <button
                     onClick={onAddPlayer}
                     className="flex bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-md p-0.5 items-center px-2 text-white shadow-sm transition-all h-6 md:h-10"
                   >
                     <span className="text-xs font-bold mr-1">+</span>
                     <span className="text-[8px] md:text-[10px] font-black uppercase tracking-tighter">Player</span>
-                  </button>
-                  <div className="flex bg-slate-900 rounded-md p-0.5 gap-0.5 items-center px-2 h-6 md:h-10">
-                    <button onClick={addNewRound} className="text-white text-xs font-bold p-0.5">+</button>
+                  </button>}
+                  <div className={`flex bg-slate-900 rounded-md p-0.5 gap-0.5 items-center px-2 h-6 md:h-10 ${canEdit ? '' : 'opacity-30'}`}>
+                    <button onClick={addNewRound} disabled={!canEdit} className="text-white text-xs font-bold p-0.5">+</button>
                     <span className="text-[8px] md:text-[10px] font-black text-white uppercase tracking-tighter">Round</span>
-                    <button onClick={removeLastRound} disabled={rounds.length === 0} className="text-white text-xs font-bold p-0.5 disabled:opacity-30">-</button>
+                    <button onClick={removeLastRound} disabled={!canEdit || rounds.length === 0} className="text-white text-xs font-bold p-0.5 disabled:opacity-30">-</button>
                   </div>
                 </div>
               </div>
@@ -447,7 +456,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                       <th className="py-1 md:py-2.5 px-2 text-[8px] md:text-[10px] font-black text-slate-400 uppercase w-10 md:w-20 tracking-tighter">Rnd</th>
                       {players.map(p => (
                         <th key={p.id} className="py-1 md:py-2.5 text-center">
-                          <input type="text" value={p.name} onChange={(e) => handleNameChange(p.id, e.target.value)} maxLength={8} className="text-[9px] md:text-sm font-black text-center bg-transparent border-0 focus:ring-0 w-full truncate uppercase tracking-tighter" style={{ color: p.color }} />
+                          <input type="text" value={p.name} readOnly={!canEdit} onChange={(e) => handleNameChange(p.id, e.target.value)} maxLength={8} className="text-[9px] md:text-sm font-black text-center bg-transparent border-0 focus:ring-0 w-full truncate uppercase tracking-tighter" style={{ color: p.color }} />
                         </th>
                       ))}
                     </tr>
@@ -458,7 +467,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                         <td className="py-0.5 md:py-2 px-2 text-[8px] md:text-[10px] font-black text-slate-300">R{r.round}</td>
                         {players.map(p => (
                           <td key={p.id} className="p-0.5 md:p-1">
-                            <input type="text" value={r.scores[p.id] ?? ''} onChange={(e) => handleScoreChange(rIdx, p.id, e.target.value)} className="w-full bg-slate-50/50 border-0 rounded-md py-1 md:py-2 text-center font-black text-slate-800 text-[11px] md:text-base focus:bg-white focus:ring-1 focus:ring-indigo-200 transition-all placeholder:text-slate-200" placeholder="0" />
+                            <input type="text" value={r.scores[p.id] ?? ''} readOnly={!canEdit} onChange={(e) => handleScoreChange(rIdx, p.id, e.target.value)} className="w-full bg-slate-50/50 border-0 rounded-md py-1 md:py-2 text-center font-black text-slate-800 text-[11px] md:text-base focus:bg-white focus:ring-1 focus:ring-indigo-200 transition-all placeholder:text-slate-200" placeholder="0" />
                           </td>
                         ))}
                       </tr>
@@ -563,6 +572,8 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
           )}
 
           {activeTab === 'dice' && <DiceRoller />}
+
+          {activeTab === 'archive' && archive}
         </div>
       </main>
     </div>
@@ -571,105 +582,118 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
 
 // --- App Root ---
 
+const STATUS_LABEL = { online: 'Bağlı', connecting: 'Bağlanıyor', offline: 'Bağlantı koptu' } as const;
+const STATUS_DOT = { online: 'bg-emerald-400', connecting: 'bg-amber-400 animate-pulse', offline: 'bg-red-500 animate-pulse' } as const;
+
 export default function App() {
-  const [players, setPlayers] = useState<Player[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY_PLAYERS);
-    return saved ? JSON.parse(saved) : getInitialPlayers();
-  });
-  
-  const [rounds, setRounds] = useState<RoundScore[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY_ROUNDS);
-    if (saved) return JSON.parse(saved);
-    return getInitialRounds(getInitialPlayers());
-  });
+  const {
+    code, room, game, status, error, sendOp,
+    archiveItems, archiveGame, archiveSavedId, openArchiveGame, saveArchiveGame,
+  } = useRoom();
+  const [joinOpen, setJoinOpen] = useState(false);
+  const [closeConfirm, setCloseConfirm] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  const [undoStack, setUndoStack] = useState<{players: Player[], rounds: RoundScore[]}[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_PLAYERS, JSON.stringify(players));
-    localStorage.setItem(STORAGE_KEY_ROUNDS, JSON.stringify(rounds));
-  }, [players, rounds]);
-
-  const pushState = useCallback((newPlayers: Player[], newRounds: RoundScore[]) => {
-    setPlayers(newPlayers);
-    setRounds(newRounds);
-    setUndoStack(prev => {
-      const nextHistory = prev.slice(0, historyIndex + 1);
-      return [...nextHistory, { players: newPlayers, rounds: newRounds }];
-    });
-    setHistoryIndex(prev => prev + 1);
-  }, [historyIndex]);
-
-  const undo = useCallback(() => {
-    if (historyIndex > 0) {
-      const prevState = undoStack[historyIndex - 1];
-      setPlayers(prevState.players);
-      setRounds(prevState.rounds);
-      setHistoryIndex(historyIndex - 1);
-    }
-  }, [undoStack, historyIndex]);
-
-  const redo = useCallback(() => {
-    if (historyIndex < undoStack.length - 1) {
-      const nextState = undoStack[historyIndex + 1];
-      setPlayers(nextState.players);
-      setRounds(nextState.rounds);
-      setHistoryIndex(historyIndex + 1);
-    }
-  }, [undoStack, historyIndex]);
-
-  const handleReset = useCallback(() => {
-    const defaultPlayers = getInitialPlayers();
-    const defaultRounds = getInitialRounds(defaultPlayers);
-    pushState(defaultPlayers, defaultRounds);
-  }, [pushState]);
-
-  const handleAddPlayer = useCallback(() => {
-    const newId = `p-${Date.now()}`;
-    const colorIndex = players.length % PLAYER_COLORS.length;
-    const newPlayer: Player = {
-      id: newId,
-      name: `P${players.length + 1}`,
-      color: PLAYER_COLORS[colorIndex]
-    };
-    
-    const newPlayers = [...players, newPlayer];
-    const newRounds = rounds.map(r => ({
-      ...r,
-      scores: { ...r.scores, [newId]: null }
-    }));
-    
-    pushState(newPlayers, newRounds);
-  }, [players, rounds, pushState]);
+  const actions = useMemo<GameActions>(() => ({
+    setScore: (round, playerId, value) => sendOp({ t: 'setScore', round, playerId, value }),
+    setName: (playerId, name) => sendOp({ t: 'setName', playerId, name }),
+    addRound: () => sendOp({ t: 'addRound' }),
+    removeRound: () => sendOp({ t: 'removeRound' }),
+  }), [sendOp]);
 
   const handleRemovePlayer = useCallback((playerId: string) => {
-    if (players.length <= 1) {
+    if (game && game.players.length <= 1) {
       alert("At least one player is required!");
       return;
     }
-    
-    const newPlayers = players.filter(p => p.id !== playerId);
-    const newRounds = rounds.map(r => {
-      const newScores = { ...r.scores };
-      delete newScores[playerId];
-      return { ...r, scores: newScores };
-    });
-    pushState(newPlayers, newRounds);
-  }, [players, rounds, pushState]);
+    sendOp({ t: 'removePlayer', playerId });
+  }, [game, sendOp]);
+
+  const copyLink = useCallback(async () => {
+    const url = window.location.href;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      window.prompt('Linki kopyala', url);
+    }
+  }, []);
+
+  if (!room || !game) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center gap-3 bg-slate-50">
+        <span className={`h-3 w-3 rounded-full ${STATUS_DOT[status]}`} />
+        <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">Oda {code} · {STATUS_LABEL[status]}…</span>
+      </div>
+    );
+  }
+
+  const canEdit = room.mySeat !== null || room.isAdmin;
+  const hasScore = game.rounds.some(r => Object.values(r.scores).some(v => typeof v === 'number'));
+
+  const roomBar = (
+    <div className="bg-slate-900 text-white px-3 h-9 md:h-10 flex items-center gap-2 text-[9px] md:text-[10px] font-black uppercase tracking-tight shrink-0">
+      <span className={`h-2 w-2 rounded-full shrink-0 ${STATUS_DOT[status]}`} title={STATUS_LABEL[status]} />
+      <span className={status === 'online' ? 'hidden sm:inline text-white/60' : 'text-amber-300'}>{STATUS_LABEL[status]}</span>
+      <span className="text-white/40">Oda</span>
+      <span className="tracking-widest">{room.code}</span>
+      <button onClick={copyLink} className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20" title="Linki kopyala">{copied ? '✓' : '🔗'}</button>
+      <span className="text-white/40" title="Bağlı cihaz">👁 {room.viewers}</span>
+      <div className="ml-auto flex items-center gap-1.5">
+        {room.mySeat ? (
+          <button onClick={() => sendOp({ t: 'leave' })} className="px-2 h-6 md:h-7 rounded bg-white/10 hover:bg-white/20">Ayrıl</button>
+        ) : (
+          <button onClick={() => setJoinOpen(true)} className="px-2.5 h-6 md:h-7 rounded bg-indigo-500 hover:bg-indigo-400 shadow">Katıl</button>
+        )}
+        <button onClick={() => setCloseConfirm(true)} disabled={!canEdit || !hasScore} className="px-2 h-6 md:h-7 rounded bg-amber-500 hover:bg-amber-400 text-slate-900 disabled:opacity-30">Oyunu kapat</button>
+      </div>
+    </div>
+  );
 
   return (
-    <GameDashboard 
-      players={players} 
-      rounds={rounds} 
-      onUpdateGameState={pushState}
-      onReset={handleReset}
-      onAddPlayer={handleAddPlayer}
-      onRemovePlayer={handleRemovePlayer}
-      undo={undo}
-      redo={redo}
-      canUndo={historyIndex > 0}
-      canRedo={historyIndex < undoStack.length - 1}
-    />
+    <>
+      <GameDashboard
+        players={game.players}
+        rounds={game.rounds}
+        actions={actions}
+        onReset={() => sendOp({ t: 'newGame' })}
+        onAddPlayer={() => sendOp({ t: 'addPlayer' })}
+        onRemovePlayer={handleRemovePlayer}
+        undo={() => sendOp({ t: 'undo' })}
+        redo={() => sendOp({ t: 'redo' })}
+        canUndo={room.canUndo}
+        canRedo={room.canRedo}
+        canEdit={canEdit}
+        isAdmin={room.isAdmin}
+        occupied={room.occupied}
+        mySeat={room.mySeat}
+        onVacate={playerId => sendOp({ t: 'vacate', playerId })}
+        roomBar={roomBar}
+        archive={
+          <ArchivePanel
+            items={archiveItems} game={archiveGame} savedId={archiveSavedId} canEdit={canEdit}
+            onOpen={openArchiveGame} onSave={saveArchiveGame}
+          />
+        }
+      />
+      <JoinDialog
+        open={joinOpen}
+        onCancel={() => setJoinOpen(false)}
+        onJoin={name => { sendOp({ t: 'join', name }); setJoinOpen(false); }}
+      />
+      <ConfirmDialog
+        open={closeConfirm}
+        title="Oyunu kapat"
+        message="Oyun kapatılıp arşive eklenecek ve masada yeni boş bir oyun açılacak. Emin misin?"
+        confirmLabel="Evet, kapat"
+        danger
+        onCancel={() => setCloseConfirm(false)}
+        onConfirm={() => { sendOp({ t: 'closeGame' }); setCloseConfirm(false); }}
+      />
+      {error && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[300] bg-red-600 text-white text-xs font-black px-4 py-2 rounded-full shadow-xl">{error}</div>
+      )}
+    </>
   );
 }

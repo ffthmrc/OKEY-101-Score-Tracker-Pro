@@ -1,4 +1,9 @@
-name: Deploy to GitHub Pages
+name: GitHub Pages yönlendirmesi
+
+# Uygulama artık Oracle sunucusunda çalışıyor (bkz. DEPLOY.md).
+# Pages sadece eski linki yeni adrese yönlendirir. Repo ayarlarında
+# Settings → Secrets and variables → Actions → Variables altına APP_URL ekle
+# (ör. https://okey101.duckdns.org).
 
 on:
   push:
@@ -15,33 +20,27 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          
-      - name: Install dependencies
-        run: npm install
-        
-      - name: Build
-        run: npm run build
+
+      - name: Yönlendirme sayfasını hazırla
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          test -n "$APP_URL" || { echo "APP_URL repo değişkeni tanımlı değil"; exit 1; }
+          sed -i "s#__APP_URL__#${APP_URL%/}#g" pages-redirect/index.html
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
-        
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './dist'
-          
+          path: './pages-redirect'
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

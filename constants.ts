@@ -1,8 +1,14 @@
 
-import { Player, RoundScore } from './types';
+import type { Player, RoundScore } from './types';
 
 export const DEFAULT_PLAYER_COUNT = 4;
 export const DEFAULT_ROUND_COUNT = 11;
+
+export const PLAYER_COLORS = [
+  '#6366f1', '#10b981', '#f59e0b', '#ef4444',
+  '#8b5cf6', '#ec4899', '#06b6d4', '#f97316',
+  '#14b8a6', '#84cc16'
+];
 
 export const getInitialPlayers = (): Player[] => [
   { id: 'p1', name: 'P1', color: '#6366f1' },

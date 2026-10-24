@@ -1,42 +1,23 @@
-import { GoogleGenAI } from "@google/genai";
 import { Player, RoundScore, PlayerStats } from "./types";
 
 /**
- * Fix: Initializing GoogleGenAI inside the function as per guidelines to ensure 
- * the most up-to-date API key is used, and removed unused imports.
+ * Analiz sunucuda yapılır (server/gemini.ts); API anahtarı tarayıcıya hiç gelmez.
+ * `stats` imza uyumluluğu için duruyor, sunucu sıralamayı kendisi hesaplar.
  */
 export const getGameAnalysis = async (
   players: Player[],
   rounds: RoundScore[],
-  stats: PlayerStats[]
+  _stats?: PlayerStats[]
 ) => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  
-  const prompt = `
-    Analyze this game leaderboard. Lower scores are better.
-    
-    Players: ${players.map(p => p.name).join(', ')}
-    Current Rankings (Lower is better):
-    ${stats.map(s => `${s.name}: Total ${s.totalScore}, Rank ${s.rank}`).join('\n')}
-    
-    Round History Data:
-    ${JSON.stringify(rounds)}
-
-    Please provide:
-    1. A witty and brief summary of the current standings.
-    2. A shoutout to the current leader (the one with the lowest score).
-    3. A playful roast for the player in last place (the '💩' rank).
-    4. A strategic insight based on round performance trends.
-    
-    Keep the tone fun, competitive, and sports-commentary style.
-  `;
-
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
+    const res = await fetch('/api/analysis', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ players, rounds }),
     });
-    return response.text;
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json() as { text: string };
+    return data.text;
   } catch (error) {
     console.error("Gemini Analysis Error:", error);
     return "The AI referee is currently reviewing the play tapes. Check back in a moment!";
