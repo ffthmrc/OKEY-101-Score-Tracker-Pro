@@ -8,7 +8,7 @@
     "dev:server": "node --watch server/index.ts",
     "build": "tsc && vite build",
     "start": "node server/index.ts",
-    "test": "node --test server/rooms.test.ts",
+    "test": "node --test server/rooms.test.ts shared/stats.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {

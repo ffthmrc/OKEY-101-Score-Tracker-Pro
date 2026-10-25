@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { ArchivedGame, ArchiveSummary } from './shared/protocol';
 import type { Player, RoundScore } from './types';
 import { parseScoreInput, totalOf, MAX_NAME_LEN, MAX_ROUNDS } from './shared/game';
+import { buildReportCards } from './shared/stats';
 import { ConfirmDialog } from './Dialogs';
 
 // Excel'den aktarılan oyunların saati bilinmez (roomCode 'EXCEL'), sadece tarih gösterilir
@@ -24,6 +25,10 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
   const [draft, setDraft] = useState<{ players: Player[]; rounds: RoundScore[] } | null>(null);
   const [confirm, setConfirm] = useState<'edit' | 'save' | null>(null);
   const [saving, setSaving] = useState(false);
+  const [view, setView] = useState<'games' | 'cards'>('games');
+  const cards = useMemo(() => buildReportCards(items), [items]);
+  // 5. ve sonrası sadece 5+ kişilik oyun varsa sütun olarak görünür
+  const placeCols = Math.max(4, ...cards.map(c => c.places.length));
 
   useEffect(() => {
     if (saving && savedId === selectedId) {
@@ -42,10 +47,52 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
   if (!selectedId) {
     return (
       <div className="p-2 md:p-4 flex-1 overflow-auto custom-scrollbar space-y-2">
-        {items.length === 0 && (
+        <div className="flex bg-slate-100 rounded-lg p-0.5 text-[10px] md:text-xs font-black uppercase tracking-tight">
+          {([['games', 'Oyunlar'], ['cards', 'Karne']] as const).map(([v, label]) => (
+            <button key={v} onClick={() => setView(v)} className={`flex-1 py-1.5 rounded-md transition-all ${view === v ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>{label}</button>
+          ))}
+        </div>
+        {view === 'cards' && (
+          <div className="bg-white border border-slate-100 rounded-xl shadow-sm overflow-hidden">
+            <table className="w-full text-center border-collapse">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr className="text-[9px] md:text-[11px] font-black uppercase text-slate-400 tracking-tighter">
+                  <th className="py-2 pl-2 text-left">Oyuncu</th>
+                  <th className="py-2">Oyun</th>
+                  {Array.from({ length: placeCols }, (_, i) => (
+                    <th key={i} className="py-2">{['🏆', '🥈', '🥉'][i] ?? `${i + 1}.`}</th>
+                  ))}
+                  <th className="py-2 pr-2">Kaz.</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {cards.map(c => (
+                  <tr key={c.name} className="text-[11px] md:text-sm font-black text-slate-700">
+                    <td className="py-1.5 pl-2 text-left">
+                      <div className="flex items-center gap-1.5">
+                        <span className="h-2.5 w-1 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
+                        <div className="min-w-0">
+                          <div className="uppercase truncate tracking-tight">{c.name}</div>
+                          <div className="text-[8px] md:text-[10px] font-bold text-slate-300">ort. {c.avgPlace.toFixed(2)}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-1.5 text-slate-400">{c.played}</td>
+                    {Array.from({ length: placeCols }, (_, i) => (
+                      <td key={i} className={`py-1.5 ${i === 0 && c.places[0] ? 'text-[#006100] bg-[#c6efce]/50' : ''} ${c.places[i] ? '' : 'text-slate-200'}`}>{c.places[i] ?? 0}</td>
+                    ))}
+                    <td className="py-1.5 pr-2 text-slate-500">%{Math.round(((c.places[0] ?? 0) / c.played) * 100)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {cards.length === 0 && <div className="py-8 text-center text-slate-300 text-xs font-bold uppercase italic">Arşivde oyun yok</div>}
+          </div>
+        )}
+        {view === 'games' && items.length === 0 && (
           <div className="h-full flex items-center justify-center text-slate-300 text-xs font-bold uppercase italic">Arşivde oyun yok</div>
         )}
-        {items.map(item => {
+        {view === 'games' && items.map(item => {
           const sorted = [...item.players].sort((a, b) => a.total - b.total);
           return (
             <button key={item.id} onClick={() => open(item.id)} className="w-full text-left bg-white border border-slate-100 rounded-xl p-3 shadow-sm hover:shadow-md active:scale-[0.99] transition-all">
