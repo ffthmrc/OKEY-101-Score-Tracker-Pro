@@ -35,12 +35,47 @@ export const totalOf = (rounds: RoundScore[], playerId: string) =>
     return sum + (typeof v === 'number' ? v : 0);
   }, 0);
 
-// Toplama göre sıralama (düşük kazanır). Eşit toplam aynı sırayı paylaşır: 1, 2, 2, 4.
+export const hasPlayerScore = (rounds: RoundScore[], playerId: string) =>
+  rounds.some(r => typeof r.scores[playerId] === 'number');
+
+// Sıra (düşük toplam kazanır). Eşit toplam aynı sırayı paylaşır: 1, 2, 2, 4.
+// Henüz hiç puanı olmayan oyuncu sıraya girmez (null) — 0 puanla "lider" görünmesin.
+export const placesOf = (players: Player[], rounds: RoundScore[]): Record<string, number | null> => {
+  const ranked = players
+    .filter(p => hasPlayerScore(rounds, p.id))
+    .map(p => ({ id: p.id, total: totalOf(rounds, p.id) }));
+  const places: Record<string, number | null> = {};
+  for (const p of players) places[p.id] = null;
+  for (const r of ranked) places[r.id] = 1 + ranked.filter(x => x.total < r.total).length;
+  return places;
+};
+
+// 💩: en az 4 sıralı oyuncu varken en kötü sıra; sonuncular 3.lükte eşitse onlar da 💩 olur
+export const isLastPlace = (place: number | null, places: Record<string, number | null>) => {
+  const ranked = Object.values(places).filter((v): v is number => v !== null);
+  const worst = Math.max(...ranked);
+  return place !== null && ranked.length >= 4 && worst >= 3 && place === worst;
+};
+
+// Sıralı oyuncular, toplama göre artan
 export const standings = (players: Player[], rounds: RoundScore[]) => {
-  const rows = players
-    .map(player => ({ player, total: totalOf(rounds, player.id) }))
+  const places = placesOf(players, rounds);
+  return players
+    .filter(p => places[p.id] !== null)
+    .map(player => ({ player, total: totalOf(rounds, player.id), place: places[player.id] as number }))
     .sort((a, b) => a.total - b.total);
-  return rows.map(r => ({ ...r, place: rows.findIndex(x => x.total === r.total) + 1 }));
+};
+
+// Kapanan/kaydedilen oyunu temizler: puanı hiç olmayan oyuncu, sondaki boş eller ve yarım '-' girişleri atılır
+export const tidyTable = (players: Player[], rounds: RoundScore[]) => {
+  const scored = players.filter(p => hasPlayerScore(rounds, p.id));
+  const keep = scored.length > 0 ? scored : players;
+  const clean = rounds.map(r => ({
+    round: r.round,
+    scores: Object.fromEntries(keep.map(p => [p.id, typeof r.scores[p.id] === 'number' ? r.scores[p.id] : null])),
+  }));
+  while (clean.length > 1 && keep.every(p => clean[clean.length - 1].scores[p.id] === null)) clean.pop();
+  return { players: keep, rounds: clean as RoundScore[] };
 };
 
 // Geçersiz işlemde null döner (durum değişmez).
@@ -93,5 +128,5 @@ export function sanitizeTable(players: unknown, rounds: unknown): { players: Pla
     }
     cleanRounds.push({ round: i + 1, scores });
   }
-  return { players: cleanPlayers, rounds: cleanRounds };
+  return tidyTable(cleanPlayers, cleanRounds);
 }

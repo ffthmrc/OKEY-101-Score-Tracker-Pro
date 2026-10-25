@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import type { Player, RoundScore } from './types';
-import { standings } from './shared/game';
+import { standings, placesOf, isLastPlace, hasAnyScore } from './shared/game';
 
 // Excel'deki "Fark?" tablosunun uygulama karşılığı: puan girildikçe sıra ve farklar canlı değişir.
 // Excel'den farkı: eşit toplamda iki kişi de görünür (Excel'de biri kayboluyor, bir satır #N/A oluyordu).
@@ -9,16 +9,17 @@ const MEDAL = ['🏆', '🥈', '🥉'];
 
 export const GapPanel: React.FC<{ players: Player[]; rounds: RoundScore[] }> = ({ players, rounds }) => {
   const rows = useMemo(() => standings(players, rounds), [players, rounds]);
-  const started = rounds.some(r => Object.values(r.scores).some(v => typeof v === 'number'));
+  const places = useMemo(() => placesOf(players, rounds), [players, rounds]);
+  const waiting = players.filter(p => places[p.id] === null);
+  const started = hasAnyScore(rounds);
   const playedRounds = rounds.filter(r => players.every(p => typeof r.scores[p.id] === 'number')).length;
-  const lastPlace = rows.length ? rows[rows.length - 1].place : 0;
 
   if (!started) {
     return <div className="flex-1 flex items-center justify-center text-slate-300 text-xs font-bold uppercase italic">Puan girilince farklar burada görünür</div>;
   }
 
   const badge = (place: number) =>
-    MEDAL[place - 1] ?? (place === lastPlace && players.length >= 4 ? '💩' : `${place}.`);
+    place > 1 && isLastPlace(place, places) ? '💩' : MEDAL[place - 1] ?? `${place}.`;
 
   return (
     <div className="p-2 md:p-4 flex-1 overflow-auto custom-scrollbar space-y-3">
@@ -57,6 +58,11 @@ export const GapPanel: React.FC<{ players: Player[]; rounds: RoundScore[] }> = (
             })}
           </tbody>
         </table>
+        {waiting.length > 0 && (
+          <div className="px-3 py-1.5 border-t border-slate-100 text-[9px] md:text-[11px] font-bold text-slate-400 uppercase">
+            Henüz puanı yok: {waiting.map(p => p.name).join(', ')}
+          </div>
+        )}
       </div>
 
       {/* Herkesin herkese farkı (Excel'deki matris) */}

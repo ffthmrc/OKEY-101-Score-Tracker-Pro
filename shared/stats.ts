@@ -17,11 +17,12 @@ export const personKey = (name: string) => name.trim().toLocaleUpperCase('tr-TR'
 export function buildReportCards(items: ArchiveSummary[]): ReportCard[] {
   const cards = new Map<string, ReportCard & { placeSum: number; lastSeen: string }>();
   for (const game of items) {
-    const sorted = [...game.players].sort((a, b) => a.total - b.total);
+    const placeOf = (total: number) => 1 + game.players.filter(x => x.total < total).length;
+    const worst = Math.max(...game.players.map(x => placeOf(x.total)));
     for (const p of game.players) {
       const key = personKey(p.name);
       if (!key) continue;
-      const place = sorted.findIndex(s => s.total === p.total) + 1;
+      const place = placeOf(p.total);
       let card = cards.get(key);
       if (!card) {
         card = { name: p.name.trim(), color: p.color, played: 0, places: [], last: 0, avgPlace: 0, placeSum: 0, lastSeen: '' };
@@ -30,7 +31,8 @@ export function buildReportCards(items: ArchiveSummary[]): ReportCard[] {
       card.played++;
       card.placeSum += place;
       card.places[place - 1] = (card.places[place - 1] ?? 0) + 1;
-      if (game.players.length >= 4 && p.total === sorted[sorted.length - 1].total) card.last++;
+      // ana ekrandaki 💩 kuralıyla aynı (shared/game.ts isLastPlace)
+      if (game.players.length >= 4 && worst >= 3 && place === worst) card.last++;
       if (game.closedAt > card.lastSeen) { card.lastSeen = game.closedAt; card.color = p.color; card.name = p.name.trim(); }
     }
   }

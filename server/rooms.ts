@@ -1,6 +1,6 @@
 // Oda mantığı: sandalyeler, yetki, ortak geri al/ileri al geçmişi. Ağdan bağımsızdır (test edilebilir).
 import type { ArchivedGame, GameState, RoomOp, RoomView } from '../shared/protocol.ts';
-import { applyGameOp, cleanName, hasAnyScore, MAX_PLAYERS } from '../shared/game.ts';
+import { applyGameOp, cleanName, hasAnyScore, MAX_PLAYERS, tidyTable } from '../shared/game.ts';
 import { getInitialPlayers, getInitialRounds, PLAYER_COLORS } from '../constants.ts';
 
 const HISTORY_LIMIT = 200;
@@ -166,8 +166,7 @@ export class Room {
           startedAt: game.startedAt,
           closedAt,
           updatedAt: closedAt,
-          players: game.players,
-          rounds: game.rounds,
+          ...tidyTable(game.players, game.rounds),
         };
         const next = freshGame(game.players, new Date(now));
         this.history = [next];

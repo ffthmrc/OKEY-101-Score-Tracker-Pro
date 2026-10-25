@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import { Player, RoundScore, PlayerStats } from './types';
 import type { CellValue } from './shared/protocol';
-import { parseScoreInput } from './shared/game';
+import { parseScoreInput, placesOf, isLastPlace, hasAnyScore } from './shared/game';
 import { useRoom } from './useRoom';
 import { ConfirmDialog, JoinDialog } from './Dialogs';
 import { ArchivePanel } from './ArchivePanel';
@@ -14,16 +14,16 @@ import { GapPanel } from './GapPanel';
 
 // --- Sub-components ---
 
-const Badge = ({ rank, total, visible, size = 'small' }: { rank: number, total: number, visible: boolean, size?: 'small' | 'large' }) => {
-  if (!visible) return <div className={`${size === 'large' ? 'h-[30px] md:h-[45px]' : 'h-4 md:h-6'}`} />;
+// rank 0 = henüz puanı yok (rozet gösterilmez); isLast = sonuncu (💩)
+const Badge = ({ rank, isLast, visible, size = 'small' }: { rank: number, isLast: boolean, visible: boolean, size?: 'small' | 'large' }) => {
+  if (!visible || rank < 1) return <div className={`${size === 'large' ? 'h-[30px] md:h-[45px]' : 'h-4 md:h-6'}`} />;
   
   const emojiSize = size === 'large' ? 'text-xl md:text-3xl' : 'text-sm md:text-xl';
   
   if (rank === 1) return <span className={`${emojiSize} drop-shadow-sm select-none leading-none animate-in zoom-in duration-300`} title="Winner">🏆</span>;
+  if (isLast) return <span className={`${emojiSize} drop-shadow-sm select-none leading-none animate-in zoom-in duration-300`} title="Last Place">💩</span>;
   if (rank === 2) return <span className={`${emojiSize} drop-shadow-sm select-none leading-none animate-in zoom-in duration-300`} title="Second">🥈</span>;
   if (rank === 3) return <span className={`${emojiSize} drop-shadow-sm select-none leading-none animate-in zoom-in duration-300`} title="Third">🥉</span>;
-  
-  if (rank === total && total >= 4) return <span className={`${emojiSize} drop-shadow-sm select-none leading-none animate-in zoom-in duration-300`} title="Last Place">💩</span>;
   
   return <span className={`${emojiSize} drop-shadow-sm select-none leading-none animate-in zoom-in duration-300`} title="Ranking">💪</span>;
 };
@@ -97,7 +97,7 @@ const StatCard: React.FC<StatCardProps> = ({ player, stat, totalPlayers, gameSta
       </div>
 
       <div className="flex items-center justify-center leading-none h-5 md:h-10">
-        <Badge rank={stat.rank} total={totalPlayers} visible={gameStarted} size="small" />
+        <Badge rank={stat.rank} isLast={!!stat.isLast} visible={gameStarted} size="small" />
       </div>
 
       <div className="w-full">
@@ -280,9 +280,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
   };
 
   // Check if any non-null input has been made across all rounds
-  const hasGameStarted = useMemo(() => {
-    return rounds.some(r => Object.values(r.scores).some(score => typeof score === 'number'));
-  }, [rounds]);
+  const hasGameStarted = useMemo(() => hasAnyScore(rounds), [rounds]);
 
   const stats: PlayerStats[] = useMemo(() => {
     const scoresMap = players.map(player => {
@@ -292,11 +290,13 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
       }, 0);
       return { id: player.id, name: player.name, totalScore };
     });
-    const sorted = [...scoresMap].sort((a, b) => a.totalScore - b.totalScore);
+    // Eşit toplam aynı sırayı alır; puanı olmayan oyuncunun sırası 0 (rozet yok)
+    const places = placesOf(players, rounds);
     return players.map(player => {
-      const rank = sorted.findIndex(s => s.id === player.id) + 1;
+      const rank = places[player.id] ?? 0;
       const pData = scoresMap.find(s => s.id === player.id)!;
-      return { id: player.id, name: player.name, totalScore: pData.totalScore, rank, wins: 0, lastRoundRank: 0 } as PlayerStats;
+      const isLast = isLastPlace(places[player.id], places);
+      return { id: player.id, name: player.name, totalScore: pData.totalScore, rank, wins: 0, lastRoundRank: 0, isLast } as PlayerStats;
     });
   }, [players, rounds]);
 
@@ -315,30 +315,20 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
 
   // Logic for the SIRALAMA (Ranking) Table
   const rankingTableData = useMemo(() => {
-    let cumulativeScores: Record<string, number> = {};
-    players.forEach(p => cumulativeScores[p.id] = 0);
-
-    return rounds.map((r) => {
-      const hasRoundData = Object.values(r.scores).some(v => v !== null);
-      
-      players.forEach(p => {
-        cumulativeScores[p.id] += typeof r.scores[p.id] === 'number' ? (r.scores[p.id] as number) : 0;
-      });
-
-      const totalEnteredSoFar = Object.values(cumulativeScores).some(v => v !== 0);
-
-      const currentScores = players.map(p => ({ id: p.id, score: cumulativeScores[p.id] }));
-      const sorted = [...currentScores].sort((a, b) => a.score - b.score);
-      
+    // Her el için o ele kadarki toplama göre sıra (Excel SIRALAMA ile aynı mantık):
+    // sadece puan girilmiş eller görünür, puanı olmayan oyuncu o elde '-' görünür
+    return rounds.map((r, idx) => {
+      const hasRoundData = players.some(p => typeof r.scores[p.id] === 'number');
+      const places = placesOf(players, rounds.slice(0, idx + 1));
       const ranks: Record<string, number> = {};
       players.forEach(p => {
-        ranks[p.id] = sorted.findIndex(s => s.id === p.id) + 1;
+        ranks[p.id] = places[p.id] ?? 0;
       });
 
       return { 
         round: r.round, 
         ranks, 
-        isVisible: hasRoundData || (r.round === 1 && totalEnteredSoFar)
+        isVisible: hasRoundData
       };
     });
   }, [players, rounds]);
@@ -507,7 +497,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                     </thead>
                     <tbody>
                       {rankingTableData.map((row, idx) => {
-                        const rankValues = Object.values(row.ranks) as number[];
+                        const rankValues = (Object.values(row.ranks) as number[]).filter(v => v > 0);
                         const maxRank = rankValues.length > 0 ? Math.max(...rankValues) : 0;
                         
                         return (
@@ -517,7 +507,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                               const rank = row.ranks[p.id];
                               let bgClass = "bg-white text-slate-200";
                               
-                              if (row.isVisible) {
+                              if (row.isVisible && rank > 0) {
                                 if (rank === 1) {
                                   bgClass = "bg-[#c6efce] text-[#006100]";
                                 } else if (rank === maxRank && maxRank > 1) {
@@ -529,7 +519,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                               
                               return (
                                 <td key={p.id} className={`py-0.5 px-3 text-[10px] md:text-sm font-black border-r border-slate-100 last:border-0 transition-colors ${bgClass}`}>
-                                  {row.isVisible ? rank : '-'}
+                                  {row.isVisible && rank > 0 ? rank : '-'}
                                 </td>
                               );
                             })}
@@ -545,7 +535,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                           return (
                             <td key={p.id} className="py-1 px-3 border-r border-slate-200 last:border-0">
                               <div className="flex items-center justify-center">
-                                <Badge rank={playerStat?.rank ?? 4} total={players.length} visible={hasGameStarted} size="small" />
+                                <Badge rank={playerStat?.rank ?? 0} isLast={!!playerStat?.isLast} visible={hasGameStarted} size="small" />
                               </div>
                             </td>
                           );

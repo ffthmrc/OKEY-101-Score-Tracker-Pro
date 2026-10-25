@@ -17,6 +17,7 @@ export interface PlayerStats {
   rank: number;
   wins: number;
   lastRoundRank: number;
+  isLast?: boolean; // sonuncu (💩)
 }
 
 export interface MatchRecord {
