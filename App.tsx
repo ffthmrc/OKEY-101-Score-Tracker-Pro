@@ -10,6 +10,7 @@ import { parseScoreInput } from './shared/game';
 import { useRoom } from './useRoom';
 import { ConfirmDialog, JoinDialog } from './Dialogs';
 import { ArchivePanel } from './ArchivePanel';
+import { GapPanel } from './GapPanel';
 
 // --- Sub-components ---
 
@@ -258,7 +259,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
   players, rounds, actions, onReset, onAddPlayer, onRemovePlayer, undo, redo, canUndo, canRedo,
   canEdit, isAdmin, occupied, mySeat, onVacate, roomBar, archive
 }) => {
-  const [activeTab, setActiveTab] = useState<'table' | 'charts' | 'dice' | 'archive'>('table');
+  const [activeTab, setActiveTab] = useState<'table' | 'charts' | 'fark' | 'dice' | 'archive'>('table');
   const [isResetConfirming, setIsResetConfirming] = useState(false);
 
   // Auto-reset confirmation state after 4 seconds
@@ -404,7 +405,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
       {roomBar}
 
       <nav className="flex bg-white border-b border-slate-100 px-2 py-1 justify-around text-[9px] md:text-[10px] font-black uppercase tracking-tight shrink-0">
-        {['table', 'charts', 'dice', 'archive'].map(tab => (
+        {['table', 'charts', 'fark', 'dice', 'archive'].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab as any)} className={`flex-1 py-1.5 md:py-2 rounded-md transition-all ${activeTab === tab ? 'text-indigo-600 bg-indigo-50 font-black' : 'text-slate-400'}`}>{tab}</button>
         ))}
       </nav>
@@ -570,6 +571,8 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
               </div>
             </div>
           )}
+
+          {activeTab === 'fark' && <GapPanel players={players} rounds={rounds} />}
 
           {activeTab === 'dice' && <DiceRoller />}
 

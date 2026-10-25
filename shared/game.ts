@@ -35,6 +35,14 @@ export const totalOf = (rounds: RoundScore[], playerId: string) =>
     return sum + (typeof v === 'number' ? v : 0);
   }, 0);
 
+// Toplama göre sıralama (düşük kazanır). Eşit toplam aynı sırayı paylaşır: 1, 2, 2, 4.
+export const standings = (players: Player[], rounds: RoundScore[]) => {
+  const rows = players
+    .map(player => ({ player, total: totalOf(rounds, player.id) }))
+    .sort((a, b) => a.total - b.total);
+  return rows.map(r => ({ ...r, place: rows.findIndex(x => x.total === r.total) + 1 }));
+};
+
 // Geçersiz işlemde null döner (durum değişmez).
 export function applyGameOp(game: GameState, op: GameOp): GameState | null {
   const { players, rounds } = game;
