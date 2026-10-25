@@ -22,6 +22,7 @@ export function useRoom() {
   const [archiveGame, setArchiveGame] = useState<ArchivedGame | null>(null);
   const [archiveSavedId, setArchiveSavedId] = useState<string | null>(null);
   const [archiveDeletedId, setArchiveDeletedId] = useState<string | null>(null);
+  const [archiveUnlockSeq, setArchiveUnlockSeq] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const clientRef = useRef<SyncClient | null>(null);
@@ -61,6 +62,9 @@ export function useRoom() {
           case 'archive:deleted':
             setArchiveDeletedId(msg.id);
             break;
+          case 'archive:unlocked':
+            setArchiveUnlockSeq(n => n + 1);
+            break;
         }
       },
     });
@@ -95,22 +99,29 @@ export function useRoom() {
     clientRef.current?.send({ type: 'archive:get', id });
   }, []);
 
-  const saveArchiveGame = useCallback((id: string, players: Player[], rounds: RoundScore[]): boolean => {
+  const unlockArchive = useCallback((pin: string): boolean => {
+    const sent = clientRef.current?.send({ type: 'archive:unlock', pin }) ?? false;
+    if (!sent) setError('Bağlantı yok');
+    return sent;
+  }, []);
+
+  const saveArchiveGame = useCallback((id: string, players: Player[], rounds: RoundScore[], pin: string): boolean => {
     setArchiveSavedId(null);
-    const sent = clientRef.current?.send({ type: 'archive:update', id, players, rounds }) ?? false;
+    const sent = clientRef.current?.send({ type: 'archive:update', id, players, rounds, pin }) ?? false;
     if (!sent) setError('Bağlantı yok, kaydedilemedi');
     return sent;
   }, []);
 
-  const deleteArchiveGame = useCallback((id: string): boolean => {
+  const deleteArchiveGame = useCallback((id: string, pin: string): boolean => {
     setArchiveDeletedId(null);
-    const sent = clientRef.current?.send({ type: 'archive:delete', id }) ?? false;
+    const sent = clientRef.current?.send({ type: 'archive:delete', id, pin }) ?? false;
     if (!sent) setError('Bağlantı yok, silinemedi');
     return sent;
   }, []);
 
   return {
     code, room, game, status, error, sendOp,
-    archiveItems, archiveGame, archiveSavedId, archiveDeletedId, openArchiveGame, saveArchiveGame, deleteArchiveGame,
+    archiveItems, archiveGame, archiveSavedId, archiveDeletedId, archiveUnlockSeq,
+    openArchiveGame, unlockArchive, saveArchiveGame, deleteArchiveGame,
   };
 }

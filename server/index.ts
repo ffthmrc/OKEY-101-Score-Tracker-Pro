@@ -111,6 +111,22 @@ const broadcastArchive = () => {
 
 const isId = (v: unknown): v is string => typeof v === 'string' && v.length > 0 && v.length <= 64;
 
+// Arşiv düzenleme/silme PIN'i: sadece sunucu ortamında (ARCHIVE_PIN), koda ve repoya yazılmaz
+const ARCHIVE_PIN = process.env.ARCHIVE_PIN ?? '';
+const archivePinFails = new Map<string, { n: number; until: number }>(); // clientId -> yanlış deneme
+const checkArchivePin = (clientId: string, pin: unknown, now: number): string | null => {
+  if (!ARCHIVE_PIN) return 'Arşiv PIN\'i sunucuda tanımlı değil';
+  const fail = archivePinFails.get(clientId);
+  if (fail && fail.until > now) return 'Çok fazla yanlış PIN. 1 dakika sonra tekrar dene.';
+  if (pin !== ARCHIVE_PIN) {
+    const n = (fail?.n ?? 0) + 1;
+    archivePinFails.set(clientId, n >= 5 ? { n: 0, until: now + 60_000 } : { n, until: 0 });
+    return 'Arşiv PIN\'i yanlış';
+  }
+  archivePinFails.delete(clientId);
+  return null;
+};
+
 wss.on('connection', ws => {
   let conn: Conn | null = null;
   const msgTimes: number[] = [];
@@ -164,7 +180,7 @@ wss.on('connection', ws => {
         }
         lastSeq.set(conn.sid, { seq: msg.seq, at: now });
         const result = msg.op && typeof msg.op === 'object'
-          ? room.apply(conn.clientId, msg.op, now)
+          ? room.apply(conn.clientId, msg.op, now, onlineIds(room))
           : { ok: false as const, error: 'Geçersiz işlem' };
         if (result.ok === false) {
           send(ws, { type: 'error', message: result.error, seq: msg.seq });
@@ -185,10 +201,13 @@ wss.on('connection', ws => {
         if (!game) return send(ws, { type: 'error', message: 'Arşiv kaydı bulunamadı' });
         return send(ws, { type: 'archive:game', game });
       }
+      case 'archive:unlock': {
+        const err = checkArchivePin(conn.clientId, msg.pin, now);
+        return send(ws, err ? { type: 'error', message: err } : { type: 'archive:unlocked' });
+      }
       case 'archive:update': {
-        if (!room.seatOf(conn.clientId)) {
-          return send(ws, { type: 'error', message: 'Arşivi düzenlemek için önce masaya katıl' });
-        }
+        const pinErr = checkArchivePin(conn.clientId, msg.pin, now);
+        if (pinErr) return send(ws, { type: 'error', message: pinErr });
         const game = archive.find(g => g.id === msg.id);
         const table = sanitizeTable(msg.players, msg.rounds);
         if (!game || !table) return send(ws, { type: 'error', message: 'Arşiv kaydı kaydedilemedi' });
@@ -199,9 +218,8 @@ wss.on('connection', ws => {
         return broadcastArchive();
       }
       case 'archive:delete': {
-        if (!room.seatOf(conn.clientId)) {
-          return send(ws, { type: 'error', message: 'Arşivden silmek için önce masaya katıl' });
-        }
+        const pinErr = checkArchivePin(conn.clientId, msg.pin, now);
+        if (pinErr) return send(ws, { type: 'error', message: pinErr });
         const idx = archive.findIndex(g => g.id === msg.id);
         if (idx === -1) return send(ws, { type: 'error', message: 'Arşiv kaydı bulunamadı' });
         const [removed] = archive.splice(idx, 1);
@@ -220,6 +238,8 @@ function leaveRoom(c: Conn) {
   const set = roomConns.get(c.room.data.code);
   if (!set) return;
   set.delete(c);
+  // Bu cihazın başka açık sekmesi yoksa bekleyen katılma isteği düşer
+  if (![...set].some(o => o.clientId === c.clientId)) c.room.dropRequests(c.clientId);
   if (set.size === 0) roomConns.delete(c.room.data.code);
   else broadcastRoom(c.room);
 }

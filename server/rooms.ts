@@ -1,5 +1,5 @@
-// Oda mantığı: sandalyeler, yetki (masaya oturan her şeyi yapar, oturmayan izler), ortak geri al/ileri al geçmişi. Ağdan bağımsızdır (test edilebilir).
-import type { ArchivedGame, GameState, RoomOp, RoomView } from '../shared/protocol.ts';
+// Oda mantığı: sandalyeler, katılma onayı + masa şifresi, yetki (masaya oturan her şeyi yapar, oturmayan izler), ortak geri al/ileri al geçmişi. Ağdan bağımsızdır (test edilebilir).
+import type { ArchivedGame, GameState, JoinRequestView, RoomOp, RoomView } from '../shared/protocol.ts';
 import { applyGameOp, cleanName, hasAnyScore, MAX_PLAYERS, MAX_TITLE_LEN, tidyTable } from '../shared/game.ts';
 import { getInitialPlayers, getInitialRounds, PLAYER_COLORS } from '../constants.ts';
 import { personKey } from '../shared/stats.ts';
@@ -12,10 +12,17 @@ export const ROOM_CODE_RE = /^[A-Z0-9]{3,16}$/;
 // Adı henüz yazılmamış sandalye: P1, P2, ... (yeni gelen sadece bunlara oturur, yazılmış isme geçemez)
 const isUnnamed = (name: string) => /^P\d+$/i.test(name.trim());
 
+const PIN_RE = /^\d{4,6}$/;
+const PIN_MAX_FAILS = 5;       // bu kadar yanlış şifreden sonra
+const PIN_LOCK_MS = 60_000;    // 1 dakika bekletilir
+
+interface JoinRequest { id: string; clientId: string; name: string }
+
 export interface RoomData {
   code: string;
   adminClientId: string | null;
   title?: string | null; // masa adı (boşsa ekranda bugünün tarihi)
+  pin?: string | null;   // masa şifresi (katılırken sorulur; istemciye gönderilmez)
   createdAt: string;
   updatedAt: string;
   game: GameState;
@@ -38,6 +45,8 @@ export class Room {
   private history: GameState[];
   private index = 0;
   private lastEdit: { key: string; at: number } | null = null;
+  private requests: JoinRequest[] = [];            // onay bekleyen katılma istekleri (bellekte)
+  private pinFails = new Map<string, { n: number; until: number }>();
 
   constructor(data: RoomData) {
     // Eski kayıtlarda sandalye tek cihazdı (string | null); diziye çevir
@@ -72,7 +81,41 @@ export class Room {
     return this.data.adminClientId === clientId;
   }
 
-  apply(clientId: string, op: RoomOp, now = Date.now()): OpResult {
+  // Bir isimle oturma kuralı:
+  // 1) isim masada varsa o sandalye (aynı kişi başka cihazdan da), 2) yoksa adı yazılmamış boş sandalye, 3) yoksa yer yok
+  private seatTarget(name: string): { playerId: string; rename: boolean } | null {
+    const { game, seats } = this.data;
+    const own = game.players.find(p => personKey(p.name) === personKey(name));
+    if (own) return { playerId: own.id, rename: false };
+    const free = game.players.find(p => isUnnamed(p.name) && seats[p.id].length === 0);
+    return free ? { playerId: free.id, rename: true } : null;
+  }
+
+  private seat(clientId: string, name: string): OpResult {
+    const target = this.seatTarget(name);
+    if (!target) return { ok: false, error: 'Masada boş yer yok. Masadaki biri + Player ile yer açabilir.' };
+    const { seats } = this.data;
+    seats[target.playerId] = [...seats[target.playerId], clientId];
+    if (target.rename) {
+      // İsim değişikliği geri-al geçmişine girmez; mevcut adımda da güncellenir
+      const named = applyGameOp(this.data.game, { t: 'setName', playerId: target.playerId, name })!;
+      this.history[this.index] = named;
+      this.setGame(named);
+    } else {
+      this.touch();
+    }
+    return { ok: true };
+  }
+
+  // Bağlantısı kopan cihazın bekleyen isteği silinir
+  dropRequests(clientId: string) {
+    const before = this.requests.length;
+    this.requests = this.requests.filter(r => r.clientId !== clientId);
+    if (this.requests.length !== before) this.touch();
+  }
+
+  // onlineIds: odaya şu an bağlı cihazlar. Masada bağlı kimse yoksa katılma onaysız olur (onaylayacak kimse yok).
+  apply(clientId: string, op: RoomOp, now = Date.now(), onlineIds: string[] = []): OpResult {
     const { game, seats } = this.data;
     const seated = this.seatOf(clientId) !== null;
 
@@ -80,22 +123,27 @@ export class Room {
       case 'join': {
         const name = cleanName(op.name)?.trim();
         if (!name) return { ok: false, error: 'İsim gerekli' };
-        if (this.seatOf(clientId)) return { ok: true };
-        // 1) İsim masada varsa o sandalyeye otur (aynı kişi başka cihazdan da katılabilir)
-        const own = game.players.find(p => personKey(p.name) === personKey(name));
-        if (own) {
-          seats[own.id] = [...seats[own.id], clientId];
-          this.touch();
-          return { ok: true };
+        if (seated) return { ok: true };
+        if (this.data.pin) {
+          const fail = this.pinFails.get(clientId);
+          if (fail && fail.until > now) return { ok: false, error: 'Çok fazla yanlış şifre. 1 dakika sonra tekrar dene.' };
+          if (op.pin !== this.data.pin) {
+            const n = (fail && fail.until > now ? fail.n : fail?.n ?? 0) + 1;
+            this.pinFails.set(clientId, { n: n >= PIN_MAX_FAILS ? 0 : n, until: n >= PIN_MAX_FAILS ? now + PIN_LOCK_MS : 0 });
+            return { ok: false, error: 'Masa şifresi yanlış' };
+          }
+          this.pinFails.delete(clientId);
         }
-        // 2) Yoksa sadece adı yazılmamış boş sandalyeye (P1, P5...) otur ve adını yaz
-        const free = game.players.find(p => isUnnamed(p.name) && seats[p.id].length === 0);
-        if (!free) return { ok: false, error: 'Masada boş yer yok. Masadaki biri + Player ile yer açabilir.' };
-        seats[free.id] = [clientId];
-        // İsim değişikliği geri-al geçmişine girmez; mevcut adımda da güncellenir
-        const named = applyGameOp(game, { t: 'setName', playerId: free.id, name })!;
-        this.history[this.index] = named;
-        this.setGame(named);
+        const approverOnline = onlineIds.some(id => id !== clientId && this.seatOf(id) !== null);
+        if (!approverOnline) return this.seat(clientId, name);
+        const existing = this.requests.find(r => r.clientId === clientId);
+        if (existing) existing.name = name;
+        else this.requests.push({ id: globalThis.crypto.randomUUID(), clientId, name });
+        this.touch();
+        return { ok: true };
+      }
+      case 'cancelJoin': {
+        this.dropRequests(clientId);
         return { ok: true };
       }
       case 'leave': {
@@ -116,6 +164,33 @@ export class Room {
     if (!seated) return { ok: false, error: 'Düzenlemek için önce masaya katıl' };
 
     switch (op.t) {
+      case 'approve': {
+        const req = this.requests.find(r => r.id === op.id);
+        if (!req) return { ok: false, error: 'İstek artık yok' };
+        if (this.seatOf(req.clientId)) {
+          this.requests = this.requests.filter(r => r !== req);
+          this.touch();
+          return { ok: true };
+        }
+        const result = this.seat(req.clientId, req.name);
+        if (!result.ok) return { ok: false, error: `${req.name} için masada yer yok. Önce + Player ile yer aç.` };
+        this.requests = this.requests.filter(r => r !== req);
+        return { ok: true };
+      }
+      case 'reject': {
+        const before = this.requests.length;
+        this.requests = this.requests.filter(r => r.id !== op.id);
+        if (this.requests.length !== before) this.touch();
+        return { ok: true };
+      }
+      case 'setPin': {
+        if (op.pin !== null && (typeof op.pin !== 'string' || !PIN_RE.test(op.pin))) {
+          return { ok: false, error: 'Şifre 4-6 rakam olmalı' };
+        }
+        this.data.pin = op.pin;
+        this.touch();
+        return { ok: true };
+      }
       case 'setTitle': {
         // Geri-al geçmişine girmez; boş bırakılırsa tarihe döner
         const raw = typeof op.title === 'string' ? op.title.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, MAX_TITLE_LEN) : '';
@@ -213,6 +288,9 @@ export class Room {
       code,
       version: this.version,
       title: this.data.title ?? null,
+      pinSet: !!this.data.pin,
+      myRequest: this.requests.find(r => r.clientId === clientId)?.name ?? null,
+      requests: this.seatOf(clientId) ? this.requests.map(r => this.requestView(r)) : [],
       game,
       occupied: Object.fromEntries(game.players.map(p => [p.id, (seats[p.id] ?? []).length > 0])),
       mySeat: this.seatOf(clientId),
@@ -222,6 +300,16 @@ export class Room {
       viewers: unique.length,
       online,
       ack,
+    };
+  }
+
+  private requestView(r: JoinRequest): JoinRequestView {
+    const target = this.seatTarget(r.name);
+    const player = target && this.data.game.players.find(p => p.id === target.playerId);
+    return {
+      id: r.id,
+      name: r.name,
+      target: !target ? 'yer yok' : target.rename ? 'boş sandalye' : `${player?.name ?? ''} sandalyesi`,
     };
   }
 

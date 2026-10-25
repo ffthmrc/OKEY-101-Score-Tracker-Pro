@@ -143,3 +143,46 @@ test('masa adı: oturan değiştirir, boş bırakılırsa tarihe döner, izleyic
   room.apply('a', { t: 'setTitle', title: '   ' });
   assert.equal(room.view('a', 0, []).title, null);
 });
+
+test('katılma onayı: masada bağlı biri varsa istek bekler; onaylanınca oturur, reddedilince düşer', () => {
+  const room = setup();
+  room.apply('fatih', { t: 'join', name: 'Fatih' }, 0, ['fatih']);   // masa boş: onaysız
+  assert.equal(room.seatOf('fatih'), 'p1');
+  room.apply('fatih', { t: 'setName', playerId: 'p3', name: 'Zeki' });
+  // sahte Zeki: onay bekler
+  assert.equal(room.apply('sahte', { t: 'join', name: 'Zeki' }, 0, ['fatih', 'sahte']).ok, true);
+  assert.equal(room.seatOf('sahte'), null);
+  assert.equal(room.view('sahte', 0, []).myRequest, 'Zeki');
+  assert.deepEqual(room.view('sahte', 0, []).requests, []);           // izleyici istek listesini görmez
+  const req = room.view('fatih', 0, []).requests[0];
+  assert.equal(req.target, 'Zeki sandalyesi');
+  room.apply('fatih', { t: 'reject', id: req.id });
+  assert.equal(room.view('sahte', 0, []).myRequest, null);
+  assert.equal(room.seatOf('sahte'), null);
+  // gerçek Zeki: onaylanır
+  room.apply('zeki', { t: 'join', name: 'zeki' }, 0, ['fatih', 'zeki']);
+  room.apply('fatih', { t: 'approve', id: room.view('fatih', 0, []).requests[0].id });
+  assert.equal(room.seatOf('zeki'), 'p3');
+  // izleyici onaylayamaz
+  room.apply('ali', { t: 'join', name: 'Ali' }, 0, ['fatih', 'ali']);
+  assert.equal(room.apply('veli', { t: 'approve', id: room.view('fatih', 0, []).requests[0].id }).ok, false);
+  // bağlantısı kopan isteği düşer
+  room.dropRequests('ali');
+  assert.deepEqual(room.view('fatih', 0, []).requests, []);
+});
+
+test('masa şifresi: yanlışta istek açılmaz, 5 yanlıştan sonra kilit, doğruysa onaya düşer', () => {
+  const room = setup();
+  room.apply('fatih', { t: 'join', name: 'Fatih' }, 0, ['fatih']);
+  assert.equal(room.apply('fatih', { t: 'setPin', pin: '12' }).ok, false);
+  assert.equal(room.apply('fatih', { t: 'setPin', pin: '1923' }).ok, true);
+  assert.equal(room.view('x', 0, []).pinSet, true);
+  assert.equal(room.apply('ali', { t: 'join', name: 'Ali', pin: '0000' }, 0, ['fatih', 'ali']).ok, false);
+  for (let i = 0; i < 4; i++) room.apply('ali', { t: 'join', name: 'Ali', pin: '0000' }, 0, ['fatih', 'ali']);
+  const locked = room.apply('ali', { t: 'join', name: 'Ali', pin: '1923' }, 1000, ['fatih', 'ali']);
+  assert.equal(locked.ok, false);
+  assert.equal(room.apply('ali', { t: 'join', name: 'Ali', pin: '1923' }, 61_000, ['fatih', 'ali']).ok, true);
+  assert.equal(room.view('ali', 0, []).myRequest, 'Ali');
+  room.apply('fatih', { t: 'setPin', pin: null });
+  assert.equal(room.view('x', 0, []).pinSet, false);
+});

@@ -18,17 +18,21 @@ interface ArchivePanelProps {
   game: ArchivedGame | null;
   savedId: string | null;
   deletedId: string | null;
-  canEdit: boolean;
+  unlockSeq: number;          // sunucu arşiv PIN'ini doğruladıkça artar
   onOpen: (id: string) => void;
-  onSave: (id: string, players: Player[], rounds: RoundScore[]) => boolean;
-  onDelete: (id: string) => boolean;
+  onUnlock: (pin: string) => boolean;
+  onSave: (id: string, players: Player[], rounds: RoundScore[], pin: string) => boolean;
+  onDelete: (id: string, pin: string) => boolean;
 }
 
-export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId, deletedId, canEdit, onOpen, onSave, onDelete }) => {
+// Arşivde düzenleme ve silme arşiv PIN'i ister (sunucuda tanımlı; masaya katılmak gerekmez)
+export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId, deletedId, unlockSeq, onOpen, onUnlock, onSave, onDelete }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ players: Player[]; rounds: RoundScore[] } | null>(null);
   const [confirm, setConfirm] = useState<'edit' | 'save' | 'delete' | null>(null);
   const [saving, setSaving] = useState(false);
+  const [pendingPin, setPendingPin] = useState<string | null>(null); // doğrulanmayı bekleyen PIN
+  const [editPin, setEditPin] = useState<string | null>(null);       // doğrulanmış PIN (kaydetmede gönderilir)
   const [view, setView] = useState<'games' | 'cards'>('games');
   // Karnede bir oyuncuya dokununca Oyunlar listesi o oyuncunun oyunlarına süzülür
   const [filter, setFilter] = useState<{ key: string; name: string } | null>(null);
@@ -46,6 +50,18 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
       setDraft(null);
     }
   }, [saving, savedId, selectedId]);
+
+  // PIN doğrulandıysa düzenlemeyi aç
+  useEffect(() => {
+    if (unlockSeq === 0 || pendingPin === null) return;
+    const loadedGame = game && game.id === selectedId ? game : null;
+    if (loadedGame) {
+      setEditPin(pendingPin);
+      setDraft({ players: loadedGame.players, rounds: loadedGame.rounds });
+    }
+    setPendingPin(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unlockSeq]);
 
   // Silinen oyun (bu cihazdan ya da başkasından) açıksa listeye dön
   useEffect(() => {
@@ -184,10 +200,10 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
         <span className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-tight truncate">{loaded ? formatDate(loaded.closedAt, loaded.roomCode) : ''}</span>
         <div className="flex items-center gap-1">
           {!editing && (
-            <button onClick={() => setConfirm('delete')} disabled={!loaded || !canEdit} title={canEdit ? '' : 'Silmek için masaya katıl'} className="h-7 md:h-9 px-2 rounded-md border border-red-200 bg-red-50 text-red-600 text-[9px] md:text-[10px] font-black uppercase disabled:opacity-30">Sil</button>
+            <button onClick={() => setConfirm('delete')} disabled={!loaded} className="h-7 md:h-9 px-2 rounded-md border border-red-200 bg-red-50 text-red-600 text-[9px] md:text-[10px] font-black uppercase disabled:opacity-30">Sil</button>
           )}
           {!editing && (
-            <button onClick={() => setConfirm('edit')} disabled={!loaded || !canEdit} title={canEdit ? '' : 'Düzenlemek için masaya katıl'} className="h-7 md:h-9 px-2 rounded-md bg-slate-900 text-white text-[9px] md:text-[10px] font-black uppercase disabled:opacity-30">Düzenle</button>
+            <button onClick={() => setConfirm('edit')} disabled={!loaded || pendingPin !== null} className="h-7 md:h-9 px-2 rounded-md bg-slate-900 text-white text-[9px] md:text-[10px] font-black uppercase disabled:opacity-30">Düzenle</button>
           )}
           {editing && (
             <>
@@ -251,10 +267,11 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
         title="Arşivden çıkar"
         message="Bu oyun arşivden çıkarılıp düzenlemeye açılacak. Emin misin?"
         confirmLabel="Evet, düzenle"
+        askPin="Arşiv PIN'i"
         onCancel={() => setConfirm(null)}
-        onConfirm={() => {
+        onConfirm={pin => {
           setConfirm(null);
-          if (loaded) setDraft({ players: loaded.players, rounds: loaded.rounds });
+          if (loaded && onUnlock(pin)) setPendingPin(pin);
         }}
       />
       <ConfirmDialog
@@ -263,10 +280,11 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
         message="Bu oyun arşivden kalıcı olarak silinecek ve karne yeniden hesaplanacak. Emin misin?"
         confirmLabel="Evet, sil"
         danger
+        askPin="Arşiv PIN'i"
         onCancel={() => setConfirm(null)}
-        onConfirm={() => {
+        onConfirm={pin => {
           setConfirm(null);
-          if (selectedId) onDelete(selectedId);
+          if (selectedId) onDelete(selectedId, pin);
         }}
       />
       <ConfirmDialog
@@ -277,7 +295,7 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
         onCancel={() => setConfirm(null)}
         onConfirm={() => {
           setConfirm(null);
-          if (draft && selectedId && onSave(selectedId, draft.players, draft.rounds)) setSaving(true);
+          if (draft && selectedId && editPin && onSave(selectedId, draft.players, draft.rounds, editPin)) setSaving(true);
         }}
       />
     </div>

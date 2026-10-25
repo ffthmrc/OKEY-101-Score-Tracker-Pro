@@ -57,6 +57,8 @@ sudo tee /etc/okey101.env >/dev/null <<'EOF'
 PORT=8080
 HOST=127.0.0.1
 DATA_DIR=/home/ubuntu/okey101/data
+# Arşivde düzenleme/silme PIN'i (sadece burada durur, repoya yazma)
+ARCHIVE_PIN=
 # İsteğe bağlı: Gemini analizi için
 GEMINI_API_KEY=
 EOF

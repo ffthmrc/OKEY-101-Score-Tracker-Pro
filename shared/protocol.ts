@@ -17,6 +17,9 @@ export interface RoomView {
   code: string;
   version: number;
   title: string | null;               // masa adı; null ise ekranda bugünün tarihi görünür
+  pinSet: boolean;                    // masa şifresi konmuş mu (şifrenin kendisi gönderilmez)
+  myRequest: string | null;           // bu cihazın onay bekleyen katılma isteği (yazdığı isim)
+  requests: JoinRequestView[];        // onay bekleyen istekler (sadece masadakilere dolu gelir)
   game: GameState;
   occupied: Record<string, boolean>; // playerId -> sandalye dolu mu
   mySeat: string | null;             // bu istemcinin oturduğu playerId
@@ -26,6 +29,12 @@ export interface RoomView {
   viewers: number;                   // bağlı cihaz sayısı
   online: { name: string | null; me: boolean }[]; // bağlı cihazlar: masadaysa oyuncu ismi, değilse null (izleyici)
   ack: number;                       // bu oturumdan işlenen son op seq'i
+}
+
+export interface JoinRequestView {
+  id: string;
+  name: string;
+  target: string; // nereye oturacağı: "KETENCİ sandalyesi", "boş sandalye", "yer yok"
 }
 
 export type GameOp =
@@ -42,7 +51,11 @@ export type RoomOp =
   | { t: 'redo' }
   | { t: 'newGame' }
   | { t: 'closeGame' }
-  | { t: 'join'; name: string }
+  | { t: 'join'; name: string; pin?: string }
+  | { t: 'cancelJoin' }
+  | { t: 'approve'; id: string }
+  | { t: 'reject'; id: string }
+  | { t: 'setPin'; pin: string | null }
   | { t: 'leave' }
   | { t: 'setTitle'; title: string | null }
   | { t: 'vacate'; playerId: string };
@@ -71,8 +84,9 @@ export type ClientMsg =
   | { type: 'ping' }
   | { type: 'archive:list' }
   | { type: 'archive:get'; id: string }
-  | { type: 'archive:update'; id: string; players: Player[]; rounds: RoundScore[] }
-  | { type: 'archive:delete'; id: string };
+  | { type: 'archive:unlock'; pin: string }
+  | { type: 'archive:update'; id: string; players: Player[]; rounds: RoundScore[]; pin: string }
+  | { type: 'archive:delete'; id: string; pin: string };
 
 export type ServerMsg =
   | { type: 'state'; room: RoomView }
@@ -81,4 +95,5 @@ export type ServerMsg =
   | { type: 'archive:list'; items: ArchiveSummary[] }
   | { type: 'archive:game'; game: ArchivedGame }
   | { type: 'archive:saved'; id: string }
-  | { type: 'archive:deleted'; id: string };
+  | { type: 'archive:deleted'; id: string }
+  | { type: 'archive:unlocked' };

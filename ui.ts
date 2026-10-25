@@ -7,3 +7,31 @@ export const scoreTextClass = (v: unknown) =>
 // "25 EKİM 2026" (büyük harf CSS ile; sayfa dili tr olduğu için İ doğru çıkar)
 export const formatDay = (d: Date) =>
   d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+// Katılma isteği bildirim sesi. iPhone ses çalmak için önce bir dokunuş ister: ilk dokunuşta ses birimi hazırlanır.
+let audio: AudioContext | null = null;
+const ensureAudio = () => {
+  try {
+    audio ??= new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    if (audio.state === 'suspended') void audio.resume();
+  } catch { /* ses desteklenmiyor */ }
+};
+if (typeof window !== 'undefined') window.addEventListener('pointerdown', ensureAudio, { passive: true });
+
+export const playChime = () => {
+  ensureAudio();
+  if (!audio) return;
+  const t = audio.currentTime;
+  for (const [i, freq] of [880, 1320].entries()) {
+    const osc = audio.createOscillator();
+    const gain = audio.createGain();
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, t + i * 0.18);
+    gain.gain.exponentialRampToValueAtTime(0.25, t + i * 0.18 + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.18 + 0.3);
+    osc.connect(gain).connect(audio.destination);
+    osc.start(t + i * 0.18);
+    osc.stop(t + i * 0.18 + 0.32);
+  }
+  navigator.vibrate?.(150);
+};

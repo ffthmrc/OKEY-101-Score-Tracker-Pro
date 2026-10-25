@@ -1,11 +1,11 @@
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Player, RoundScore, PlayerStats } from './types';
 import type { CellValue } from './shared/protocol';
 import { parseScoreInput, placesOf, placeEmoji, hasAnyScore, MAX_TITLE_LEN } from './shared/game';
-import { scoreTextClass, formatDay } from './ui';
+import { scoreTextClass, formatDay, playChime } from './ui';
 import { useRoom } from './useRoom';
-import { ConfirmDialog, JoinDialog, NameDialog } from './Dialogs';
+import { ConfirmDialog, JoinDialog, NameDialog, TablePinDialog } from './Dialogs';
 import { ArchivePanel } from './ArchivePanel';
 import { GapPanel } from './GapPanel';
 import { GameCharts } from './GameCharts';
@@ -470,13 +470,42 @@ const STATUS_DOT = { online: 'bg-emerald-400', connecting: 'bg-amber-400 animate
 export default function App() {
   const {
     code, room, game, status, error, sendOp,
-    archiveItems, archiveGame, archiveSavedId, archiveDeletedId, openArchiveGame, saveArchiveGame, deleteArchiveGame,
+    archiveItems, archiveGame, archiveSavedId, archiveDeletedId, archiveUnlockSeq,
+    openArchiveGame, unlockArchive, saveArchiveGame, deleteArchiveGame,
   } = useRoom();
   const [joinOpen, setJoinOpen] = useState(false);
   const [closeConfirm, setCloseConfirm] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showOnline, setShowOnline] = useState(false);
   const [titleOpen, setTitleOpen] = useState(false);
+  const [pinOpen, setPinOpen] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  // Yeni katılma isteği gelince masadakilere ses + titreşim
+  const requestIds = room?.requests.map(r => r.id).join(',') ?? '';
+  const seenRequests = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const ids = requestIds ? requestIds.split(',') : [];
+    if (ids.some(id => !seenRequests.current.has(id))) playChime();
+    seenRequests.current = new Set(ids);
+  }, [requestIds]);
+
+  // Bekleyen isteğim kabul edilmeden düştüyse haber ver
+  const prevRequest = useRef<string | null>(null);
+  const cancelledByMe = useRef(false);
+  useEffect(() => {
+    if (!room) return;
+    if (prevRequest.current && !room.myRequest && !room.mySeat && !cancelledByMe.current) {
+      setNotice('Katılma isteğin onaylanmadı');
+    }
+    if (!room.myRequest) cancelledByMe.current = false;
+    prevRequest.current = room.myRequest;
+  }, [room?.myRequest, room?.mySeat]);
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(null), 3500);
+    return () => clearTimeout(t);
+  }, [notice]);
 
   const actions = useMemo<GameActions>(() => ({
     setScore: (round, playerId, value) => sendOp({ t: 'setScore', round, playerId, value }),
@@ -528,16 +557,32 @@ export default function App() {
         <span className="tracking-wide truncate max-w-[45vw]">{tableTitle}</span>
       )}
       <button onClick={copyLink} className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20" title="Linki kopyala">{copied ? '✓' : '🔗'}</button>
+      {canEdit && (
+        <button onClick={() => setPinOpen(true)} className="px-1.5 py-0.5 rounded hover:bg-white/10" title={room.pinSet ? 'Masa şifresi var' : 'Masa şifresi koy'}>{room.pinSet ? '🔒' : '🔓'}</button>
+      )}
       <button onClick={() => setShowOnline(v => !v)} className="px-1.5 py-0.5 rounded text-white/60 hover:bg-white/10" title="Kim bağlı?" aria-expanded={showOnline}>👁 {room.viewers}</button>
       <div className="ml-auto flex items-center gap-1.5">
         {room.mySeat ? (
           <button onClick={() => sendOp({ t: 'leave' })} className="px-2 h-6 md:h-7 rounded bg-white/10 hover:bg-white/20">Ayrıl</button>
+        ) : room.myRequest ? (
+          <button onClick={() => { cancelledByMe.current = true; sendOp({ t: 'cancelJoin' }); }} className="px-2 h-6 md:h-7 rounded bg-amber-400/20 text-amber-200 animate-pulse" title="İptal etmek için dokun">Onay bekleniyor…</button>
         ) : (
           <button onClick={() => setJoinOpen(true)} className="px-2.5 h-6 md:h-7 rounded bg-indigo-500 hover:bg-indigo-400 shadow">Katıl</button>
         )}
         <button onClick={() => setCloseConfirm(true)} disabled={!canEdit || !hasScore} className="px-2 h-6 md:h-7 rounded bg-amber-500 hover:bg-amber-400 text-slate-900 disabled:opacity-30">Oyunu kapat</button>
       </div>
     </div>
+    {room.requests.length > 0 && (
+      <div className="bg-amber-50 border-b border-amber-200 px-3 py-2 flex flex-col gap-1.5 shrink-0">
+        {room.requests.map(r => (
+          <div key={r.id} className="flex items-center gap-2 text-[11px] md:text-xs font-black text-amber-900">
+            <span className="flex-1 min-w-0 leading-tight"><span className="uppercase">🔔 {r.name} katılmak istiyor</span><br /><span className="font-bold text-amber-700">{r.target}</span></span>
+            <button onClick={() => sendOp({ t: 'reject', id: r.id })} className="h-7 px-2 rounded-md border border-amber-300 bg-white text-amber-800 uppercase">Reddet</button>
+            <button onClick={() => sendOp({ t: 'approve', id: r.id })} className="h-7 px-2 rounded-md bg-emerald-600 text-white uppercase shadow">Onayla</button>
+          </div>
+        ))}
+      </div>
+    )}
     {showOnline && (
       <div className="bg-slate-800 text-white px-3 py-2 text-[10px] md:text-xs font-black uppercase tracking-tight shrink-0 flex flex-wrap gap-1.5" onClick={() => setShowOnline(false)}>
         {room.online.map((o, i) => (
@@ -570,8 +615,8 @@ export default function App() {
         roomBar={roomBar}
         archive={
           <ArchivePanel
-            items={archiveItems} game={archiveGame} savedId={archiveSavedId} deletedId={archiveDeletedId} canEdit={canEdit}
-            onOpen={openArchiveGame} onSave={saveArchiveGame} onDelete={deleteArchiveGame}
+            items={archiveItems} game={archiveGame} savedId={archiveSavedId} deletedId={archiveDeletedId} unlockSeq={archiveUnlockSeq}
+            onOpen={openArchiveGame} onUnlock={unlockArchive} onSave={saveArchiveGame} onDelete={deleteArchiveGame}
           />
         }
       />
@@ -588,8 +633,15 @@ export default function App() {
       />
       <JoinDialog
         open={joinOpen}
+        needPin={room.pinSet}
         onCancel={() => setJoinOpen(false)}
-        onJoin={name => { sendOp({ t: 'join', name }); setJoinOpen(false); }}
+        onJoin={(name, pin) => { sendOp({ t: 'join', name, pin }); setJoinOpen(false); }}
+      />
+      <TablePinDialog
+        open={pinOpen}
+        pinSet={room.pinSet}
+        onCancel={() => setPinOpen(false)}
+        onSave={pin => { sendOp({ t: 'setPin', pin }); setPinOpen(false); }}
       />
       <ConfirmDialog
         open={closeConfirm}
@@ -600,6 +652,9 @@ export default function App() {
         onCancel={() => setCloseConfirm(false)}
         onConfirm={() => { sendOp({ t: 'closeGame' }); setCloseConfirm(false); }}
       />
+      {notice && !error && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[300] bg-slate-800 text-white text-xs font-black px-4 py-2 rounded-full shadow-xl">{notice}</div>
+      )}
       {error && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[300] bg-red-600 text-white text-xs font-black px-4 py-2 rounded-full shadow-xl">{error}</div>
       )}
