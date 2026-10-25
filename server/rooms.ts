@@ -176,8 +176,16 @@ export class Room {
     return { ok: false, error: 'Bilinmeyen işlem' };
   }
 
-  view(clientId: string, ack: number, viewers: number): RoomView {
+  // onlineClientIds: odaya bağlı cihazlar (aynı cihazın birden çok sekmesi tek sayılır)
+  view(clientId: string, ack: number, onlineClientIds: string[]): RoomView {
     const { code, game, seats } = this.data;
+    const unique = [...new Set(onlineClientIds)];
+    const online = unique
+      .map(id => {
+        const seat = this.seatOf(id);
+        return { name: seat ? game.players.find(p => p.id === seat)?.name ?? null : null, me: id === clientId };
+      })
+      .sort((a, b) => Number(b.me) - Number(a.me) || Number(b.name !== null) - Number(a.name !== null));
     return {
       code,
       version: this.version,
@@ -187,7 +195,8 @@ export class Room {
       isAdmin: this.isAdmin(clientId),
       canUndo: this.index > 0,
       canRedo: this.index < this.history.length - 1,
-      viewers,
+      viewers: unique.length,
+      online,
       ack,
     };
   }

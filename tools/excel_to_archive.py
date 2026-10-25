@@ -4,10 +4,10 @@ import sys, re, json, datetime, openpyxl
 sys.stdout.reconfigure(encoding='utf-8')
 MONTHS = {'ocak':1,'şubat':2,'subat':2,'mart':3,'nisan':4,'mayıs':5,'mayis':5,'may':5,'haziran':6,'june':6,'temmuz':7,
           'ağustos':8,'agustos':8,'eylül':9,'eylul':9,'ekim':10,'kasım':11,'kasim':11,'aralık':12,'aralik':12}
-NAME_FIX = {'Yucer': 'Yücer', 'M.Ketenci': 'Ketenci', 'Mehmet Y': 'Mehmet', 'Sbn': 'Şaban', 'Saban': 'Şaban', 'Omer Faruk': 'Ömer'}
+NAME_FIX = {'Yucer': 'Yücer', 'M.Ketenci': 'Ketenci', 'Mehmet Y': 'Yücer', 'Mehmet': 'Yücer', 'Sbn': 'Şaban', 'Saban': 'Şaban', 'Omer Faruk': 'Ömer'}
 COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#14b8a6', '#84cc16']
 # Kalıcı kişi renkleri: aynı kişi her oyunda aynı renkte
-PERSON_ORDER = ['Ketenci', 'Zeki', 'Fatih', 'Hasan', 'İsmail', 'Yücer', 'Ömer', 'Murat', 'Ahmet', 'Mehmet', 'Şaban', 'Mecit', 'Ali']
+PERSON_ORDER = ['Ketenci', 'Zeki', 'Fatih', 'Hasan', 'İsmail', 'Yücer', 'Ömer', 'Murat', 'Ahmet', 'Şaban', 'Mecit', 'Ali']
 
 def parse_date(title):
     d, mon, y = re.search(r'(\d{1,2})\s+(\S+)\s+(\d{4})', title).groups()

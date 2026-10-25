@@ -78,7 +78,7 @@ test('oyunu kapat skoru arşive verir ve yeni boş oyun açar, isimler kalır', 
   assert.equal(res.archived.rounds[0].scores.p2, -101);
   assert.equal(room.data.game.rounds[0].scores.p2, null);
   assert.equal(room.data.game.players[0].name, 'ALI');
-  assert.equal(room.view('a', 0, 1).canUndo, false);
+  assert.equal(room.view('a', 0, ['a']).canUndo, false);
 });
 
 test('geçersiz skor ve uzun isim reddedilir/kırpılır', () => {
@@ -88,4 +88,12 @@ test('geçersiz skor ve uzun isim reddedilir/kırpılır', () => {
   assert.equal(room.apply('a', { t: 'setScore', round: 0, playerId: 'p1', value: 1.5 as any }).ok, false);
   assert.equal(room.apply('a', { t: 'setScore', round: 99, playerId: 'p1', value: 1 }).ok, false);
   assert.equal(room.apply('a', { t: 'setScore', round: 0, playerId: 'p1', value: '-' }).ok, true);
+});
+
+test('bağlı cihaz listesi: masadakiler isimle, izleyiciler isimsiz, aynı cihaz tek sayılır', () => {
+  const room = setup();
+  room.apply('a', { t: 'join', name: 'Fatih' });
+  const v = room.view('x', 0, ['x', 'a', 'y', 'a']);
+  assert.equal(v.viewers, 3);
+  assert.deepEqual(v.online, [{ name: null, me: true }, { name: 'Fatih', me: false }, { name: null, me: false }]);
 });

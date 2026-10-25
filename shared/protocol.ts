@@ -23,6 +23,7 @@ export interface RoomView {
   canUndo: boolean;
   canRedo: boolean;
   viewers: number;                   // bağlı cihaz sayısı
+  online: { name: string | null; me: boolean }[]; // bağlı cihazlar: masadaysa oyuncu ismi, değilse null (izleyici)
   ack: number;                       // bu oturumdan işlenen son op seq'i
 }
 

@@ -475,6 +475,7 @@ export default function App() {
   const [joinOpen, setJoinOpen] = useState(false);
   const [closeConfirm, setCloseConfirm] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showOnline, setShowOnline] = useState(false);
 
   const actions = useMemo<GameActions>(() => ({
     setScore: (round, playerId, value) => sendOp({ t: 'setScore', round, playerId, value }),
@@ -515,12 +516,13 @@ export default function App() {
   const hasScore = game.rounds.some(r => Object.values(r.scores).some(v => typeof v === 'number'));
 
   const roomBar = (
+    <>
     <div className="bg-slate-900 text-white px-3 h-9 md:h-10 flex items-center gap-2 text-[9px] md:text-[10px] font-black uppercase tracking-tight shrink-0">
       <span className={`h-2 w-2 rounded-full shrink-0 ${STATUS_DOT[status]}`} title={STATUS_LABEL[status]} />
       <span className={status === 'online' ? 'hidden sm:inline text-white/60' : 'text-amber-300'}>{STATUS_LABEL[status]}</span>
       <span className="tracking-wide">{formatDay(new Date())}</span>
       <button onClick={copyLink} className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20" title="Linki kopyala">{copied ? '✓' : '🔗'}</button>
-      <span className="text-white/40" title="Bağlı cihaz">👁 {room.viewers}</span>
+      <button onClick={() => setShowOnline(v => !v)} className="px-1.5 py-0.5 rounded text-white/60 hover:bg-white/10" title="Kim bağlı?" aria-expanded={showOnline}>👁 {room.viewers}</button>
       <div className="ml-auto flex items-center gap-1.5">
         {room.mySeat ? (
           <button onClick={() => sendOp({ t: 'leave' })} className="px-2 h-6 md:h-7 rounded bg-white/10 hover:bg-white/20">Ayrıl</button>
@@ -530,6 +532,16 @@ export default function App() {
         <button onClick={() => setCloseConfirm(true)} disabled={!canEdit || !hasScore} className="px-2 h-6 md:h-7 rounded bg-amber-500 hover:bg-amber-400 text-slate-900 disabled:opacity-30">Oyunu kapat</button>
       </div>
     </div>
+    {showOnline && (
+      <div className="bg-slate-800 text-white px-3 py-2 text-[10px] md:text-xs font-black uppercase tracking-tight shrink-0 flex flex-wrap gap-1.5" onClick={() => setShowOnline(false)}>
+        {room.online.map((o, i) => (
+          <span key={i} className={`px-2 py-1 rounded ${o.name ? 'bg-emerald-500/20 text-emerald-200' : 'bg-white/10 text-white/60'}`}>
+            {o.name ?? 'İzleyici'}{o.name ? ' · masada' : ''}{o.me ? ' (sen)' : ''}
+          </span>
+        ))}
+      </div>
+    )}
+    </>
   );
 
   return (

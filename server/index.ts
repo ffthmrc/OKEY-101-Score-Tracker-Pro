@@ -83,12 +83,14 @@ const send = (ws: WebSocket, msg: ServerMsg) => {
   if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
 };
 
-const sendState = (c: Conn, viewers: number) =>
-  send(c.ws, { type: 'state', room: c.room.view(c.clientId, lastSeq.get(c.sid)?.seq ?? 0, viewers) });
+const onlineIds = (room: Room) => [...(roomConns.get(room.data.code) ?? [])].map(c => c.clientId);
+
+const sendState = (c: Conn) =>
+  send(c.ws, { type: 'state', room: c.room.view(c.clientId, lastSeq.get(c.sid)?.seq ?? 0, onlineIds(c.room)) });
 
 const broadcastRoom = (room: Room) => {
   const set = roomConns.get(room.data.code);
-  if (set) for (const c of set) sendState(c, set.size);
+  if (set) for (const c of set) sendState(c);
 };
 
 const summaries = (): ArchiveSummary[] =>
@@ -158,7 +160,7 @@ wss.on('connection', ws => {
         const prev = lastSeq.get(conn.sid)?.seq ?? 0;
         if (!Number.isInteger(msg.seq) || msg.seq <= prev) {
           // Yeniden bağlanınca tekrar gönderilmiş, zaten işlenmiş op
-          return sendState(conn, roomConns.get(room.data.code)?.size ?? 1);
+          return sendState(conn);
         }
         lastSeq.set(conn.sid, { seq: msg.seq, at: now });
         const result = msg.op && typeof msg.op === 'object'
@@ -166,7 +168,7 @@ wss.on('connection', ws => {
           : { ok: false as const, error: 'Geçersiz işlem' };
         if (result.ok === false) {
           send(ws, { type: 'error', message: result.error, seq: msg.seq });
-          return sendState(conn, roomConns.get(room.data.code)?.size ?? 1);
+          return sendState(conn);
         }
         store.saveRoom(room.data);
         if (result.archived) {
