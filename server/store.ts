@@ -11,12 +11,14 @@ const ROOM_TTL_DAYS = 90;
 export class JsonStore {
   private roomsDir: string;
   private archivePath: string;
+  private trashPath: string;
   private timers = new Map<string, NodeJS.Timeout>();
   private pending = new Map<string, () => unknown>();
 
   constructor(dataDir: string) {
     this.roomsDir = path.join(dataDir, 'rooms');
     this.archivePath = path.join(dataDir, 'archive.json');
+    this.trashPath = path.join(dataDir, 'archive-deleted.json'); // arşivden silinenler (geri alınabilir)
     fs.mkdirSync(this.roomsDir, { recursive: true });
   }
 
@@ -50,6 +52,15 @@ export class JsonStore {
 
   saveArchive(games: ArchivedGame[]) {
     this.schedule('archive', () => this.writeAtomic(this.archivePath, games));
+  }
+
+  loadTrash(): (ArchivedGame & { deletedAt: string })[] {
+    if (!fs.existsSync(this.trashPath)) return [];
+    return JSON.parse(fs.readFileSync(this.trashPath, 'utf8'));
+  }
+
+  saveTrash(games: (ArchivedGame & { deletedAt: string })[]) {
+    this.schedule('trash', () => this.writeAtomic(this.trashPath, games));
   }
 
   // Kapanışta bekleyen tüm yazmaları hemen yapar

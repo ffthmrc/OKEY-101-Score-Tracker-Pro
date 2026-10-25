@@ -272,8 +272,9 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
 
       {table && (
         <>
-          <GameCharts players={table.players} rounds={table.rounds} idPrefix="arsiv" />
+          <GameCharts players={table.players} rounds={table.rounds} idPrefix="arsiv" show="ranking" />
           <GapPanel players={table.players} rounds={table.rounds} embedded />
+          <GameCharts players={table.players} rounds={table.rounds} idPrefix="arsiv" show="trend" />
         </>
       )}
 

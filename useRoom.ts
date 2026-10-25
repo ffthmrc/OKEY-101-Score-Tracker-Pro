@@ -23,7 +23,11 @@ export function useRoom() {
   const [archiveSavedId, setArchiveSavedId] = useState<string | null>(null);
   const [archiveDeletedId, setArchiveDeletedId] = useState<string | null>(null);
   const [archiveUnlockSeq, setArchiveUnlockSeq] = useState(0);
+  // Az önce silinen oyun: 20 sn boyunca "Geri al" ile geri getirilebilir
+  const [lastDeleted, setLastDeleted] = useState<{ id: string; pin: string } | null>(null);
+  const deletePinRef = useRef<{ id: string; pin: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const clientRef = useRef<SyncClient | null>(null);
   const pendingRef = useRef<PendingOp[]>([]);
@@ -61,6 +65,11 @@ export function useRoom() {
             break;
           case 'archive:deleted':
             setArchiveDeletedId(msg.id);
+            if (deletePinRef.current?.id === msg.id) setLastDeleted(deletePinRef.current);
+            break;
+          case 'archive:restored':
+            setLastDeleted(null);
+            setNotice('Oyun arşive geri alındı');
             break;
           case 'archive:unlocked':
             setArchiveUnlockSeq(n => n + 1);
@@ -78,6 +87,12 @@ export function useRoom() {
     const timer = setTimeout(() => setError(null), 3500);
     return () => clearTimeout(timer);
   }, [error]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), 3500);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   const sendOp = useCallback((op: RoomOp) => {
     const seq = ++seqRef.current;
@@ -112,8 +127,20 @@ export function useRoom() {
     return sent;
   }, []);
 
+  useEffect(() => {
+    if (!lastDeleted) return;
+    const t = setTimeout(() => setLastDeleted(null), 20_000);
+    return () => clearTimeout(t);
+  }, [lastDeleted]);
+
+  const undoDelete = useCallback(() => {
+    if (!lastDeleted) return;
+    if (!clientRef.current?.send({ type: 'archive:restore', id: lastDeleted.id, pin: lastDeleted.pin })) setError('Bağlantı yok');
+  }, [lastDeleted]);
+
   const deleteArchiveGame = useCallback((id: string, pin: string): boolean => {
     setArchiveDeletedId(null);
+    deletePinRef.current = { id, pin };
     const sent = clientRef.current?.send({ type: 'archive:delete', id, pin }) ?? false;
     if (!sent) setError('Bağlantı yok, silinemedi');
     return sent;
@@ -123,5 +150,6 @@ export function useRoom() {
     code, room, game, status, error, sendOp,
     archiveItems, archiveGame, archiveSavedId, archiveDeletedId, archiveUnlockSeq,
     openArchiveGame, unlockArchive, saveArchiveGame, deleteArchiveGame,
+    lastDeleted, undoDelete, notice,
   };
 }

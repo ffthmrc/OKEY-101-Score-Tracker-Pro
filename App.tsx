@@ -472,6 +472,7 @@ export default function App() {
     code, room, game, status, error, sendOp,
     archiveItems, archiveGame, archiveSavedId, archiveDeletedId, archiveUnlockSeq,
     openArchiveGame, unlockArchive, saveArchiveGame, deleteArchiveGame,
+    lastDeleted, undoDelete, notice: roomNotice,
   } = useRoom();
   const [joinOpen, setJoinOpen] = useState(false);
   const [closeConfirm, setCloseConfirm] = useState(false);
@@ -652,6 +653,15 @@ export default function App() {
         onCancel={() => setCloseConfirm(false)}
         onConfirm={() => { sendOp({ t: 'closeGame' }); setCloseConfirm(false); }}
       />
+      {lastDeleted && !error && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[300] bg-slate-900 text-white text-xs font-black pl-4 pr-1.5 py-1.5 rounded-full shadow-xl flex items-center gap-3 whitespace-nowrap">
+          Oyun silindi
+          <button onClick={undoDelete} className="h-8 px-3 rounded-full bg-amber-400 text-slate-900 uppercase">Geri al</button>
+        </div>
+      )}
+      {roomNotice && !lastDeleted && !error && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[300] bg-emerald-600 text-white text-xs font-black px-4 py-2 rounded-full shadow-xl">{roomNotice}</div>
+      )}
       {notice && !error && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[300] bg-slate-800 text-white text-xs font-black px-4 py-2 rounded-full shadow-xl">{notice}</div>
       )}

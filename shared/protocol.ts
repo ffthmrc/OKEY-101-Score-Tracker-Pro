@@ -86,7 +86,8 @@ export type ClientMsg =
   | { type: 'archive:get'; id: string }
   | { type: 'archive:unlock'; pin: string }
   | { type: 'archive:update'; id: string; players: Player[]; rounds: RoundScore[]; pin: string }
-  | { type: 'archive:delete'; id: string; pin: string };
+  | { type: 'archive:delete'; id: string; pin: string }
+  | { type: 'archive:restore'; id: string; pin: string };
 
 export type ServerMsg =
   | { type: 'state'; room: RoomView }
@@ -96,4 +97,5 @@ export type ServerMsg =
   | { type: 'archive:game'; game: ArchivedGame }
   | { type: 'archive:saved'; id: string }
   | { type: 'archive:deleted'; id: string }
-  | { type: 'archive:unlocked' };
+  | { type: 'archive:unlocked' }
+  | { type: 'archive:restored'; id: string };

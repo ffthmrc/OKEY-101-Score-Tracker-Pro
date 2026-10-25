@@ -7,7 +7,8 @@ import type { Player, RoundScore } from './types';
 import { placesOf, placeEmoji, hasAnyScore } from './shared/game';
 
 // RANKING tablosu + Performance Trend grafiği. Canlı oyunun charts sekmesi ve arşivdeki oyun detayı aynı parçayı kullanır.
-export const GameCharts: React.FC<{ players: Player[]; rounds: RoundScore[]; idPrefix?: string }> = ({ players, rounds, idPrefix = 'c' }) => {
+// show: 'ranking' sadece RANKING tablosu, 'trend' sadece grafik (arşivde grafik en altta durur)
+export const GameCharts: React.FC<{ players: Player[]; rounds: RoundScore[]; idPrefix?: string; show?: 'both' | 'ranking' | 'trend' }> = ({ players, rounds, idPrefix = 'c', show = 'both' }) => {
   const started = hasAnyScore(rounds);
   const finalPlaces = useMemo(() => placesOf(players, rounds), [players, rounds]);
 
@@ -41,6 +42,7 @@ export const GameCharts: React.FC<{ players: Player[]; rounds: RoundScore[]; idP
 
   return (
     <>
+      {show !== 'trend' && (
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm shrink-0">
         <div className="bg-slate-50 border-b border-slate-200 py-1.5 px-4 text-center">
           <h2 className="text-xs font-black text-slate-800 uppercase tracking-[0.2em]">RANKING</h2>
@@ -104,7 +106,9 @@ export const GameCharts: React.FC<{ players: Player[]; rounds: RoundScore[]; idP
           </table>
         </div>
       </div>
+      )}
 
+      {show !== 'ranking' && (
       <div className="bg-slate-50/30 rounded-2xl p-4 border border-slate-100 shadow-inner h-[220px] md:h-[300px] shrink-0">
         <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Performance Trend</h2>
         <ResponsiveContainer width="100%" height="90%">
@@ -118,6 +122,7 @@ export const GameCharts: React.FC<{ players: Player[]; rounds: RoundScore[]; idP
           </AreaChart>
         </ResponsiveContainer>
       </div>
+      )}
     </>
   );
 };

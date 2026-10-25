@@ -19,6 +19,7 @@ const HOST = process.env.HOST ?? '127.0.0.1';
 const store = new JsonStore(DATA_DIR);
 const rooms = new Map(store.loadRooms().map(d => [d.code, new Room(d)]));
 const archive = store.loadArchive();
+const trash = store.loadTrash(); // silinen oyunlar kalıcı olarak yok edilmez, geri alınabilir
 console.log(`${rooms.size} oda, ${archive.length} arşiv kaydı yüklendi (${DATA_DIR})`);
 
 // --- HTTP ---
@@ -224,8 +225,23 @@ wss.on('connection', ws => {
         if (idx === -1) return send(ws, { type: 'error', message: 'Arşiv kaydı bulunamadı' });
         const [removed] = archive.splice(idx, 1);
         console.log(`Arşivden silindi: ${removed.id} (${removed.players.map(p => p.name).join(', ')})`);
+        trash.push({ ...removed, deletedAt: new Date(now).toISOString() });
         store.saveArchive(archive);
+        store.saveTrash(trash);
         send(ws, { type: 'archive:deleted', id: removed.id });
+        return broadcastArchive();
+      }
+      case 'archive:restore': {
+        const pinErr = checkArchivePin(conn.clientId, msg.pin, now);
+        if (pinErr) return send(ws, { type: 'error', message: pinErr });
+        const idx = trash.findIndex(g => g.id === msg.id);
+        if (idx === -1) return send(ws, { type: 'error', message: 'Silinen oyun bulunamadı' });
+        const [{ deletedAt: _deletedAt, ...game }] = trash.splice(idx, 1);
+        if (!archive.some(g => g.id === game.id)) archive.push(game);
+        console.log(`Arşive geri alındı: ${game.id}`);
+        store.saveArchive(archive);
+        store.saveTrash(trash);
+        send(ws, { type: 'archive:restored', id: game.id });
         return broadcastArchive();
       }
     }
