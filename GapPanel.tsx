@@ -5,7 +5,8 @@ import { standings, placesOf, placeEmoji, hasAnyScore } from './shared/game';
 // Excel'deki "Fark?" tablosunun uygulama karşılığı: puan girildikçe sıra ve farklar canlı değişir.
 // Excel'den farkı: eşit toplamda iki kişi de görünür (Excel'de biri kayboluyor, bir satır #N/A oluyordu).
 
-export const GapPanel: React.FC<{ players: Player[]; rounds: RoundScore[] }> = ({ players, rounds }) => {
+// embedded: arşiv detayında sayfanın içinde (kendi kaydırması olmadan) gösterilir
+export const GapPanel: React.FC<{ players: Player[]; rounds: RoundScore[]; embedded?: boolean }> = ({ players, rounds, embedded }) => {
   const rows = useMemo(() => standings(players, rounds), [players, rounds]);
   const places = useMemo(() => placesOf(players, rounds), [players, rounds]);
   const waiting = players.filter(p => places[p.id] === null);
@@ -19,7 +20,7 @@ export const GapPanel: React.FC<{ players: Player[]; rounds: RoundScore[] }> = (
   const badge = (place: number) => placeEmoji(place, places);
 
   return (
-    <div className="p-2 md:p-4 flex-1 overflow-auto custom-scrollbar space-y-3">
+    <div className={embedded ? 'space-y-3 shrink-0' : 'p-2 md:p-4 flex-1 overflow-auto custom-scrollbar space-y-3'}>
       {/* Sıralama: lidere ve bir üsttekine fark */}
       <div className="bg-white border border-slate-100 rounded-xl shadow-sm overflow-hidden">
         <div className="bg-slate-50 border-b border-slate-200 py-1.5 px-3 flex items-center justify-between">

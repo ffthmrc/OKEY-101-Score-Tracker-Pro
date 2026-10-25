@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { ArchivedGame, ArchiveSummary } from './shared/protocol';
 import type { Player, RoundScore } from './types';
-import { parseScoreInput, totalOf, placesFromTotals, placeEmoji, MAX_NAME_LEN, MAX_ROUNDS } from './shared/game';
+import { parseScoreInput, totalOf, placesFromTotals, placesOf, placeEmoji, hasAnyScore, MAX_NAME_LEN, MAX_ROUNDS } from './shared/game';
+import { GapPanel } from './GapPanel';
 import { scoreTextClass } from './ui';
 import { buildReportCards, personKey } from './shared/stats';
 import { GameCharts } from './GameCharts';
@@ -253,13 +254,27 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
                   <td key={p.id} className="py-1 md:py-2.5 text-center text-[11px] md:text-xl font-black">{totalOf(table.rounds, p.id)}</td>
                 ))}
               </tr>
+              {hasAnyScore(table.rounds) && (() => {
+                const places = placesOf(table.players, table.rounds);
+                return (
+                  <tr className="bg-slate-800">
+                    <td className="py-1 md:py-2 px-2 text-[8px] md:text-[10px] font-black uppercase tracking-widest">SCR</td>
+                    {table.players.map(p => (
+                      <td key={p.id} className="py-1 md:py-2 text-center text-sm md:text-xl leading-none">{placeEmoji(places[p.id], places)}</td>
+                    ))}
+                  </tr>
+                );
+              })()}
             </tfoot>
           </table>
         </div>
       )}
 
       {table && (
-        <GameCharts players={table.players} rounds={table.rounds} idPrefix="arsiv" />
+        <>
+          <GameCharts players={table.players} rounds={table.rounds} idPrefix="arsiv" />
+          <GapPanel players={table.players} rounds={table.rounds} embedded />
+        </>
       )}
 
       <ConfirmDialog

@@ -186,3 +186,17 @@ test('masa şifresi: yanlışta istek açılmaz, 5 yanlıştan sonra kilit, doğ
   room.apply('fatih', { t: 'setPin', pin: null });
   assert.equal(room.view('x', 0, []).pinSet, false);
 });
+
+test('silinen oyuncunun sandalyesindeki cihaz yetkisini kaybeder', () => {
+  const room = setup();
+  room.apply('fatih', { t: 'join', name: 'Fatih' }, 0, ['fatih']);
+  for (const [i, n] of ['Ketenci', 'Zeki', 'Hasan'].entries()) room.apply('fatih', { t: 'setName', playerId: `p${i + 2}`, name: n });
+  room.apply('fatih', { t: 'addPlayer' }, 5000);
+  room.apply('pc', { t: 'join', name: 'Zekeriya' }, 0, ['fatih', 'pc']);
+  room.apply('fatih', { t: 'approve', id: room.view('fatih', 0, []).requests[0].id });
+  assert.equal(room.seatOf('pc'), 'p-5000');
+  room.apply('fatih', { t: 'removePlayer', playerId: 'p-5000' });
+  assert.equal(room.seatOf('pc'), null);
+  assert.equal(room.view('pc', 0, []).mySeat, null);
+  assert.equal(room.apply('pc', { t: 'addPlayer' }).ok, false);
+});
