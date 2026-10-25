@@ -3,7 +3,8 @@ import type { ArchivedGame, ArchiveSummary } from './shared/protocol';
 import type { Player, RoundScore } from './types';
 import { parseScoreInput, totalOf, placesFromTotals, placeEmoji, MAX_NAME_LEN, MAX_ROUNDS } from './shared/game';
 import { scoreTextClass } from './ui';
-import { buildReportCards } from './shared/stats';
+import { buildReportCards, personKey } from './shared/stats';
+import { GameCharts } from './GameCharts';
 import { ConfirmDialog } from './Dialogs';
 
 // Excel'den aktarılan oyunların saati bilinmez (roomCode 'EXCEL'), sadece tarih gösterilir
@@ -29,7 +30,13 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
   const [confirm, setConfirm] = useState<'edit' | 'save' | 'delete' | null>(null);
   const [saving, setSaving] = useState(false);
   const [view, setView] = useState<'games' | 'cards'>('games');
+  // Karnede bir oyuncuya dokununca Oyunlar listesi o oyuncunun oyunlarına süzülür
+  const [filter, setFilter] = useState<{ key: string; name: string } | null>(null);
   const cards = useMemo(() => buildReportCards(items), [items]);
+  const shownItems = useMemo(
+    () => (filter ? items.filter(i => i.players.some(p => personKey(p.name) === filter.key)) : items),
+    [items, filter]
+  );
   // 5. ve sonrası sadece 5+ kişilik oyun varsa sütun olarak görünür
   const placeCols = Math.max(4, ...cards.map(c => c.places.length));
 
@@ -77,12 +84,20 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {cards.map(c => (
-                  <tr key={c.name} className="text-[11px] md:text-sm font-black text-slate-700">
+                  <tr
+                    key={c.name}
+                    role="button"
+                    tabIndex={0}
+                    title={`${c.name} oyunlarını göster`}
+                    onClick={() => { setFilter({ key: personKey(c.name), name: c.name }); setView('games'); }}
+                    onKeyDown={e => { if (e.key === 'Enter') { setFilter({ key: personKey(c.name), name: c.name }); setView('games'); } }}
+                    className="text-[11px] md:text-sm font-black text-slate-700 cursor-pointer hover:bg-indigo-50/60 active:bg-indigo-50"
+                  >
                     <td className="py-1.5 pl-2 text-left">
                       <div className="flex items-center gap-1.5">
                         <span className="h-2.5 w-1 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
                         <div className="min-w-0">
-                          <div className="uppercase truncate tracking-tight">{c.name}</div>
+                          <div className="uppercase truncate tracking-tight">{c.name} <span className="text-slate-300">›</span></div>
                           <div className="text-[8px] md:text-[10px] font-bold text-slate-300">ort. {c.avgPlace.toFixed(2)}</div>
                         </div>
                       </div>
@@ -98,10 +113,21 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
             {cards.length === 0 && <div className="py-8 text-center text-slate-300 text-xs font-bold uppercase italic">Arşivde oyun yok</div>}
           </div>
         )}
-        {view === 'games' && items.length === 0 && (
+        {view === 'cards' && cards.length > 0 && (
+          <p className="text-[10px] md:text-xs font-bold text-slate-400 text-center">Oyuncuya dokun: hangi oyunlardan oluştuğunu gör.</p>
+        )}
+        {view === 'games' && filter && (
+          <div className="flex items-center justify-between gap-2 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
+            <span className="text-[11px] md:text-xs font-black uppercase tracking-tight text-indigo-700 truncate">
+              {filter.name} oyunları · {shownItems.length}
+            </span>
+            <button onClick={() => setFilter(null)} className="shrink-0 h-7 px-2 rounded-md bg-white border border-indigo-200 text-indigo-600 text-[10px] font-black uppercase">✕ Tümü</button>
+          </div>
+        )}
+        {view === 'games' && shownItems.length === 0 && (
           <div className="h-full flex items-center justify-center text-slate-300 text-xs font-bold uppercase italic">Arşivde oyun yok</div>
         )}
-        {view === 'games' && items.map(item => {
+        {view === 'games' && shownItems.map(item => {
           const sorted = [...item.players].sort((a, b) => a.total - b.total);
           const places = placesFromTotals(item.players);
           return (
@@ -112,7 +138,7 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
               </div>
               <div className={`grid gap-1 ${item.players.length <= 4 ? 'grid-cols-4' : 'grid-cols-3'}`}>
                 {sorted.map(p => (
-                  <div key={p.id} className="rounded-md bg-slate-50 px-1 py-1 text-center border-b-2" style={{ borderColor: p.color }}>
+                  <div key={p.id} className={`rounded-md px-1 py-1 text-center border-b-2 ${filter && personKey(p.name) === filter.key ? 'bg-indigo-100 ring-1 ring-indigo-300' : 'bg-slate-50'}`} style={{ borderColor: p.color }}>
                     <div className="text-[9px] md:text-[11px] font-black uppercase truncate text-slate-700">{placeEmoji(places[p.id], places)} {p.name}</div>
                     <div className="text-[11px] md:text-sm font-black text-slate-500">{p.total}</div>
                   </div>
@@ -152,8 +178,8 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
   };
 
   return (
-    <div className="p-1.5 md:p-3 flex flex-col flex-1 overflow-hidden">
-      <div className="flex items-center justify-between mb-1 px-1 shrink-0 gap-2">
+    <div className="p-1.5 md:p-3 flex flex-col flex-1 gap-3 overflow-auto custom-scrollbar">
+      <div className="flex items-center justify-between px-1 shrink-0 gap-2">
         <button onClick={() => { setSelectedId(null); setDraft(null); }} className="text-[10px] md:text-xs font-black text-indigo-600 uppercase">‹ Arşiv</button>
         <span className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-tight truncate">{loaded ? formatDate(loaded.closedAt, loaded.roomCode) : ''}</span>
         <div className="flex items-center gap-1">
@@ -180,9 +206,9 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
       {!table ? (
         <div className="flex-1 flex items-center justify-center text-slate-300 text-xs font-bold uppercase">Yükleniyor…</div>
       ) : (
-        <div className="overflow-auto rounded-lg border border-slate-100 flex-1 bg-white">
+        <div className="overflow-x-auto rounded-lg border border-slate-100 bg-white shrink-0">
           <table className="w-full text-left border-collapse min-w-[280px]">
-            <thead className="sticky top-0 z-20 bg-slate-50 shadow-sm">
+            <thead className="bg-slate-50 shadow-sm">
               <tr className="border-b border-slate-100">
                 <th className="py-1 md:py-2.5 px-2 text-[8px] md:text-[10px] font-black text-slate-400 uppercase w-10 md:w-20 tracking-tighter">Rnd</th>
                 {table.players.map(p => (
@@ -204,7 +230,7 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
                 </tr>
               ))}
             </tbody>
-            <tfoot className="sticky bottom-0 bg-slate-900 text-white z-20 shadow-lg">
+            <tfoot className="bg-slate-900 text-white">
               <tr>
                 <td className="py-1 md:py-2.5 px-2 text-[8px] md:text-[10px] font-black uppercase tracking-widest">Total</td>
                 {table.players.map(p => (
@@ -214,6 +240,10 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
             </tfoot>
           </table>
         </div>
+      )}
+
+      {table && (
+        <GameCharts players={table.players} rounds={table.rounds} idPrefix="arsiv" />
       )}
 
       <ConfirmDialog
