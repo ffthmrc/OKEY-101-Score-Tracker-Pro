@@ -18,11 +18,15 @@ const PIN_LOCK_MS = 60_000;    // 1 dakika bekletilir
 
 interface JoinRequest { id: string; clientId: string; name: string }
 
+// Bu kadar süre bağlı olmayan cihaz masadan kendiliğinden kalkar (süre son bağlantıdan sayılır)
+export const SEAT_IDLE_MS = 6 * 3600_000;
+
 export interface RoomData {
   code: string;
   adminClientId: string | null;
   title?: string | null; // masa adı (boşsa ekranda bugünün tarihi)
   pin?: string | null;   // masa şifresi (katılırken sorulur; istemciye gönderilmez)
+  lastSeen?: Record<string, number>; // clientId -> son bağlı olduğu an (ms); sunucu yeniden başlasa da korunur
   createdAt: string;
   updatedAt: string;
   game: GameState;
@@ -54,8 +58,33 @@ export class Room {
     for (const [pid, v] of Object.entries(data.seats as Record<string, unknown>)) {
       seats[pid] = Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : typeof v === 'string' ? [v] : [];
     }
-    this.data = { ...data, seats };
+    this.data = { ...data, seats, lastSeen: data.lastSeen ?? {} };
     this.history = [data.game];
+    // Son görülme kaydı olmayan oturan cihazlara bugünden süre başlat
+    const now = Date.now();
+    for (const devices of Object.values(seats)) for (const id of devices) this.data.lastSeen![id] ??= now;
+  }
+
+  // Bağlı cihazların son görülme anını günceller
+  markSeen(clientIds: string[], now = Date.now()) {
+    for (const id of clientIds) this.data.lastSeen![id] = now;
+  }
+
+  // SEAT_IDLE_MS'den uzun süredir bağlı olmayan cihazları masadan kaldırır. Değişiklik olduysa true.
+  expireSeats(connected: Set<string>, now = Date.now(), idleMs = SEAT_IDLE_MS): boolean {
+    const lastSeen = this.data.lastSeen!;
+    let changed = false;
+    for (const [pid, devices] of Object.entries(this.data.seats)) {
+      const keep = devices.filter(id => connected.has(id) || (lastSeen[id] ?? 0) > now - idleMs);
+      if (keep.length !== devices.length) {
+        this.data.seats[pid] = keep;
+        changed = true;
+      }
+    }
+    // 30 günden eski kayıtları unut
+    for (const [id, t] of Object.entries(lastSeen)) if (t < now - 30 * 86400_000) delete lastSeen[id];
+    if (changed) this.touch();
+    return changed;
   }
 
   static create(code: string, adminClientId: string, now = new Date()): Room {
@@ -267,6 +296,9 @@ export class Room {
         this.history = [next];
         this.index = 0;
         this.lastEdit = null;
+        // Oyun gecesi bitti: herkes masadan kalkar, kapatanın sandalyesi (tüm cihazlarıyla) kalır ki gelenleri onaylayabilsin
+        const closerSeat = this.seatOf(clientId);
+        for (const pid of Object.keys(seats)) if (pid !== closerSeat) seats[pid] = [];
         this.setGame(next);
         return { ok: true, archived };
       }

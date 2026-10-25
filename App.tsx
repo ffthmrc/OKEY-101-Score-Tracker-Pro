@@ -647,7 +647,7 @@ export default function App() {
       <ConfirmDialog
         open={closeConfirm}
         title="Oyunu kapat"
-        message="Oyun kapatılıp arşive eklenecek ve masada yeni boş bir oyun açılacak. Emin misin?"
+        message="Oyun kapatılıp arşive eklenecek ve masada yeni boş bir oyun açılacak. Masadakiler kalkar, sen kalırsın; diğerleri Katıl ile döner. Emin misin?"
         confirmLabel="Evet, kapat"
         danger
         onCancel={() => setCloseConfirm(false)}

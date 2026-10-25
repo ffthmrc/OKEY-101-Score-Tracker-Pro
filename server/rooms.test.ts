@@ -200,3 +200,40 @@ test('silinen oyuncunun sandalyesindeki cihaz yetkisini kaybeder', () => {
   assert.equal(room.view('pc', 0, []).mySeat, null);
   assert.equal(room.apply('pc', { t: 'addPlayer' }).ok, false);
 });
+
+test('Oyunu kapat: masadakiler kalkar, kapatanın sandalyesi (tüm cihazları) kalır', () => {
+  const room = setup();
+  room.apply('fatih-tel', { t: 'join', name: 'Fatih' });
+  room.apply('fatih-pc', { t: 'join', name: 'Fatih' });
+  room.apply('zeki', { t: 'join', name: 'Zeki' });
+  room.apply('zeki', { t: 'setScore', round: 0, playerId: 'p2', value: 50 });
+  assert.equal(room.apply('fatih-tel', { t: 'closeGame' }).ok, true);
+  assert.equal(room.seatOf('fatih-tel'), 'p1');
+  assert.equal(room.seatOf('fatih-pc'), 'p1');
+  assert.equal(room.seatOf('zeki'), null);
+  assert.equal(room.data.game.players[1].name, 'Zeki'); // isim kalır, tekrar katılınca aynı sandalye
+});
+
+test('New game masadakilere dokunmaz', () => {
+  const room = setup();
+  room.apply('a', { t: 'join', name: 'A' });
+  room.apply('b', { t: 'join', name: 'B' });
+  room.apply('a', { t: 'newGame' });
+  assert.equal(room.seatOf('b'), 'p2');
+});
+
+test('6 saat bağlı olmayan cihaz kalkar; bağlı olan ya da yakında görülen kalır', () => {
+  const room = setup();
+  room.apply('a', { t: 'join', name: 'A' });
+  room.apply('b', { t: 'join', name: 'B' });
+  room.apply('c', { t: 'join', name: 'C' });
+  const t0 = 1_000_000_000_000;
+  room.markSeen(['a', 'b', 'c'], t0);
+  room.markSeen(['c'], t0 + 5 * 3600_000);              // c 5 saat sonra da görüldü
+  const after = t0 + 7 * 3600_000;
+  assert.equal(room.expireSeats(new Set(['a']), after), true); // a şu an bağlı
+  assert.equal(room.seatOf('a'), 'p1');
+  assert.equal(room.seatOf('b'), null);
+  assert.equal(room.seatOf('c'), 'p3');
+  assert.equal(room.expireSeats(new Set(['a']), after), false);
+});

@@ -254,8 +254,12 @@ function leaveRoom(c: Conn) {
   const set = roomConns.get(c.room.data.code);
   if (!set) return;
   set.delete(c);
-  // Bu cihazın başka açık sekmesi yoksa bekleyen katılma isteği düşer
-  if (![...set].some(o => o.clientId === c.clientId)) c.room.dropRequests(c.clientId);
+  // Bu cihazın başka açık sekmesi yoksa bekleyen katılma isteği düşer; 6 saatlik süre şimdiden başlar
+  if (![...set].some(o => o.clientId === c.clientId)) {
+    c.room.dropRequests(c.clientId);
+    c.room.markSeen([c.clientId]);
+    store.saveRoom(c.room.data);
+  }
   if (set.size === 0) roomConns.delete(c.room.data.code);
   else broadcastRoom(c.room);
 }
@@ -271,6 +275,20 @@ const heartbeat = setInterval(() => {
   }
   const cutoff = Date.now() - 86400_000;
   for (const [sid, v] of lastSeq) if (v.at < cutoff) lastSeq.delete(sid);
+  // Bağlı cihazların son görülme anı + uzun süredir bağlı olmayanları masadan kaldır
+  const now = Date.now();
+  for (const room of rooms.values()) {
+    const ids = onlineIds(room);
+    if (ids.length) {
+      room.markSeen(ids, now);
+      store.saveRoom(room.data);
+    }
+    if (room.expireSeats(new Set(ids), now)) {
+      console.log(`Oda ${room.data.code}: uzun süredir bağlı olmayan cihazlar masadan kaldırıldı`);
+      store.saveRoom(room.data);
+      broadcastRoom(room);
+    }
+  }
 }, 25_000);
 
 server.listen(PORT, HOST, () => console.log(`OKEY sunucusu http://${HOST}:${PORT}`));
