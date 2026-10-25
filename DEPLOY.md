@@ -165,8 +165,8 @@ curl -s https://okey101.duckdns.org/healthz
 
 Eski `ffthmrc.github.io/OKEY-101-Score-Tracker-Pro/` linki yeni adrese yönlenir:
 
-1. GitHub → repo → Settings → Secrets and variables → Actions → **Variables** → `APP_URL = https://okey101.duckdns.org`
-2. `main`'e push edildiğinde workflow `pages-redirect/index.html` sayfasını yayınlar (`?oda=` parametresi korunur).
+`main`'e push edildiğinde workflow `pages-redirect/index.html` sayfasını yayınlar (`?oda=` parametresi korunur).
+Hedef adres workflow'da varsayılan olarak `https://okey-101.duckdns.org`; değişirse repo değişkeni `APP_URL` ile ezilir.
 
 > Sırayla yap: önce sunucu HTTPS ile çalışsın, **sonra** bu değişikliği `main`'e push et.
 

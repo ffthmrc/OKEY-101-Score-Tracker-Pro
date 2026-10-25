@@ -1,9 +1,8 @@
 name: GitHub Pages yönlendirmesi
 
 # Uygulama artık Oracle sunucusunda çalışıyor (bkz. DEPLOY.md).
-# Pages sadece eski linki yeni adrese yönlendirir. Repo ayarlarında
-# Settings → Secrets and variables → Actions → Variables altına APP_URL ekle
-# (ör. https://okey101.duckdns.org).
+# Pages sadece eski linki yeni adrese yönlendirir. Adres değişirse repo değişkeni
+# APP_URL ile (Settings → Secrets and variables → Actions → Variables) ezilebilir.
 
 on:
   push:
@@ -28,7 +27,7 @@ jobs:
 
       - name: Yönlendirme sayfasını hazırla
         env:
-          APP_URL: ${{ vars.APP_URL }}
+          APP_URL: ${{ vars.APP_URL || 'https://okey-101.duckdns.org' }}
         run: |
           test -n "$APP_URL" || { echo "APP_URL repo değişkeni tanımlı değil"; exit 1; }
           sed -i "s#__APP_URL__#${APP_URL%/}#g" pages-redirect/index.html
