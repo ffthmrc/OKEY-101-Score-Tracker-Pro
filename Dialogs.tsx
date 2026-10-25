@@ -76,14 +76,15 @@ interface JoinDialogProps {
 
 export const JoinDialog: React.FC<JoinDialogProps> = ({ open, onJoin, onCancel }) => {
   const [name, setName] = useState('');
-  useEffect(() => { if (open) setName(''); }, [open]);
+  // Kapanırken temizle (açılırken temizlemek hızlı yazılan ilk harfleri silebiliyordu)
+  useEffect(() => { if (!open) setName(''); }, [open]);
   if (!open) return null;
   const trimmed = name.trim();
   return (
     <Overlay onClose={onCancel}>
       <form onSubmit={e => { e.preventDefault(); if (trimmed) onJoin(trimmed); }}>
         <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 mb-1">Masaya katıl</h3>
-        <p className="text-xs text-slate-500 mb-3">İlk boş sandalyeye oturursun. Katılan herkes skor girebilir.</p>
+        <p className="text-xs text-slate-500 mb-3">Adın masada yazılıysa o sandalyeye oturursun. Yazılı değilse boş bir sandalyeye (P1, P5…) geçersin. Katılan herkes skor girebilir.</p>
         <input
           autoFocus
           value={name}

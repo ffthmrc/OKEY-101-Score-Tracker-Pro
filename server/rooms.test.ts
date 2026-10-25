@@ -4,14 +4,50 @@ import { Room } from './rooms.ts';
 
 const setup = () => Room.create('TEST1', 'admin');
 
-test('katılan ilk boş sandalyeye oturur, masa 4 kişide dolar', () => {
+test('katılan ilk adsız sandalyeye oturur, masa 4 kişide dolar', () => {
   const room = setup();
   for (const [i, c] of ['a', 'b', 'c', 'd'].entries()) {
     assert.deepEqual(room.apply(c, { t: 'join', name: c.toUpperCase() }), { ok: true });
     assert.equal(room.seatOf(c), `p${i + 1}`);
   }
   assert.equal(room.data.game.players[2].name, 'C');
-  assert.deepEqual(room.apply('e', { t: 'join', name: 'E' }), { ok: false, error: 'Masa dolu' });
+  assert.equal(room.apply('e', { t: 'join', name: 'E' }).ok, false);
+});
+
+test('yazılmış isme geçemez; kendi ismini yazan o sandalyeye oturur; + Player ile P5 açılır', () => {
+  const room = setup();
+  room.apply('fatih-tel', { t: 'join', name: 'Fatih' });
+  room.apply('fatih-tel', { t: 'setName', playerId: 'p2', name: 'Ketenci' });
+  room.apply('fatih-tel', { t: 'setName', playerId: 'p3', name: 'Zeki' });
+  room.apply('fatih-tel', { t: 'setName', playerId: 'p4', name: 'Hasan' });
+  // aynı kişi PC'den: kendi sandalyesine, Ketenci'nin adı bozulmaz
+  assert.equal(room.apply('fatih-pc', { t: 'join', name: 'FATİH' }).ok, true);
+  assert.equal(room.seatOf('fatih-pc'), 'p1');
+  assert.equal(room.seatOf('fatih-tel'), 'p1');
+  assert.equal(room.data.game.players[1].name, 'Ketenci');
+  // Ketenci kendi adıyla katılır
+  assert.equal(room.apply('ketenci', { t: 'join', name: 'ketenci' }).ok, true);
+  assert.equal(room.seatOf('ketenci'), 'p2');
+  // yabancı: yer yok
+  const r = room.apply('ali', { t: 'join', name: 'Ali' });
+  assert.equal(r.ok, false);
+  // masadaki biri yer açar, Ali P5'e oturur
+  room.apply('fatih-pc', { t: 'addPlayer' }, 1000);
+  assert.equal(room.apply('ali', { t: 'join', name: 'Ali' }).ok, true);
+  assert.equal(room.seatOf('ali'), 'p-1000');
+  assert.equal(room.data.game.players[4].name, 'Ali');
+  // bir cihaz ayrılınca diğeri sandalyede kalır
+  room.apply('fatih-tel', { t: 'leave' });
+  assert.equal(room.seatOf('fatih-tel'), null);
+  assert.equal(room.view('x', 0, []).occupied.p1, true);
+});
+
+test('eski kayıt biçimi (sandalye = tek cihaz) yüklenir', () => {
+  const old = Room.create('ESKI', 'a');
+  const data = { ...old.data, seats: { p1: 'a', p2: null, p3: null, p4: null } as any };
+  const room = new Room(data);
+  assert.equal(room.seatOf('a'), 'p1');
+  assert.deepEqual(room.data.seats.p2, []);
 });
 
 test('yeniden katılan aynı sandalyesine döner, ayrılınca sandalye boşalır', () => {
@@ -23,7 +59,7 @@ test('yeniden katılan aynı sandalyesine döner, ayrılınca sandalye boşalır
   room.apply('a', { t: 'leave' });
   assert.equal(room.seatOf('a'), null);
   room.apply('c', { t: 'join', name: 'CAN' });
-  assert.equal(room.seatOf('c'), 'p1');
+  assert.equal(room.seatOf('c'), 'p3'); // ALI'nin sandalyesi adlı, yeni gelen sıradaki adsız sandalyeye
 });
 
 test('izleyici düzenleyemez, oturan herkes her şeyi yapabilir', () => {
@@ -46,7 +82,7 @@ test('oyuncu ekle/sil ve sandalye boşaltma: oturan herkes yapar, izleyici (kuru
   assert.equal(room.seatOf('b'), null);
   assert.equal(room.apply('c', { t: 'addPlayer' }, 1000).ok, true);
   assert.equal(room.data.game.players.length, 5);
-  assert.equal(room.data.seats['p-1000'], null);
+  assert.deepEqual(room.data.seats['p-1000'], []);
   assert.equal(room.apply('c', { t: 'addPlayer' }, 2000).ok, true);
   assert.equal(room.apply('c', { t: 'addPlayer' }, 3000).ok, false); // en fazla 6
   assert.equal(room.apply('c', { t: 'removePlayer', playerId: 'p-1000' }).ok, true);

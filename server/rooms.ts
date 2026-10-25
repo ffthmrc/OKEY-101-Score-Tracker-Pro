@@ -2,11 +2,15 @@
 import type { ArchivedGame, GameState, RoomOp, RoomView } from '../shared/protocol.ts';
 import { applyGameOp, cleanName, hasAnyScore, MAX_PLAYERS, tidyTable } from '../shared/game.ts';
 import { getInitialPlayers, getInitialRounds, PLAYER_COLORS } from '../constants.ts';
+import { personKey } from '../shared/stats.ts';
 
 const HISTORY_LIMIT = 200;
 const COALESCE_MS = 1500; // aynı hücreye art arda yazılan tuşlar tek geri-al adımı sayılır
 
 export const ROOM_CODE_RE = /^[A-Z0-9]{3,16}$/;
+
+// Adı henüz yazılmamış sandalye: P1, P2, ... (yeni gelen sadece bunlara oturur, yazılmış isme geçemez)
+const isUnnamed = (name: string) => /^P\d+$/i.test(name.trim());
 
 export interface RoomData {
   code: string;
@@ -14,7 +18,7 @@ export interface RoomData {
   createdAt: string;
   updatedAt: string;
   game: GameState;
-  seats: Record<string, string | null>; // playerId -> clientId
+  seats: Record<string, string[]>; // playerId -> o sandalyedeki cihazlar (aynı kişi telefon + PC)
 }
 
 export type OpResult =
@@ -35,7 +39,12 @@ export class Room {
   private lastEdit: { key: string; at: number } | null = null;
 
   constructor(data: RoomData) {
-    this.data = data;
+    // Eski kayıtlarda sandalye tek cihazdı (string | null); diziye çevir
+    const seats: Record<string, string[]> = {};
+    for (const [pid, v] of Object.entries(data.seats as Record<string, unknown>)) {
+      seats[pid] = Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : typeof v === 'string' ? [v] : [];
+    }
+    this.data = { ...data, seats };
     this.history = [data.game];
   }
 
@@ -47,13 +56,13 @@ export class Room {
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
       game,
-      seats: Object.fromEntries(game.players.map(p => [p.id, null])),
+      seats: Object.fromEntries(game.players.map(p => [p.id, []])),
     });
   }
 
   seatOf(clientId: string): string | null {
-    for (const [playerId, owner] of Object.entries(this.data.seats)) {
-      if (owner === clientId) return playerId;
+    for (const [playerId, devices] of Object.entries(this.data.seats)) {
+      if (devices.includes(clientId)) return playerId;
     }
     return null;
   }
@@ -70,28 +79,34 @@ export class Room {
       case 'join': {
         const name = cleanName(op.name)?.trim();
         if (!name) return { ok: false, error: 'İsim gerekli' };
-        let playerId = this.seatOf(clientId);
-        if (!playerId) {
-          playerId = game.players.find(p => !seats[p.id])?.id ?? null;
-          if (!playerId) return { ok: false, error: 'Masa dolu' };
-          seats[playerId] = clientId;
+        if (this.seatOf(clientId)) return { ok: true };
+        // 1) İsim masada varsa o sandalyeye otur (aynı kişi başka cihazdan da katılabilir)
+        const own = game.players.find(p => personKey(p.name) === personKey(name));
+        if (own) {
+          seats[own.id] = [...seats[own.id], clientId];
+          this.touch();
+          return { ok: true };
         }
+        // 2) Yoksa sadece adı yazılmamış boş sandalyeye (P1, P5...) otur ve adını yaz
+        const free = game.players.find(p => isUnnamed(p.name) && seats[p.id].length === 0);
+        if (!free) return { ok: false, error: 'Masada boş yer yok. Masadaki biri + Player ile yer açabilir.' };
+        seats[free.id] = [clientId];
         // İsim değişikliği geri-al geçmişine girmez; mevcut adımda da güncellenir
-        const named = applyGameOp(game, { t: 'setName', playerId, name })!;
+        const named = applyGameOp(game, { t: 'setName', playerId: free.id, name })!;
         this.history[this.index] = named;
         this.setGame(named);
         return { ok: true };
       }
       case 'leave': {
         const playerId = this.seatOf(clientId);
-        if (playerId) seats[playerId] = null;
+        if (playerId) seats[playerId] = seats[playerId].filter(id => id !== clientId);
         this.touch();
         return { ok: true };
       }
       case 'vacate': {
         if (!seated) return { ok: false, error: 'Sandalye boşaltmak için önce masaya katıl' };
         if (!(op.playerId in seats)) return { ok: false, error: 'Oyuncu yok' };
-        seats[op.playerId] = null;
+        seats[op.playerId] = [];
         this.touch();
         return { ok: true };
       }
@@ -190,7 +205,7 @@ export class Room {
       code,
       version: this.version,
       game,
-      occupied: Object.fromEntries(game.players.map(p => [p.id, !!seats[p.id]])),
+      occupied: Object.fromEntries(game.players.map(p => [p.id, (seats[p.id] ?? []).length > 0])),
       mySeat: this.seatOf(clientId),
       isAdmin: this.isAdmin(clientId),
       canUndo: this.index > 0,
@@ -218,8 +233,8 @@ export class Room {
 
   // Oyuncu listesi değişince (ekle/sil/geri al) sandalyeleri oyunculara göre hizalar
   private setGame(game: GameState) {
-    const seats: Record<string, string | null> = {};
-    for (const p of game.players) seats[p.id] = this.data.seats[p.id] ?? null;
+    const seats: Record<string, string[]> = {};
+    for (const p of game.players) seats[p.id] = this.data.seats[p.id] ?? [];
     this.data.game = game;
     this.data.seats = seats;
     this.touch();
