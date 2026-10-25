@@ -3,7 +3,7 @@ import type { ArchivedGame, ArchiveSummary } from './shared/protocol';
 import type { Player, RoundScore } from './types';
 import { parseScoreInput, totalOf, placesFromTotals, placesOf, placeEmoji, hasAnyScore, MAX_NAME_LEN, MAX_ROUNDS } from './shared/game';
 import { GapPanel } from './GapPanel';
-import { scoreTextClass } from './ui';
+import { scoreTextClass, scoreInputProps, scoreValue, SCORE_INPUT_CLASS } from './ui';
 import { buildReportCards, personKey } from './shared/stats';
 import { GameCharts } from './GameCharts';
 import { ConfirmDialog } from './Dialogs';
@@ -241,7 +241,7 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
                   <td className="py-0.5 md:py-2 px-2 text-[8px] md:text-[10px] font-black text-slate-300">R{r.round}</td>
                   {table.players.map(p => (
                     <td key={p.id} className="p-0.5 md:p-1">
-                      <input type="text" value={r.scores[p.id] ?? ''} readOnly={!editing} onChange={e => setScore(rIdx, p.id, e.target.value)} className={`w-full border-0 rounded-md py-1 md:py-2 text-center font-black ${scoreTextClass(r.scores[p.id])} text-[11px] md:text-base transition-all ${editing ? 'bg-amber-50 focus:bg-white focus:ring-1 focus:ring-amber-300' : 'bg-slate-50/50'}`} />
+                      <input {...scoreInputProps} value={scoreValue(r.scores[p.id])} readOnly={!editing} onChange={e => setScore(rIdx, p.id, e.target.value)} className={`${SCORE_INPUT_CLASS} w-full border-0 rounded-md py-1 md:py-2 text-center font-black ${scoreTextClass(r.scores[p.id])} text-[11px] md:text-base transition-all ${editing ? 'bg-amber-50 focus:bg-white focus:ring-1 focus:ring-amber-300' : 'bg-slate-50/50'}`} />
                     </td>
                   ))}
                 </tr>

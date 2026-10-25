@@ -35,3 +35,20 @@ export const playChime = () => {
   }
   navigator.vibrate?.(150);
 };
+
+// Puan kutusu: telefonda "sayılar ve işaretler" klavyesi açılır (eksi işareti var, ABC ile harfe geçilir).
+// Kutu sayı tipinde; "e", "+", "." gibi sayı dışı işaretler engellenir, tekerlek değeri değiştirmez.
+export const scoreInputProps = {
+  type: 'number',
+  step: 1,
+  onKeyDown: (e: { key: string; preventDefault: () => void }) => {
+    if (['e', 'E', '+', '.', ','].includes(e.key)) e.preventDefault();
+  },
+  onWheel: (e: { currentTarget: HTMLInputElement }) => e.currentTarget.blur(),
+} as const;
+
+// Sayı kutusunun yukarı/aşağı oklarını gizler
+export const SCORE_INPUT_CLASS = '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none';
+
+// Kutuda sadece sayı gösterilir ('-' yazılırken tarayıcı kendisi tutar)
+export const scoreValue = (v: unknown) => (typeof v === 'number' ? v : '');
