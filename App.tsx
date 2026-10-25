@@ -635,8 +635,9 @@ export default function App() {
       <JoinDialog
         open={joinOpen}
         needPin={room.pinSet}
+        needOpenPin={room.needsOpenPin}
         onCancel={() => setJoinOpen(false)}
-        onJoin={(name, pin) => { sendOp({ t: 'join', name, pin }); setJoinOpen(false); }}
+        onJoin={(name, pin, openPin) => { sendOp({ t: 'join', name, pin, openPin }); setJoinOpen(false); }}
       />
       <TablePinDialog
         open={pinOpen}

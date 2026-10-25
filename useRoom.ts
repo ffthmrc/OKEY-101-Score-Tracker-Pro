@@ -49,6 +49,11 @@ export function useRoom() {
         switch (msg.type) {
           case 'state':
             setRoom(msg.room);
+            if (msg.room.code !== code) {
+              const url = new URL(window.location.href);
+              url.searchParams.set('oda', msg.room.code);
+              window.history.replaceState(null, '', url);
+            }
             updatePending(p => p.filter(x => x.seq > msg.room.ack));
             break;
           case 'error':
@@ -69,6 +74,7 @@ export function useRoom() {
             break;
           case 'archive:restored':
             setLastDeleted(null);
+            setArchiveDeletedId(null);
             setNotice('Oyun arşive geri alındı');
             break;
           case 'archive:unlocked':

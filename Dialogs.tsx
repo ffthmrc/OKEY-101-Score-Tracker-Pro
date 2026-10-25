@@ -133,24 +133,28 @@ export const NameDialog: React.FC<NameDialogProps> = ({
 
 interface JoinDialogProps {
   open: boolean;
-  needPin: boolean;
-  onJoin: (name: string, pin?: string) => void;
+  needPin: boolean;       // masa şifresi konmuş
+  needOpenPin: boolean;   // masada kimse yok: masa açma PIN'i
+  onJoin: (name: string, pin?: string, openPin?: string) => void;
   onCancel: () => void;
 }
 
-export const JoinDialog: React.FC<JoinDialogProps> = ({ open, needPin, onJoin, onCancel }) => {
+export const JoinDialog: React.FC<JoinDialogProps> = ({ open, needPin, needOpenPin, onJoin, onCancel }) => {
   const [name, setName] = useState('');
   const [pin, setPin] = useState('');
+  const [openPin, setOpenPin] = useState('');
   // Kapanırken temizle (açılırken temizlemek hızlı yazılan ilk harfleri silebiliyordu)
-  useEffect(() => { if (!open) { setName(''); setPin(''); } }, [open]);
+  useEffect(() => { if (!open) { setName(''); setPin(''); setOpenPin(''); } }, [open]);
   if (!open) return null;
   const trimmed = name.trim();
-  const ready = !!trimmed && (!needPin || pin.length >= 4);
+  const ready = !!trimmed && (!needPin || pin.length >= 4) && (!needOpenPin || openPin.length >= 4);
   return (
     <Overlay onClose={onCancel}>
-      <form onSubmit={e => { e.preventDefault(); if (ready) onJoin(trimmed, needPin ? pin : undefined); }}>
+      <form onSubmit={e => { e.preventDefault(); if (ready) onJoin(trimmed, needPin ? pin : undefined, needOpenPin ? openPin : undefined); }}>
         <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 mb-1">Masaya katıl</h3>
-        <p className="text-xs text-slate-500 mb-3">Masadaki biri onaylayınca oturursun. Adın masada yazılıysa o sandalyeye, değilse boş bir sandalyeye (P1, P5…) geçersin.</p>
+        <p className="text-xs text-slate-500 mb-3">{needOpenPin
+            ? 'Masada kimse yok. Masayı açmak için masa açma PIN\'ini gir; sonra gelenleri sen onaylarsın.'
+            : 'Masadaki biri onaylayınca oturursun. Adın masada yazılıysa o sandalyeye, değilse boş bir sandalyeye (P1, P5…) geçersin.'}</p>
         <input
           autoFocus
           value={name}
@@ -159,6 +163,18 @@ export const JoinDialog: React.FC<JoinDialogProps> = ({ open, needPin, onJoin, o
           placeholder="Adın"
           className="w-full h-11 rounded-lg border border-slate-200 px-3 text-base font-black uppercase tracking-tight focus:outline-none focus:ring-2 focus:ring-indigo-300 mb-4"
         />
+        {needOpenPin && (
+          <input
+            type="password"
+            inputMode="numeric"
+            autoComplete="off"
+            maxLength={6}
+            value={openPin}
+            onChange={e => setOpenPin(e.target.value.replace(/\D/g, ''))}
+            placeholder="Masa açma PIN'i"
+            className="w-full h-11 rounded-lg border border-slate-200 px-3 text-base font-black tracking-[0.4em] focus:outline-none focus:ring-2 focus:ring-indigo-300 mb-4"
+          />
+        )}
         {needPin && (
           <input
             type="password"

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildReportCards } from './stats.ts';
+import { buildReportCards, personKey } from './stats.ts';
 import type { ArchiveSummary } from './protocol.ts';
 
 const game = (closedAt: string, totals: Record<string, number>): ArchiveSummary => ({
@@ -53,4 +53,11 @@ test('sıra rozetleri: 🏆 🥈 🥉, sonuncu 💩, 5-6 kişide aradakiler 🏅
   assert.equal(emojis([10, 20, 30, 40, 50, 60]), '🏆🥈🥉🏅🏅💩');
   assert.equal(emojis([10, 20, 30]), '🏆🥈🥉');
   assert.equal(emojis([10, 20, 20, 40]), '🏆🥈🥈💩');
+});
+
+test('isim eşleştirme Türkçe harf ve büyük/küçük harf farkını yok sayar', () => {
+  const same = (a: string, b: string) => personKey(a) === personKey(b);
+  assert.ok(same('Fatih', 'FATIH') && same('Fatih', 'Fatıh') && same('fatih', 'FATİH'));
+  assert.ok(same('Yücer', 'Yucer') && same('Şaban', 'Saban') && same('Ketenci', 'KETENCİ') && same('Ali  Veli', 'ali veli'));
+  assert.ok(!same('Ali', 'Veli') && !same('Ali Yılmaz', 'Ali Demir'));
 });

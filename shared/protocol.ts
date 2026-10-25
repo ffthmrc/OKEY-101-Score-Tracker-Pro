@@ -18,6 +18,7 @@ export interface RoomView {
   version: number;
   title: string | null;               // masa adı; null ise ekranda bugünün tarihi görünür
   pinSet: boolean;                    // masa şifresi konmuş mu (şifrenin kendisi gönderilmez)
+  needsOpenPin: boolean;              // masada bağlı kimse yok: katılan masa açma PIN'i girmeli
   myRequest: string | null;           // bu cihazın onay bekleyen katılma isteği (yazdığı isim)
   requests: JoinRequestView[];        // onay bekleyen istekler (sadece masadakilere dolu gelir)
   game: GameState;
@@ -51,7 +52,7 @@ export type RoomOp =
   | { t: 'redo' }
   | { t: 'newGame' }
   | { t: 'closeGame' }
-  | { t: 'join'; name: string; pin?: string }
+  | { t: 'join'; name: string; pin?: string; openPin?: string }
   | { t: 'cancelJoin' }
   | { t: 'approve'; id: string }
   | { t: 'reject'; id: string }

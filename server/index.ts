@@ -11,6 +11,9 @@ import { JsonStore } from './store.ts';
 import { getGameAnalysis } from './gemini.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
+// İzinli masalar (virgülle). Başka kodla gelen ilk masaya yönlenir; böylece rastgele kodlarla dosya açılamaz.
+const ALLOWED_ROOMS = (process.env.ROOMS ?? 'MASA').split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+Room.openPin = process.env.OPEN_PIN ?? '';
 const DIST = path.join(ROOT, 'dist');
 const DATA_DIR = process.env.DATA_DIR ?? path.join(ROOT, 'data');
 const PORT = Number(process.env.PORT ?? 8080);
@@ -149,7 +152,8 @@ wss.on('connection', ws => {
     }
 
     if (msg.type === 'hello') {
-      const code = typeof msg.room === 'string' ? msg.room.toUpperCase() : '';
+      const asked = typeof msg.room === 'string' ? msg.room.toUpperCase() : '';
+      const code = ALLOWED_ROOMS.includes(asked) ? asked : ALLOWED_ROOMS[0];
       if (!isId(msg.clientId) || !isId(msg.sid) || !ROOM_CODE_RE.test(code)) {
         return send(ws, { type: 'error', message: 'Geçersiz oda kodu' });
       }

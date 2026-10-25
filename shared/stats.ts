@@ -11,8 +11,11 @@ export interface ReportCard {
   avgPlace: number;
 }
 
-// "ali " ve "ALİ" aynı kişi sayılır
-export const personKey = (name: string) => name.trim().toLocaleUpperCase('tr-TR');
+// Aynı kişi sayılanlar: "ali " / "ALİ", "Fatih" / "FATIH" / "Fatıh", "Yücer" / "Yucer", "Şaban" / "Saban"
+// (büyük/küçük harf ve Türkçe harf farkı yok sayılır; aynı isimli iki kişi soyadıyla ayrılır)
+const TR_FOLD: Record<string, string> = { 'İ': 'I', 'Ş': 'S', 'Ğ': 'G', 'Ü': 'U', 'Ö': 'O', 'Ç': 'C' };
+export const personKey = (name: string) =>
+  name.trim().replace(/\s+/g, ' ').toLocaleUpperCase('tr-TR').replace(/[İŞĞÜÖÇ]/g, ch => TR_FOLD[ch]);
 
 export function buildReportCards(items: ArchiveSummary[]): ReportCard[] {
   const cards = new Map<string, ReportCard & { placeSum: number; lastSeen: string }>();

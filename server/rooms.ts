@@ -44,6 +44,9 @@ const freshGame = (players = getInitialPlayers(), now = new Date()): GameState =
 });
 
 export class Room {
+  // Masa açma PIN'i: masada bağlı kimse yokken ilk gelen bunu girer (sunucu ortamından, OPEN_PIN). Boşsa istenmez.
+  static openPin = '';
+
   data: RoomData;
   version = 0;
   private history: GameState[];
@@ -153,18 +156,24 @@ export class Room {
         const name = cleanName(op.name)?.trim();
         if (!name) return { ok: false, error: 'İsim gerekli' };
         if (seated) return { ok: true };
-        if (this.data.pin) {
-          const fail = this.pinFails.get(clientId);
-          if (fail && fail.until > now) return { ok: false, error: 'Çok fazla yanlış şifre. 1 dakika sonra tekrar dene.' };
-          if (op.pin !== this.data.pin) {
-            const n = (fail && fail.until > now ? fail.n : fail?.n ?? 0) + 1;
-            this.pinFails.set(clientId, { n: n >= PIN_MAX_FAILS ? 0 : n, until: n >= PIN_MAX_FAILS ? now + PIN_LOCK_MS : 0 });
-            return { ok: false, error: 'Masa şifresi yanlış' };
+        const fail = this.pinFails.get(clientId);
+        if (fail && fail.until > now) return { ok: false, error: 'Çok fazla yanlış şifre. 1 dakika sonra tekrar dene.' };
+        const wrong = (error: string): OpResult => {
+          const n = (fail?.n ?? 0) + 1;
+          this.pinFails.set(clientId, n >= PIN_MAX_FAILS ? { n: 0, until: now + PIN_LOCK_MS } : { n, until: 0 });
+          return { ok: false, error };
+        };
+        if (this.data.pin && op.pin !== this.data.pin) return wrong('Masa şifresi yanlış');
+        const approverOnline = onlineIds.some(id => id !== clientId && this.seatOf(id) !== null);
+        if (!approverOnline) {
+          // Onaylayacak kimse yok: masayı ancak masa açma PIN'ini bilen açar, sonra gelenleri o onaylar
+          if (Room.openPin && op.openPin !== Room.openPin) {
+            return wrong(op.openPin ? 'Masa açma PIN\'i yanlış' : 'Masada kimse yok. Masayı açmak için masa açma PIN\'i gerekli.');
           }
           this.pinFails.delete(clientId);
+          return this.seat(clientId, name);
         }
-        const approverOnline = onlineIds.some(id => id !== clientId && this.seatOf(id) !== null);
-        if (!approverOnline) return this.seat(clientId, name);
+        this.pinFails.delete(clientId);
         const existing = this.requests.find(r => r.clientId === clientId);
         if (existing) existing.name = name;
         else this.requests.push({ id: globalThis.crypto.randomUUID(), clientId, name });
@@ -321,6 +330,7 @@ export class Room {
       version: this.version,
       title: this.data.title ?? null,
       pinSet: !!this.data.pin,
+      needsOpenPin: !!Room.openPin && !unique.some(id => id !== clientId && this.seatOf(id) !== null),
       myRequest: this.requests.find(r => r.clientId === clientId)?.name ?? null,
       requests: this.seatOf(clientId) ? this.requests.map(r => this.requestView(r)) : [],
       game,

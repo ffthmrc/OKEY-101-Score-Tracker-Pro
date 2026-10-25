@@ -66,11 +66,11 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
 
   // Silinen oyun (bu cihazdan ya da başkasından) açıksa listeye dön
   useEffect(() => {
-    if (selectedId && (deletedId === selectedId || !items.some(i => i.id === selectedId))) {
+    if (selectedId && !items.some(i => i.id === selectedId)) {
       setSelectedId(null);
       setDraft(null);
     }
-  }, [deletedId, items, selectedId]);
+  }, [items, selectedId]);
 
   const open = (id: string) => {
     setSelectedId(id);
@@ -115,7 +115,6 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
                         <span className="h-2.5 w-1 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
                         <div className="min-w-0">
                           <div className="uppercase truncate tracking-tight">{c.name} <span className="text-slate-300">›</span></div>
-                          <div className="text-[8px] md:text-[10px] font-bold text-slate-300">ort. {c.avgPlace.toFixed(2)}</div>
                         </div>
                       </div>
                     </td>

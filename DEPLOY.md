@@ -59,6 +59,10 @@ HOST=127.0.0.1
 DATA_DIR=/home/ubuntu/okey101/data
 # Arşivde düzenleme/silme PIN'i (sadece burada durur, repoya yazma)
 ARCHIVE_PIN=
+# Masa boşken ilk gelenin masayı açması için PIN (sadece burada durur)
+OPEN_PIN=
+# İzinli masalar (virgülle); başka kodla gelen ilkine yönlenir
+ROOMS=MASA
 # İsteğe bağlı: Gemini analizi için
 GEMINI_API_KEY=
 EOF

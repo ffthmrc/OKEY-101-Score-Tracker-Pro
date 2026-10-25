@@ -237,3 +237,25 @@ test('6 saat bağlı olmayan cihaz kalkar; bağlı olan ya da yakında görülen
   assert.equal(room.seatOf('c'), 'p3');
   assert.equal(room.expireSeats(new Set(['a']), after), false);
 });
+
+test('masa açma PIN\'i: masada bağlı kimse yokken ilk gelen PIN ister; masada biri varsa onaya düşer', () => {
+  Room.openPin = '2014';
+  try {
+    const room = setup();
+    assert.equal(room.view('x', 0, ['x']).needsOpenPin, true);
+    assert.equal(room.apply('yabanci', { t: 'join', name: 'Ali' }, 0, ['yabanci']).ok, false);
+    assert.equal(room.apply('yabanci', { t: 'join', name: 'Ali', openPin: '1111' }, 0, ['yabanci']).ok, false);
+    assert.equal(room.seatOf('yabanci'), null);
+    assert.equal(room.apply('fatih', { t: 'join', name: 'Fatih', openPin: '2014' }, 0, ['fatih']).ok, true);
+    assert.equal(room.seatOf('fatih'), 'p1');
+    assert.equal(room.view('zeki', 0, ['fatih', 'zeki']).needsOpenPin, false);
+    room.apply('zeki', { t: 'join', name: 'Zeki' }, 0, ['fatih', 'zeki']);   // PIN istenmez, onay bekler
+    assert.equal(room.view('zeki', 0, []).myRequest, 'Zeki');
+    // PC'den FATIH yazan kendi sandalyesine (onaydan sonra)
+    room.apply('fatih-pc', { t: 'join', name: 'FATIH' }, 0, ['fatih', 'fatih-pc']);
+    room.apply('fatih', { t: 'approve', id: room.view('fatih', 0, []).requests.find(r => r.name === 'FATIH')!.id });
+    assert.equal(room.seatOf('fatih-pc'), 'p1');
+  } finally {
+    Room.openPin = '';
+  }
+});
