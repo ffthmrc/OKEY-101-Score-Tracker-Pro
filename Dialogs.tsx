@@ -38,10 +38,17 @@ interface NameDialogProps {
   initial: string;
   onSave: (name: string) => void;
   onCancel: () => void;
+  heading?: string;
+  placeholder?: string;
+  maxLength?: number;
+  resetLabel?: string;   // verilirse ek düğme (ör. "Tarih yap")
+  onReset?: () => void;
 }
 
-// Oyuncu ismini değiştirme: tablodaki küçük başlık yerine telefonda rahat yazılan kutu
-export const NameDialog: React.FC<NameDialogProps> = ({ open, initial, onSave, onCancel }) => {
+// İsim değiştirme kutusu (oyuncu ismi, masa adı): telefonda rahat yazılır
+export const NameDialog: React.FC<NameDialogProps> = ({
+  open, initial, onSave, onCancel, heading = 'Oyuncu ismi', placeholder = 'İsim', maxLength = MAX_NAME_LEN, resetLabel, onReset,
+}) => {
   const [name, setName] = useState(initial);
   useEffect(() => { if (open) setName(initial); }, [open, initial]);
   if (!open) return null;
@@ -49,17 +56,20 @@ export const NameDialog: React.FC<NameDialogProps> = ({ open, initial, onSave, o
   return (
     <Overlay onClose={onCancel}>
       <form onSubmit={e => { e.preventDefault(); if (trimmed) onSave(trimmed); }}>
-        <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 mb-3">Oyuncu ismi</h3>
+        <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 mb-3">{heading}</h3>
         <input
           autoFocus
           onFocus={e => e.currentTarget.select()}
           value={name}
           onChange={e => setName(e.target.value)}
-          maxLength={MAX_NAME_LEN}
-          placeholder="İsim"
+          maxLength={maxLength}
+          placeholder={placeholder}
           className="w-full h-11 rounded-lg border border-slate-200 px-3 text-base font-black uppercase tracking-tight focus:outline-none focus:ring-2 focus:ring-indigo-300 mb-4"
         />
         <div className="flex gap-2 justify-end">
+          {onReset && resetLabel && (
+            <button type="button" onClick={onReset} className="h-10 px-3 mr-auto rounded-lg border border-slate-200 text-[11px] font-black uppercase text-indigo-600 hover:bg-slate-50">{resetLabel}</button>
+          )}
           <button type="button" onClick={onCancel} className="h-10 px-4 rounded-lg border border-slate-200 text-[11px] font-black uppercase text-slate-500 hover:bg-slate-50">Vazgeç</button>
           <button type="submit" disabled={!trimmed} className="h-10 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-[11px] font-black uppercase text-white shadow">Kaydet</button>
         </div>

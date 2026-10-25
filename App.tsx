@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Player, RoundScore, PlayerStats } from './types';
 import type { CellValue } from './shared/protocol';
-import { parseScoreInput, placesOf, placeEmoji, hasAnyScore } from './shared/game';
+import { parseScoreInput, placesOf, placeEmoji, hasAnyScore, MAX_TITLE_LEN } from './shared/game';
 import { scoreTextClass, formatDay } from './ui';
 import { useRoom } from './useRoom';
 import { ConfirmDialog, JoinDialog, NameDialog } from './Dialogs';
@@ -315,7 +315,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
       <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm px-4 h-11 md:h-14 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2 md:gap-3">
           <div className="bg-slate-900 w-6 h-6 rounded flex items-center justify-center text-white"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg></div>
-          <h1 className="text-[11px] md:text-sm font-black text-slate-900 uppercase tracking-tighter">Ace Tracker</h1>
+          <h1 className="text-[11px] md:text-sm font-black text-slate-900 uppercase tracking-tighter">Score Tracker</h1>
         </div>
         <div className="flex items-center gap-2">
           {/* Enhanced Visibility Emoji Undo/Redo Controls */}
@@ -476,6 +476,7 @@ export default function App() {
   const [closeConfirm, setCloseConfirm] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showOnline, setShowOnline] = useState(false);
+  const [titleOpen, setTitleOpen] = useState(false);
 
   const actions = useMemo<GameActions>(() => ({
     setScore: (round, playerId, value) => sendOp({ t: 'setScore', round, playerId, value }),
@@ -513,6 +514,7 @@ export default function App() {
   }
 
   const canEdit = room.mySeat !== null; // masaya oturan her şeyi yapar, oturmayan sadece izler
+  const tableTitle = room.title ?? formatDay(new Date()); // masa adı yoksa bugünün tarihi
   const hasScore = game.rounds.some(r => Object.values(r.scores).some(v => typeof v === 'number'));
 
   const roomBar = (
@@ -520,7 +522,11 @@ export default function App() {
     <div className="bg-slate-900 text-white px-3 h-9 md:h-10 flex items-center gap-2 text-[9px] md:text-[10px] font-black uppercase tracking-tight shrink-0">
       <span className={`h-2 w-2 rounded-full shrink-0 ${STATUS_DOT[status]}`} title={STATUS_LABEL[status]} />
       <span className={status === 'online' ? 'hidden sm:inline text-white/60' : 'text-amber-300'}>{STATUS_LABEL[status]}</span>
-      <span className="tracking-wide">{formatDay(new Date())}</span>
+      {canEdit ? (
+        <button onClick={() => setTitleOpen(true)} className="tracking-wide truncate max-w-[45vw] uppercase underline decoration-dotted decoration-white/40 underline-offset-4" title="Masa adını değiştir">{tableTitle}</button>
+      ) : (
+        <span className="tracking-wide truncate max-w-[45vw]">{tableTitle}</span>
+      )}
       <button onClick={copyLink} className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20" title="Linki kopyala">{copied ? '✓' : '🔗'}</button>
       <button onClick={() => setShowOnline(v => !v)} className="px-1.5 py-0.5 rounded text-white/60 hover:bg-white/10" title="Kim bağlı?" aria-expanded={showOnline}>👁 {room.viewers}</button>
       <div className="ml-auto flex items-center gap-1.5">
@@ -568,6 +574,17 @@ export default function App() {
             onOpen={openArchiveGame} onSave={saveArchiveGame} onDelete={deleteArchiveGame}
           />
         }
+      />
+      <NameDialog
+        open={titleOpen}
+        heading="Masa adı"
+        placeholder={formatDay(new Date())}
+        maxLength={MAX_TITLE_LEN}
+        initial={tableTitle}
+        resetLabel="Tarih yap"
+        onReset={() => { sendOp({ t: 'setTitle', title: null }); setTitleOpen(false); }}
+        onCancel={() => setTitleOpen(false)}
+        onSave={title => { sendOp({ t: 'setTitle', title }); setTitleOpen(false); }}
       />
       <JoinDialog
         open={joinOpen}

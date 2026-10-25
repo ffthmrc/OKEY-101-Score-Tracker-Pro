@@ -1,6 +1,6 @@
 // Oda mantığı: sandalyeler, yetki (masaya oturan her şeyi yapar, oturmayan izler), ortak geri al/ileri al geçmişi. Ağdan bağımsızdır (test edilebilir).
 import type { ArchivedGame, GameState, RoomOp, RoomView } from '../shared/protocol.ts';
-import { applyGameOp, cleanName, hasAnyScore, MAX_PLAYERS, tidyTable } from '../shared/game.ts';
+import { applyGameOp, cleanName, hasAnyScore, MAX_PLAYERS, MAX_TITLE_LEN, tidyTable } from '../shared/game.ts';
 import { getInitialPlayers, getInitialRounds, PLAYER_COLORS } from '../constants.ts';
 import { personKey } from '../shared/stats.ts';
 
@@ -15,6 +15,7 @@ const isUnnamed = (name: string) => /^P\d+$/i.test(name.trim());
 export interface RoomData {
   code: string;
   adminClientId: string | null;
+  title?: string | null; // masa adı (boşsa ekranda bugünün tarihi)
   createdAt: string;
   updatedAt: string;
   game: GameState;
@@ -115,6 +116,13 @@ export class Room {
     if (!seated) return { ok: false, error: 'Düzenlemek için önce masaya katıl' };
 
     switch (op.t) {
+      case 'setTitle': {
+        // Geri-al geçmişine girmez; boş bırakılırsa tarihe döner
+        const raw = typeof op.title === 'string' ? op.title.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, MAX_TITLE_LEN) : '';
+        this.data.title = raw || null;
+        this.touch();
+        return { ok: true };
+      }
       case 'setScore':
       case 'setName':
       case 'addRound':
@@ -204,6 +212,7 @@ export class Room {
     return {
       code,
       version: this.version,
+      title: this.data.title ?? null,
       game,
       occupied: Object.fromEntries(game.players.map(p => [p.id, (seats[p.id] ?? []).length > 0])),
       mySeat: this.seatOf(clientId),

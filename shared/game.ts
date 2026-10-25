@@ -4,6 +4,7 @@ import type { Player, RoundScore } from '../types.ts';
 import type { CellValue, GameOp, GameState } from './protocol.ts';
 
 export const MAX_NAME_LEN = 8;
+export const MAX_TITLE_LEN = 24;
 export const MAX_PLAYERS = 6; // okey en fazla 6 kişiyle oynanır
 export const MAX_ROUNDS = 60;
 const MAX_ABS_SCORE = 99999;

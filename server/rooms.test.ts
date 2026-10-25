@@ -133,3 +133,13 @@ test('bağlı cihaz listesi: masadakiler isimle, izleyiciler isimsiz, aynı ciha
   assert.equal(v.viewers, 3);
   assert.deepEqual(v.online, [{ name: null, me: true }, { name: 'Fatih', me: false }, { name: null, me: false }]);
 });
+
+test('masa adı: oturan değiştirir, boş bırakılırsa tarihe döner, izleyici değiştiremez', () => {
+  const room = setup();
+  assert.equal(room.apply('x', { t: 'setTitle', title: 'Cuma Masası' }).ok, false);
+  room.apply('a', { t: 'join', name: 'A' });
+  assert.equal(room.apply('a', { t: 'setTitle', title: '  Cuma Masası  ' }).ok, true);
+  assert.equal(room.view('a', 0, []).title, 'Cuma Masası');
+  room.apply('a', { t: 'setTitle', title: '   ' });
+  assert.equal(room.view('a', 0, []).title, null);
+});

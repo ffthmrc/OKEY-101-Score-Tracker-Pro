@@ -16,6 +16,7 @@ export interface GameState {
 export interface RoomView {
   code: string;
   version: number;
+  title: string | null;               // masa adı; null ise ekranda bugünün tarihi görünür
   game: GameState;
   occupied: Record<string, boolean>; // playerId -> sandalye dolu mu
   mySeat: string | null;             // bu istemcinin oturduğu playerId
@@ -43,6 +44,7 @@ export type RoomOp =
   | { t: 'closeGame' }
   | { t: 'join'; name: string }
   | { t: 'leave' }
+  | { t: 'setTitle'; title: string | null }
   | { t: 'vacate'; playerId: string };
 
 export interface ArchivedGame {
