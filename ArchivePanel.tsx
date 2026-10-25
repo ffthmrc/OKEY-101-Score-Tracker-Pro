@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { ArchivedGame, ArchiveSummary } from './shared/protocol';
 import type { Player, RoundScore } from './types';
-import { parseScoreInput, totalOf, MAX_NAME_LEN, MAX_ROUNDS } from './shared/game';
+import { parseScoreInput, totalOf, placesFromTotals, placeEmoji, MAX_NAME_LEN, MAX_ROUNDS } from './shared/game';
+import { scoreTextClass } from './ui';
 import { buildReportCards } from './shared/stats';
 import { ConfirmDialog } from './Dialogs';
 
@@ -15,15 +16,17 @@ interface ArchivePanelProps {
   items: ArchiveSummary[];
   game: ArchivedGame | null;
   savedId: string | null;
+  deletedId: string | null;
   canEdit: boolean;
   onOpen: (id: string) => void;
   onSave: (id: string, players: Player[], rounds: RoundScore[]) => boolean;
+  onDelete: (id: string) => boolean;
 }
 
-export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId, canEdit, onOpen, onSave }) => {
+export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId, deletedId, canEdit, onOpen, onSave, onDelete }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ players: Player[]; rounds: RoundScore[] } | null>(null);
-  const [confirm, setConfirm] = useState<'edit' | 'save' | null>(null);
+  const [confirm, setConfirm] = useState<'edit' | 'save' | 'delete' | null>(null);
   const [saving, setSaving] = useState(false);
   const [view, setView] = useState<'games' | 'cards'>('games');
   const cards = useMemo(() => buildReportCards(items), [items]);
@@ -36,6 +39,14 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
       setDraft(null);
     }
   }, [saving, savedId, selectedId]);
+
+  // Silinen oyun (bu cihazdan ya da başkasından) açıksa listeye dön
+  useEffect(() => {
+    if (selectedId && (deletedId === selectedId || !items.some(i => i.id === selectedId))) {
+      setSelectedId(null);
+      setDraft(null);
+    }
+  }, [deletedId, items, selectedId]);
 
   const open = (id: string) => {
     setSelectedId(id);
@@ -62,7 +73,6 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
                   {Array.from({ length: placeCols }, (_, i) => (
                     <th key={i} className="py-2">{['🏆', '🥈', '🥉'][i] ?? `${i + 1}.`}</th>
                   ))}
-                  <th className="py-2 pr-2">Kaz.</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -81,7 +91,6 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
                     {Array.from({ length: placeCols }, (_, i) => (
                       <td key={i} className={`py-1.5 ${i === 0 && c.places[0] ? 'text-[#006100] bg-[#c6efce]/50' : ''} ${c.places[i] ? '' : 'text-slate-200'}`}>{c.places[i] ?? 0}</td>
                     ))}
-                    <td className="py-1.5 pr-2 text-slate-500">%{Math.round(((c.places[0] ?? 0) / c.played) * 100)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -94,16 +103,17 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
         )}
         {view === 'games' && items.map(item => {
           const sorted = [...item.players].sort((a, b) => a.total - b.total);
+          const places = placesFromTotals(item.players);
           return (
             <button key={item.id} onClick={() => open(item.id)} className="w-full text-left bg-white border border-slate-100 rounded-xl p-3 shadow-sm hover:shadow-md active:scale-[0.99] transition-all">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] md:text-xs font-black text-slate-900 uppercase tracking-tight">{formatDate(item.closedAt, item.roomCode)}</span>
                 <span className="text-[9px] font-black text-slate-300 uppercase">{item.roomCode}</span>
               </div>
-              <div className="grid grid-cols-4 gap-1">
-                {sorted.map((p, i) => (
+              <div className={`grid gap-1 ${item.players.length <= 4 ? 'grid-cols-4' : 'grid-cols-3'}`}>
+                {sorted.map(p => (
                   <div key={p.id} className="rounded-md bg-slate-50 px-1 py-1 text-center border-b-2" style={{ borderColor: p.color }}>
-                    <div className="text-[9px] md:text-[11px] font-black uppercase truncate text-slate-700">{i === 0 ? '🏆 ' : ''}{p.name}</div>
+                    <div className="text-[9px] md:text-[11px] font-black uppercase truncate text-slate-700">{placeEmoji(places[p.id], places)} {p.name}</div>
                     <div className="text-[11px] md:text-sm font-black text-slate-500">{p.total}</div>
                   </div>
                 ))}
@@ -148,6 +158,9 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
         <span className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-tight truncate">{loaded ? formatDate(loaded.closedAt, loaded.roomCode) : ''}</span>
         <div className="flex items-center gap-1">
           {!editing && (
+            <button onClick={() => setConfirm('delete')} disabled={!loaded || !canEdit} title={canEdit ? '' : 'Silmek için masaya katıl'} className="h-7 md:h-9 px-2 rounded-md border border-red-200 bg-red-50 text-red-600 text-[9px] md:text-[10px] font-black uppercase disabled:opacity-30">Sil</button>
+          )}
+          {!editing && (
             <button onClick={() => setConfirm('edit')} disabled={!loaded || !canEdit} title={canEdit ? '' : 'Düzenlemek için masaya katıl'} className="h-7 md:h-9 px-2 rounded-md bg-slate-900 text-white text-[9px] md:text-[10px] font-black uppercase disabled:opacity-30">Düzenle</button>
           )}
           {editing && (
@@ -185,7 +198,7 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
                   <td className="py-0.5 md:py-2 px-2 text-[8px] md:text-[10px] font-black text-slate-300">R{r.round}</td>
                   {table.players.map(p => (
                     <td key={p.id} className="p-0.5 md:p-1">
-                      <input type="text" value={r.scores[p.id] ?? ''} readOnly={!editing} onChange={e => setScore(rIdx, p.id, e.target.value)} className={`w-full border-0 rounded-md py-1 md:py-2 text-center font-black text-slate-800 text-[11px] md:text-base transition-all ${editing ? 'bg-amber-50 focus:bg-white focus:ring-1 focus:ring-amber-300' : 'bg-slate-50/50'}`} />
+                      <input type="text" value={r.scores[p.id] ?? ''} readOnly={!editing} onChange={e => setScore(rIdx, p.id, e.target.value)} className={`w-full border-0 rounded-md py-1 md:py-2 text-center font-black ${scoreTextClass(r.scores[p.id])} text-[11px] md:text-base transition-all ${editing ? 'bg-amber-50 focus:bg-white focus:ring-1 focus:ring-amber-300' : 'bg-slate-50/50'}`} />
                     </td>
                   ))}
                 </tr>
@@ -212,6 +225,18 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
         onConfirm={() => {
           setConfirm(null);
           if (loaded) setDraft({ players: loaded.players, rounds: loaded.rounds });
+        }}
+      />
+      <ConfirmDialog
+        open={confirm === 'delete'}
+        title="Oyunu sil"
+        message="Bu oyun arşivden kalıcı olarak silinecek ve karne yeniden hesaplanacak. Emin misin?"
+        confirmLabel="Evet, sil"
+        danger
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => {
+          setConfirm(null);
+          if (selectedId) onDelete(selectedId);
         }}
       />
       <ConfirmDialog

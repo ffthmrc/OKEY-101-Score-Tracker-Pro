@@ -1,31 +1,27 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { 
+import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   AreaChart, Area
 } from 'recharts';
 import { Player, RoundScore, PlayerStats } from './types';
 import type { CellValue } from './shared/protocol';
-import { parseScoreInput, placesOf, isLastPlace, hasAnyScore } from './shared/game';
+import { parseScoreInput, placesOf, placeEmoji, hasAnyScore } from './shared/game';
+import { scoreTextClass, formatDay } from './ui';
 import { useRoom } from './useRoom';
-import { ConfirmDialog, JoinDialog } from './Dialogs';
+import { ConfirmDialog, JoinDialog, NameDialog } from './Dialogs';
 import { ArchivePanel } from './ArchivePanel';
 import { GapPanel } from './GapPanel';
 
 // --- Sub-components ---
 
-// rank 0 = henüz puanı yok (rozet gösterilmez); isLast = sonuncu (💩)
-const Badge = ({ rank, isLast, visible, size = 'small' }: { rank: number, isLast: boolean, visible: boolean, size?: 'small' | 'large' }) => {
-  if (!visible || rank < 1) return <div className={`${size === 'large' ? 'h-[30px] md:h-[45px]' : 'h-4 md:h-6'}`} />;
-  
+// emoji: 🏆 🥈 🥉 🏅 💩 (shared/game.ts placeEmoji); boşsa henüz puanı yok, rozet gösterilmez
+const Badge = ({ emoji, visible, size = 'small' }: { emoji: string, visible: boolean, size?: 'small' | 'large' }) => {
+  if (!visible || !emoji) return <div className={`${size === 'large' ? 'h-[30px] md:h-[45px]' : 'h-4 md:h-6'}`} />;
+
   const emojiSize = size === 'large' ? 'text-xl md:text-3xl' : 'text-sm md:text-xl';
-  
-  if (rank === 1) return <span className={`${emojiSize} drop-shadow-sm select-none leading-none animate-in zoom-in duration-300`} title="Winner">🏆</span>;
-  if (isLast) return <span className={`${emojiSize} drop-shadow-sm select-none leading-none animate-in zoom-in duration-300`} title="Last Place">💩</span>;
-  if (rank === 2) return <span className={`${emojiSize} drop-shadow-sm select-none leading-none animate-in zoom-in duration-300`} title="Second">🥈</span>;
-  if (rank === 3) return <span className={`${emojiSize} drop-shadow-sm select-none leading-none animate-in zoom-in duration-300`} title="Third">🥉</span>;
-  
-  return <span className={`${emojiSize} drop-shadow-sm select-none leading-none animate-in zoom-in duration-300`} title="Ranking">💪</span>;
+
+  return <span className={`${emojiSize} drop-shadow-sm select-none leading-none animate-in zoom-in duration-300`}>{emoji}</span>;
 };
 
 interface StatCardProps {
@@ -38,9 +34,10 @@ interface StatCardProps {
   occupied: boolean;
   isMine: boolean;
   onVacate?: (id: string) => void;
+  onRename?: (id: string) => void;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ player, stat, totalPlayers, gameStarted, onRemove, canRemove, occupied, isMine, onVacate }) => {
+const StatCard: React.FC<StatCardProps> = ({ player, stat, totalPlayers, gameStarted, onRemove, canRemove, occupied, isMine, onVacate, onRename }) => {
   const [isConfirming, setIsConfirming] = useState(false);
 
   useEffect(() => {
@@ -92,12 +89,12 @@ const StatCard: React.FC<StatCardProps> = ({ player, stat, totalPlayers, gameSta
 
       <div className="w-full px-0.5">
         <h3 className={`font-black uppercase tracking-tighter leading-none transition-colors ${isConfirming ? 'text-red-700' : 'text-slate-900'} text-[9px] md:text-sm truncate`}>
-          {player.name}
+          {onRename ? <button onClick={() => onRename(player.id)} className="uppercase underline decoration-dotted decoration-slate-300 underline-offset-2">{player.name}</button> : player.name}
         </h3>
       </div>
 
       <div className="flex items-center justify-center leading-none h-5 md:h-10">
-        <Badge rank={stat.rank} isLast={!!stat.isLast} visible={gameStarted} size="small" />
+        <Badge emoji={stat.emoji ?? ''} visible={gameStarted} size="small" />
       </div>
 
       <div className="w-full">
@@ -105,7 +102,7 @@ const StatCard: React.FC<StatCardProps> = ({ player, stat, totalPlayers, gameSta
           {stat.totalScore}
         </div>
       </div>
-      
+
       <div className="absolute bottom-0 left-0 right-0 h-1 md:h-2" style={{ backgroundColor: isConfirming ? '#dc2626' : player.color }} />
     </div>
   );
@@ -123,17 +120,17 @@ const DiceRoller = () => {
   const rollDice = () => {
     if (isRolling) return;
     setIsRolling(true);
-    
+
     const nextRoll = Math.floor(Math.random() * 6) + 1;
     const newX = rotation.x + 720 + Math.floor(Math.random() * 360);
     const newY = rotation.y + 720 + Math.floor(Math.random() * 360);
-    
+
     setRotation({ x: newX, y: newY });
 
     setTimeout(() => {
       setRoll(nextRoll);
       setRollHistory(prev => [{ value: nextRoll, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }, ...prev].slice(0, 50));
-      
+
       const faceRotations: Record<number, {x: number, y: number}> = {
         1: { x: 0, y: 0 },
         2: { x: 0, y: 180 },
@@ -142,7 +139,7 @@ const DiceRoller = () => {
         5: { x: -90, y: 0 },
         6: { x: 90, y: 0 }
       };
-      
+
       const final = faceRotations[nextRoll];
       setRotation({
         x: Math.round(newX / 360) * 360 + final.x,
@@ -157,7 +154,7 @@ const DiceRoller = () => {
       1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8]
     };
     return (
-      <div 
+      <div
         className="absolute w-full h-full bg-[#fcd34d] border-2 border-[#b45309]/30 rounded-2xl flex items-center justify-center p-2 md:p-4 shadow-inner"
         style={{ transform: rotate + ' translateZ(50px)', backfaceVisibility: 'hidden' }}
       >
@@ -179,7 +176,7 @@ const DiceRoller = () => {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_#5a0000_0%,_#1a0000_100%)] pointer-events-none" />
       <div className="flex-1 flex flex-col items-center justify-center z-10 p-4 mb-24 md:mb-32">
         <div className="relative w-40 h-40 md:w-56 md:h-56 perspective-1000">
-          <div 
+          <div
             className="relative w-full h-full transition-transform duration-700 ease-out preserve-3d"
             style={{ transform: `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)` }}
           >
@@ -247,7 +244,6 @@ interface GameDashboardProps {
   canUndo: boolean;
   canRedo: boolean;
   canEdit: boolean;
-  isAdmin: boolean;
   occupied: Record<string, boolean>;
   mySeat: string | null;
   onVacate: (id: string) => void;
@@ -257,8 +253,9 @@ interface GameDashboardProps {
 
 const GameDashboard: React.FC<GameDashboardProps> = ({
   players, rounds, actions, onReset, onAddPlayer, onRemovePlayer, undo, redo, canUndo, canRedo,
-  canEdit, isAdmin, occupied, mySeat, onVacate, roomBar, archive
+  canEdit, occupied, mySeat, onVacate, roomBar, archive
 }) => {
+  const [renameId, setRenameId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'table' | 'charts' | 'fark' | 'dice' | 'archive'>('table');
   const [isResetConfirming, setIsResetConfirming] = useState(false);
 
@@ -295,8 +292,8 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
     return players.map(player => {
       const rank = places[player.id] ?? 0;
       const pData = scoresMap.find(s => s.id === player.id)!;
-      const isLast = isLastPlace(places[player.id], places);
-      return { id: player.id, name: player.name, totalScore: pData.totalScore, rank, wins: 0, lastRoundRank: 0, isLast } as PlayerStats;
+      const emoji = placeEmoji(places[player.id], places);
+      return { id: player.id, name: player.name, totalScore: pData.totalScore, rank, wins: 0, lastRoundRank: 0, emoji } as PlayerStats;
     });
   }, [players, rounds]);
 
@@ -325,9 +322,9 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
         ranks[p.id] = places[p.id] ?? 0;
       });
 
-      return { 
-        round: r.round, 
-        ranks, 
+      return {
+        round: r.round,
+        ranks,
         isVisible: hasRoundData
       };
     });
@@ -362,22 +359,22 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
             <button
               onClick={undo}
               disabled={!canUndo || !canEdit}
-              title="Backward / Undo" 
+              title="Backward / Undo"
               className="px-2 py-1 md:px-3 md:py-1.5 rounded-md transition-all active:scale-90 disabled:opacity-20 disabled:grayscale disabled:scale-100 hover:bg-white flex items-center justify-center"
             >
               <span className="text-sm md:text-xl" role="img" aria-label="Backward">⏪</span>
             </button>
             <div className="w-px h-5 md:h-7 bg-slate-300 self-center mx-1" />
-            <button 
+            <button
               onClick={redo}
               disabled={!canRedo || !canEdit}
-              title="Forward / Redo" 
+              title="Forward / Redo"
               className="px-2 py-1 md:px-3 md:py-1.5 rounded-md transition-all active:scale-90 disabled:opacity-20 disabled:grayscale disabled:scale-100 hover:bg-white flex items-center justify-center"
             >
               <span className="text-sm md:text-xl" role="img" aria-label="Forward">⏩</span>
             </button>
           </div>
-          
+
           <button
             onClick={handleResetClick}
             disabled={!canEdit}
@@ -411,7 +408,8 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                   <div key={stat.id}>
                     <StatCard
                       player={p} stat={stat} totalPlayers={players.length} gameStarted={hasGameStarted} onRemove={onRemovePlayer}
-                      canRemove={isAdmin} occupied={!!occupied[p.id]} isMine={mySeat === p.id} onVacate={isAdmin ? onVacate : undefined}
+                      canRemove={canEdit} occupied={!!occupied[p.id]} isMine={mySeat === p.id} onVacate={canEdit ? onVacate : undefined}
+                      onRename={canEdit ? setRenameId : undefined}
                     />
                   </div>
                 );
@@ -426,7 +424,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
               <div className="flex items-center justify-between mb-1 px-1 shrink-0">
                 <h2 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-tight">Leaderboard</h2>
                 <div className="flex items-center gap-1">
-                  {isAdmin && <button
+                  {canEdit && <button
                     onClick={onAddPlayer}
                     className="flex bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-md p-0.5 items-center px-2 text-white shadow-sm transition-all h-6 md:h-10"
                   >
@@ -447,7 +445,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                       <th className="py-1 md:py-2.5 px-2 text-[8px] md:text-[10px] font-black text-slate-400 uppercase w-10 md:w-20 tracking-tighter">Rnd</th>
                       {players.map(p => (
                         <th key={p.id} className="py-1 md:py-2.5 text-center">
-                          <input type="text" value={p.name} readOnly={!canEdit} onChange={(e) => handleNameChange(p.id, e.target.value)} maxLength={8} className="text-[9px] md:text-sm font-black text-center bg-transparent border-0 focus:ring-0 w-full truncate uppercase tracking-tighter" style={{ color: p.color }} />
+                          <button type="button" disabled={!canEdit} onClick={() => setRenameId(p.id)} className="text-[9px] md:text-sm font-black text-center bg-transparent border-0 w-full truncate uppercase tracking-tighter py-1" style={{ color: p.color }}>{p.name}</button>
                         </th>
                       ))}
                     </tr>
@@ -458,7 +456,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                         <td className="py-0.5 md:py-2 px-2 text-[8px] md:text-[10px] font-black text-slate-300">R{r.round}</td>
                         {players.map(p => (
                           <td key={p.id} className="p-0.5 md:p-1">
-                            <input type="text" value={r.scores[p.id] ?? ''} readOnly={!canEdit} onChange={(e) => handleScoreChange(rIdx, p.id, e.target.value)} className="w-full bg-slate-50/50 border-0 rounded-md py-1 md:py-2 text-center font-black text-slate-800 text-[11px] md:text-base focus:bg-white focus:ring-1 focus:ring-indigo-200 transition-all placeholder:text-slate-200" placeholder="0" />
+                            <input type="text" value={r.scores[p.id] ?? ''} readOnly={!canEdit} onChange={(e) => handleScoreChange(rIdx, p.id, e.target.value)} className={`w-full bg-slate-50/50 border-0 rounded-md py-1 md:py-2 text-center font-black ${scoreTextClass(r.scores[p.id])} text-[11px] md:text-base focus:bg-white focus:ring-1 focus:ring-indigo-200 transition-all placeholder:text-slate-200`} placeholder="0" />
                           </td>
                         ))}
                       </tr>
@@ -499,14 +497,14 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                       {rankingTableData.map((row, idx) => {
                         const rankValues = (Object.values(row.ranks) as number[]).filter(v => v > 0);
                         const maxRank = rankValues.length > 0 ? Math.max(...rankValues) : 0;
-                        
+
                         return (
                           <tr key={idx} className="border-b border-slate-100 last:border-0 h-7 md:h-8">
                             <td className="py-0.5 px-3 text-[9px] font-black text-slate-300 border-r border-slate-100">{row.round}</td>
                             {players.map(p => {
                               const rank = row.ranks[p.id];
                               let bgClass = "bg-white text-slate-200";
-                              
+
                               if (row.isVisible && rank > 0) {
                                 if (rank === 1) {
                                   bgClass = "bg-[#c6efce] text-[#006100]";
@@ -516,7 +514,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                                   bgClass = "bg-white text-slate-800";
                                 }
                               }
-                              
+
                               return (
                                 <td key={p.id} className={`py-0.5 px-3 text-[10px] md:text-sm font-black border-r border-slate-100 last:border-0 transition-colors ${bgClass}`}>
                                   {row.isVisible && rank > 0 ? rank : '-'}
@@ -535,7 +533,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                           return (
                             <td key={p.id} className="py-1 px-3 border-r border-slate-200 last:border-0">
                               <div className="flex items-center justify-center">
-                                <Badge rank={playerStat?.rank ?? 0} isLast={!!playerStat?.isLast} visible={hasGameStarted} size="small" />
+                                <Badge emoji={playerStat?.emoji ?? ''} visible={hasGameStarted} size="small" />
                               </div>
                             </td>
                           );
@@ -569,6 +567,12 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
           {activeTab === 'archive' && archive}
         </div>
       </main>
+      <NameDialog
+        open={renameId !== null}
+        initial={players.find(p => p.id === renameId)?.name ?? ''}
+        onCancel={() => setRenameId(null)}
+        onSave={name => { if (renameId) handleNameChange(renameId, name); setRenameId(null); }}
+      />
     </div>
   );
 };
@@ -581,7 +585,7 @@ const STATUS_DOT = { online: 'bg-emerald-400', connecting: 'bg-amber-400 animate
 export default function App() {
   const {
     code, room, game, status, error, sendOp,
-    archiveItems, archiveGame, archiveSavedId, openArchiveGame, saveArchiveGame,
+    archiveItems, archiveGame, archiveSavedId, archiveDeletedId, openArchiveGame, saveArchiveGame, deleteArchiveGame,
   } = useRoom();
   const [joinOpen, setJoinOpen] = useState(false);
   const [closeConfirm, setCloseConfirm] = useState(false);
@@ -622,15 +626,14 @@ export default function App() {
     );
   }
 
-  const canEdit = room.mySeat !== null || room.isAdmin;
+  const canEdit = room.mySeat !== null; // masaya oturan her şeyi yapar, oturmayan sadece izler
   const hasScore = game.rounds.some(r => Object.values(r.scores).some(v => typeof v === 'number'));
 
   const roomBar = (
     <div className="bg-slate-900 text-white px-3 h-9 md:h-10 flex items-center gap-2 text-[9px] md:text-[10px] font-black uppercase tracking-tight shrink-0">
       <span className={`h-2 w-2 rounded-full shrink-0 ${STATUS_DOT[status]}`} title={STATUS_LABEL[status]} />
       <span className={status === 'online' ? 'hidden sm:inline text-white/60' : 'text-amber-300'}>{STATUS_LABEL[status]}</span>
-      <span className="text-white/40">Oda</span>
-      <span className="tracking-widest">{room.code}</span>
+      <span className="tracking-wide">{formatDay(new Date())}</span>
       <button onClick={copyLink} className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20" title="Linki kopyala">{copied ? '✓' : '🔗'}</button>
       <span className="text-white/40" title="Bağlı cihaz">👁 {room.viewers}</span>
       <div className="ml-auto flex items-center gap-1.5">
@@ -658,15 +661,14 @@ export default function App() {
         canUndo={room.canUndo}
         canRedo={room.canRedo}
         canEdit={canEdit}
-        isAdmin={room.isAdmin}
         occupied={room.occupied}
         mySeat={room.mySeat}
         onVacate={playerId => sendOp({ t: 'vacate', playerId })}
         roomBar={roomBar}
         archive={
           <ArchivePanel
-            items={archiveItems} game={archiveGame} savedId={archiveSavedId} canEdit={canEdit}
-            onOpen={openArchiveGame} onSave={saveArchiveGame}
+            items={archiveItems} game={archiveGame} savedId={archiveSavedId} deletedId={archiveDeletedId} canEdit={canEdit}
+            onOpen={openArchiveGame} onSave={saveArchiveGame} onDelete={deleteArchiveGame}
           />
         }
       />

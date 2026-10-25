@@ -33,6 +33,41 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ open, title, messa
   );
 };
 
+interface NameDialogProps {
+  open: boolean;
+  initial: string;
+  onSave: (name: string) => void;
+  onCancel: () => void;
+}
+
+// Oyuncu ismini değiştirme: tablodaki küçük başlık yerine telefonda rahat yazılan kutu
+export const NameDialog: React.FC<NameDialogProps> = ({ open, initial, onSave, onCancel }) => {
+  const [name, setName] = useState(initial);
+  useEffect(() => { if (open) setName(initial); }, [open, initial]);
+  if (!open) return null;
+  const trimmed = name.trim();
+  return (
+    <Overlay onClose={onCancel}>
+      <form onSubmit={e => { e.preventDefault(); if (trimmed) onSave(trimmed); }}>
+        <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 mb-3">Oyuncu ismi</h3>
+        <input
+          autoFocus
+          onFocus={e => e.currentTarget.select()}
+          value={name}
+          onChange={e => setName(e.target.value)}
+          maxLength={MAX_NAME_LEN}
+          placeholder="İsim"
+          className="w-full h-11 rounded-lg border border-slate-200 px-3 text-base font-black uppercase tracking-tight focus:outline-none focus:ring-2 focus:ring-indigo-300 mb-4"
+        />
+        <div className="flex gap-2 justify-end">
+          <button type="button" onClick={onCancel} className="h-10 px-4 rounded-lg border border-slate-200 text-[11px] font-black uppercase text-slate-500 hover:bg-slate-50">Vazgeç</button>
+          <button type="submit" disabled={!trimmed} className="h-10 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-[11px] font-black uppercase text-white shadow">Kaydet</button>
+        </div>
+      </form>
+    </Overlay>
+  );
+};
+
 interface JoinDialogProps {
   open: boolean;
   onJoin: (name: string) => void;

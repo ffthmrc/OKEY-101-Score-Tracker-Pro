@@ -1,11 +1,9 @@
 import React, { useMemo } from 'react';
 import type { Player, RoundScore } from './types';
-import { standings, placesOf, isLastPlace, hasAnyScore } from './shared/game';
+import { standings, placesOf, placeEmoji, hasAnyScore } from './shared/game';
 
 // Excel'deki "Fark?" tablosunun uygulama karşılığı: puan girildikçe sıra ve farklar canlı değişir.
 // Excel'den farkı: eşit toplamda iki kişi de görünür (Excel'de biri kayboluyor, bir satır #N/A oluyordu).
-
-const MEDAL = ['🏆', '🥈', '🥉'];
 
 export const GapPanel: React.FC<{ players: Player[]; rounds: RoundScore[] }> = ({ players, rounds }) => {
   const rows = useMemo(() => standings(players, rounds), [players, rounds]);
@@ -18,8 +16,7 @@ export const GapPanel: React.FC<{ players: Player[]; rounds: RoundScore[] }> = (
     return <div className="flex-1 flex items-center justify-center text-slate-300 text-xs font-bold uppercase italic">Puan girilince farklar burada görünür</div>;
   }
 
-  const badge = (place: number) =>
-    place > 1 && isLastPlace(place, places) ? '💩' : MEDAL[place - 1] ?? `${place}.`;
+  const badge = (place: number) => placeEmoji(place, places);
 
   return (
     <div className="p-2 md:p-4 flex-1 overflow-auto custom-scrollbar space-y-3">

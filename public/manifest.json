@@ -2,7 +2,7 @@
   "name": "OKEY 101 Score Tracker Pro",
   "short_name": "OKEY 101",
   "description": "Professional score tracking for OKEY 101 game",
-  "start_url": "/",
+  "start_url": "/?oda=MASA",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4CAF50",

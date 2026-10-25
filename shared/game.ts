@@ -4,7 +4,7 @@ import type { Player, RoundScore } from '../types.ts';
 import type { CellValue, GameOp, GameState } from './protocol.ts';
 
 export const MAX_NAME_LEN = 8;
-export const MAX_PLAYERS = 8;
+export const MAX_PLAYERS = 6; // okey en fazla 6 kişiyle oynanır
 export const MAX_ROUNDS = 60;
 const MAX_ABS_SCORE = 99999;
 
@@ -41,20 +41,29 @@ export const hasPlayerScore = (rounds: RoundScore[], playerId: string) =>
 // Sıra (düşük toplam kazanır). Eşit toplam aynı sırayı paylaşır: 1, 2, 2, 4.
 // Henüz hiç puanı olmayan oyuncu sıraya girmez (null) — 0 puanla "lider" görünmesin.
 export const placesOf = (players: Player[], rounds: RoundScore[]): Record<string, number | null> => {
-  const ranked = players
+  const places = placesFromTotals(players
     .filter(p => hasPlayerScore(rounds, p.id))
-    .map(p => ({ id: p.id, total: totalOf(rounds, p.id) }));
-  const places: Record<string, number | null> = {};
-  for (const p of players) places[p.id] = null;
-  for (const r of ranked) places[r.id] = 1 + ranked.filter(x => x.total < r.total).length;
+    .map(p => ({ id: p.id, total: totalOf(rounds, p.id) })));
+  for (const p of players) places[p.id] ??= null;
   return places;
 };
+
+export const placesFromTotals = (ranked: { id: string; total: number }[]): Record<string, number | null> =>
+  Object.fromEntries(ranked.map(r => [r.id, 1 + ranked.filter(x => x.total < r.total).length]));
 
 // 💩: en az 4 sıralı oyuncu varken en kötü sıra; sonuncular 3.lükte eşitse onlar da 💩 olur
 export const isLastPlace = (place: number | null, places: Record<string, number | null>) => {
   const ranked = Object.values(places).filter((v): v is number => v !== null);
   const worst = Math.max(...ranked);
   return place !== null && ranked.length >= 4 && worst >= 3 && place === worst;
+};
+
+// Sıra rozeti: 1. 🏆, 2. 🥈, 3. 🥉, sonuncu 💩 (en az 4 kişide), aradakiler (5-6 kişide 4., 5.) 🏅
+export const placeEmoji = (place: number | null, places: Record<string, number | null>) => {
+  if (place === null) return '';
+  if (place === 1) return '🏆';
+  if (isLastPlace(place, places)) return '💩';
+  return ['🥈', '🥉'][place - 2] ?? '🏅';
 };
 
 // Sıralı oyuncular, toplama göre artan

@@ -17,7 +17,7 @@ export interface PlayerStats {
   rank: number;
   wins: number;
   lastRoundRank: number;
-  isLast?: boolean; // sonuncu (💩)
+  emoji?: string; // sıra rozeti: 🏆 🥈 🥉 🏅 💩
 }
 
 export interface MatchRecord {

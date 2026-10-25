@@ -1,4 +1,4 @@
-// Oda mantığı: sandalyeler, yetki, ortak geri al/ileri al geçmişi. Ağdan bağımsızdır (test edilebilir).
+// Oda mantığı: sandalyeler, yetki (masaya oturan her şeyi yapar, oturmayan izler), ortak geri al/ileri al geçmişi. Ağdan bağımsızdır (test edilebilir).
 import type { ArchivedGame, GameState, RoomOp, RoomView } from '../shared/protocol.ts';
 import { applyGameOp, cleanName, hasAnyScore, MAX_PLAYERS, tidyTable } from '../shared/game.ts';
 import { getInitialPlayers, getInitialRounds, PLAYER_COLORS } from '../constants.ts';
@@ -64,7 +64,6 @@ export class Room {
 
   apply(clientId: string, op: RoomOp, now = Date.now()): OpResult {
     const { game, seats } = this.data;
-    const admin = this.isAdmin(clientId);
     const seated = this.seatOf(clientId) !== null;
 
     switch (op.t) {
@@ -90,7 +89,7 @@ export class Room {
         return { ok: true };
       }
       case 'vacate': {
-        if (!admin) return { ok: false, error: 'Sandalyeyi sadece odayı kuran boşaltabilir' };
+        if (!seated) return { ok: false, error: 'Sandalye boşaltmak için önce masaya katıl' };
         if (!(op.playerId in seats)) return { ok: false, error: 'Oyuncu yok' };
         seats[op.playerId] = null;
         this.touch();
@@ -98,7 +97,7 @@ export class Room {
       }
     }
 
-    if (!seated && !admin) return { ok: false, error: 'Düzenlemek için önce masaya katıl' };
+    if (!seated) return { ok: false, error: 'Düzenlemek için önce masaya katıl' };
 
     switch (op.t) {
       case 'setScore':
@@ -113,8 +112,7 @@ export class Room {
         return { ok: true };
       }
       case 'addPlayer': {
-        if (!admin) return { ok: false, error: 'Oyuncuyu sadece odayı kuran ekleyebilir' };
-        if (game.players.length >= MAX_PLAYERS) return { ok: false, error: 'En fazla 8 oyuncu' };
+        if (game.players.length >= MAX_PLAYERS) return { ok: false, error: `En fazla ${MAX_PLAYERS} oyuncu` };
         const id = `p-${now}`;
         const player = { id, name: `P${game.players.length + 1}`, color: PLAYER_COLORS[game.players.length % PLAYER_COLORS.length] };
         this.commit({
@@ -125,7 +123,6 @@ export class Room {
         return { ok: true };
       }
       case 'removePlayer': {
-        if (!admin) return { ok: false, error: 'Oyuncuyu sadece odayı kuran silebilir' };
         if (game.players.length <= 1) return { ok: false, error: 'En az bir oyuncu gerekli' };
         if (!game.players.some(p => p.id === op.playerId)) return { ok: false, error: 'Oyuncu yok' };
         this.commit({

@@ -21,6 +21,7 @@ export function useRoom() {
   const [archiveItems, setArchiveItems] = useState<ArchiveSummary[]>([]);
   const [archiveGame, setArchiveGame] = useState<ArchivedGame | null>(null);
   const [archiveSavedId, setArchiveSavedId] = useState<string | null>(null);
+  const [archiveDeletedId, setArchiveDeletedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const clientRef = useRef<SyncClient | null>(null);
@@ -56,6 +57,9 @@ export function useRoom() {
             break;
           case 'archive:saved':
             setArchiveSavedId(msg.id);
+            break;
+          case 'archive:deleted':
+            setArchiveDeletedId(msg.id);
             break;
         }
       },
@@ -98,8 +102,15 @@ export function useRoom() {
     return sent;
   }, []);
 
+  const deleteArchiveGame = useCallback((id: string): boolean => {
+    setArchiveDeletedId(null);
+    const sent = clientRef.current?.send({ type: 'archive:delete', id }) ?? false;
+    if (!sent) setError('Bağlantı yok, silinemedi');
+    return sent;
+  }, []);
+
   return {
     code, room, game, status, error, sendOp,
-    archiveItems, archiveGame, archiveSavedId, openArchiveGame, saveArchiveGame,
+    archiveItems, archiveGame, archiveSavedId, archiveDeletedId, openArchiveGame, saveArchiveGame, deleteArchiveGame,
   };
 }

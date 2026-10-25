@@ -36,16 +36,20 @@ test('izleyici düzenleyemez, oturan herkes her şeyi yapabilir', () => {
   assert.equal(room.data.game.rounds[0].scores.p3, null);
 });
 
-test('oyuncu ekle/sil ve sandalye boşaltma sadece odayı kurana açık', () => {
+test('oyuncu ekle/sil ve sandalye boşaltma: oturan herkes yapar, izleyici (kurucu dahil) yapamaz', () => {
   const room = setup();
+  assert.equal(room.apply('admin', { t: 'addPlayer' }).ok, false);
   room.apply('b', { t: 'join', name: 'B' });
-  assert.equal(room.apply('b', { t: 'addPlayer' }).ok, false);
-  assert.equal(room.apply('b', { t: 'vacate', playerId: 'p1' }).ok, false);
-  assert.equal(room.apply('admin', { t: 'vacate', playerId: 'p1' }).ok, true);
+  room.apply('c', { t: 'join', name: 'C' });
+  assert.equal(room.apply('x', { t: 'vacate', playerId: 'p1' }).ok, false);
+  assert.equal(room.apply('c', { t: 'vacate', playerId: 'p1' }).ok, true);
   assert.equal(room.seatOf('b'), null);
-  assert.equal(room.apply('admin', { t: 'addPlayer' }, 1000).ok, true);
+  assert.equal(room.apply('c', { t: 'addPlayer' }, 1000).ok, true);
   assert.equal(room.data.game.players.length, 5);
   assert.equal(room.data.seats['p-1000'], null);
+  assert.equal(room.apply('c', { t: 'addPlayer' }, 2000).ok, true);
+  assert.equal(room.apply('c', { t: 'addPlayer' }, 3000).ok, false); // en fazla 6
+  assert.equal(room.apply('c', { t: 'removePlayer', playerId: 'p-1000' }).ok, true);
 });
 
 test('aynı hücreye art arda yazma tek geri-al adımı, geri al/ileri al çalışır', () => {

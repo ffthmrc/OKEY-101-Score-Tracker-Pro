@@ -19,7 +19,7 @@ export interface RoomView {
   game: GameState;
   occupied: Record<string, boolean>; // playerId -> sandalye dolu mu
   mySeat: string | null;             // bu istemcinin oturduğu playerId
-  isAdmin: boolean;                  // odayı kuran mı
+  isAdmin: boolean;                  // odayı kuran mı (artık ek yetki vermez, bilgi amaçlı)
   canUndo: boolean;
   canRedo: boolean;
   viewers: number;                   // bağlı cihaz sayısı
@@ -68,7 +68,8 @@ export type ClientMsg =
   | { type: 'ping' }
   | { type: 'archive:list' }
   | { type: 'archive:get'; id: string }
-  | { type: 'archive:update'; id: string; players: Player[]; rounds: RoundScore[] };
+  | { type: 'archive:update'; id: string; players: Player[]; rounds: RoundScore[] }
+  | { type: 'archive:delete'; id: string };
 
 export type ServerMsg =
   | { type: 'state'; room: RoomView }
@@ -76,4 +77,5 @@ export type ServerMsg =
   | { type: 'pong' }
   | { type: 'archive:list'; items: ArchiveSummary[] }
   | { type: 'archive:game'; game: ArchivedGame }
-  | { type: 'archive:saved'; id: string };
+  | { type: 'archive:saved'; id: string }
+  | { type: 'archive:deleted'; id: string };

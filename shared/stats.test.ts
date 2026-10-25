@@ -41,3 +41,16 @@ test('ana ekran sıralama yardımcıları: eşitlik, puansız oyuncu, 💩', asy
   assert.deepEqual(tidy.players.map(p => p.id), ['a', 'c']);
   assert.equal(tidy.rounds.length, 1);
 });
+
+test('sıra rozetleri: 🏆 🥈 🥉, sonuncu 💩, 5-6 kişide aradakiler 🏅', async () => {
+  const { placesFromTotals, placeEmoji } = await import('./game.ts');
+  const emojis = (totals: number[]) => {
+    const places = placesFromTotals(totals.map((total, i) => ({ id: `p${i}`, total })));
+    return totals.map((_, i) => placeEmoji(places[`p${i}`], places)).join('');
+  };
+  assert.equal(emojis([10, 20, 30, 40]), '🏆🥈🥉💩');
+  assert.equal(emojis([10, 20, 30, 40, 50]), '🏆🥈🥉🏅💩');
+  assert.equal(emojis([10, 20, 30, 40, 50, 60]), '🏆🥈🥉🏅🏅💩');
+  assert.equal(emojis([10, 20, 30]), '🏆🥈🥉');
+  assert.equal(emojis([10, 20, 20, 40]), '🏆🥈🥈💩');
+});

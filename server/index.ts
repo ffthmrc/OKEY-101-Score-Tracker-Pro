@@ -184,7 +184,7 @@ wss.on('connection', ws => {
         return send(ws, { type: 'archive:game', game });
       }
       case 'archive:update': {
-        if (!room.seatOf(conn.clientId) && !room.isAdmin(conn.clientId)) {
+        if (!room.seatOf(conn.clientId)) {
           return send(ws, { type: 'error', message: 'Arşivi düzenlemek için önce masaya katıl' });
         }
         const game = archive.find(g => g.id === msg.id);
@@ -194,6 +194,18 @@ wss.on('connection', ws => {
         store.saveArchive(archive);
         send(ws, { type: 'archive:saved', id: game.id });
         send(ws, { type: 'archive:game', game });
+        return broadcastArchive();
+      }
+      case 'archive:delete': {
+        if (!room.seatOf(conn.clientId)) {
+          return send(ws, { type: 'error', message: 'Arşivden silmek için önce masaya katıl' });
+        }
+        const idx = archive.findIndex(g => g.id === msg.id);
+        if (idx === -1) return send(ws, { type: 'error', message: 'Arşiv kaydı bulunamadı' });
+        const [removed] = archive.splice(idx, 1);
+        console.log(`Arşivden silindi: ${removed.id} (${removed.players.map(p => p.name).join(', ')})`);
+        store.saveArchive(archive);
+        send(ws, { type: 'archive:deleted', id: removed.id });
         return broadcastArchive();
       }
     }
