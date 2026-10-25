@@ -239,14 +239,14 @@ test('6 saat bağlı olmayan cihaz kalkar; bağlı olan ya da yakında görülen
 });
 
 test('masa açma PIN\'i: masada bağlı kimse yokken ilk gelen PIN ister; masada biri varsa onaya düşer', () => {
-  Room.openPin = '2014';
+  Room.openPin = '9999';
   try {
     const room = setup();
     assert.equal(room.view('x', 0, ['x']).needsOpenPin, true);
     assert.equal(room.apply('yabanci', { t: 'join', name: 'Ali' }, 0, ['yabanci']).ok, false);
     assert.equal(room.apply('yabanci', { t: 'join', name: 'Ali', openPin: '1111' }, 0, ['yabanci']).ok, false);
     assert.equal(room.seatOf('yabanci'), null);
-    assert.equal(room.apply('fatih', { t: 'join', name: 'Fatih', openPin: '2014' }, 0, ['fatih']).ok, true);
+    assert.equal(room.apply('fatih', { t: 'join', name: 'Fatih', openPin: '9999' }, 0, ['fatih']).ok, true);
     assert.equal(room.seatOf('fatih'), 'p1');
     assert.equal(room.view('zeki', 0, ['fatih', 'zeki']).needsOpenPin, false);
     room.apply('zeki', { t: 'join', name: 'Zeki' }, 0, ['fatih', 'zeki']);   // PIN istenmez, onay bekler
