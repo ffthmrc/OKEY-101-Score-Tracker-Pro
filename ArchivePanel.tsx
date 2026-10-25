@@ -4,8 +4,11 @@ import type { Player, RoundScore } from './types';
 import { parseScoreInput, totalOf, MAX_NAME_LEN, MAX_ROUNDS } from './shared/game';
 import { ConfirmDialog } from './Dialogs';
 
-const formatDate = (iso: string) =>
-  new Date(iso).toLocaleString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+// Excel'den aktarılan oyunların saati bilinmez (roomCode 'EXCEL'), sadece tarih gösterilir
+const formatDate = (iso: string, roomCode: string) =>
+  new Date(iso).toLocaleString('tr-TR', roomCode === 'EXCEL'
+    ? { day: '2-digit', month: 'long', year: 'numeric' }
+    : { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 interface ArchivePanelProps {
   items: ArchiveSummary[];
@@ -47,7 +50,7 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
           return (
             <button key={item.id} onClick={() => open(item.id)} className="w-full text-left bg-white border border-slate-100 rounded-xl p-3 shadow-sm hover:shadow-md active:scale-[0.99] transition-all">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] md:text-xs font-black text-slate-900 uppercase tracking-tight">{formatDate(item.closedAt)}</span>
+                <span className="text-[11px] md:text-xs font-black text-slate-900 uppercase tracking-tight">{formatDate(item.closedAt, item.roomCode)}</span>
                 <span className="text-[9px] font-black text-slate-300 uppercase">{item.roomCode}</span>
               </div>
               <div className="grid grid-cols-4 gap-1">
@@ -95,7 +98,7 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
     <div className="p-1.5 md:p-3 flex flex-col flex-1 overflow-hidden">
       <div className="flex items-center justify-between mb-1 px-1 shrink-0 gap-2">
         <button onClick={() => { setSelectedId(null); setDraft(null); }} className="text-[10px] md:text-xs font-black text-indigo-600 uppercase">‹ Arşiv</button>
-        <span className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-tight truncate">{loaded ? formatDate(loaded.closedAt) : ''}</span>
+        <span className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-tight truncate">{loaded ? formatDate(loaded.closedAt, loaded.roomCode) : ''}</span>
         <div className="flex items-center gap-1">
           {!editing && (
             <button onClick={() => setConfirm('edit')} disabled={!loaded || !canEdit} title={canEdit ? '' : 'Düzenlemek için masaya katıl'} className="h-7 md:h-9 px-2 rounded-md bg-slate-900 text-white text-[9px] md:text-[10px] font-black uppercase disabled:opacity-30">Düzenle</button>
