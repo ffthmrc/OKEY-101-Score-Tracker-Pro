@@ -52,3 +52,35 @@ export const SCORE_INPUT_CLASS = '[appearance:textfield] [&::-webkit-inner-spin-
 
 // Kutuda sadece sayı gösterilir ('-' yazılırken tarayıcı kendisi tutar)
 export const scoreValue = (v: unknown) => (typeof v === 'number' ? v : '');
+
+// Süre bitti zili: inen "vah vah" tonları (başarısızlık sesi) + titreşim
+export const playFail = () => {
+  ensureAudio();
+  navigator.vibrate?.([300, 120, 300, 120, 600]);
+  if (!audio) return;
+  const t = audio.currentTime;
+  const notes: [number, number, number][] = [[392, 0, 0.32], [370, 0.36, 0.32], [349, 0.72, 0.32], [311, 1.08, 0.9]];
+  for (const [freq, at, len] of notes) {
+    const osc = audio.createOscillator();
+    const gain = audio.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(freq, t + at);
+    if (len > 0.5) {
+      // son notada titreme
+      const lfo = audio.createOscillator();
+      const lfoGain = audio.createGain();
+      lfo.frequency.value = 6;
+      lfoGain.gain.value = 8;
+      lfo.connect(lfoGain).connect(osc.frequency);
+      lfo.start(t + at);
+      lfo.stop(t + at + len);
+    }
+    gain.gain.setValueAtTime(0.0001, t + at);
+    gain.gain.exponentialRampToValueAtTime(0.22, t + at + 0.03);
+    gain.gain.setValueAtTime(0.22, t + at + len - 0.08);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + at + len);
+    osc.connect(gain).connect(audio.destination);
+    osc.start(t + at);
+    osc.stop(t + at + len + 0.02);
+  }
+};

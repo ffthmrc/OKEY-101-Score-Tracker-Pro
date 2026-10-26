@@ -9,6 +9,7 @@ import { ConfirmDialog, JoinDialog, NameDialog, TablePinDialog } from './Dialogs
 import { ArchivePanel } from './ArchivePanel';
 import { GapPanel } from './GapPanel';
 import { GameCharts } from './GameCharts';
+import { TimerPanel } from './TimerPanel';
 
 // --- Sub-components ---
 
@@ -253,7 +254,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
   canEdit, occupied, mySeat, onVacate, roomBar, archive
 }) => {
   const [renameId, setRenameId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'table' | 'charts' | 'fark' | 'dice' | 'archive'>('table');
+  const [activeTab, setActiveTab] = useState<'table' | 'charts' | 'fark' | 'dice' | 'timer' | 'archive'>('table');
   const [isResetConfirming, setIsResetConfirming] = useState(false);
 
   // Auto-reset confirmation state after 4 seconds
@@ -355,9 +356,14 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
 
       {roomBar}
 
-      <nav className="flex bg-white border-b border-slate-100 px-2 py-1 justify-around text-[9px] md:text-[10px] font-black uppercase tracking-tight shrink-0">
-        {['table', 'charts', 'fark', 'dice', 'archive'].map(tab => (
-          <button key={tab} onClick={() => setActiveTab(tab as any)} className={`flex-1 py-1.5 md:py-2 rounded-md transition-all ${activeTab === tab ? 'text-indigo-600 bg-indigo-50 font-black' : 'text-slate-400'}`}>{tab}</button>
+      {/* Sekmeler: büyük harf, aralarında çizgi, seçili olan altı çizili */}
+      <nav className="flex bg-white border-b-2 border-slate-200 shrink-0 divide-x divide-slate-200">
+        {([['table', 'Tablo'], ['charts', 'Grafik'], ['fark', 'Fark'], ['dice', 'Zar'], ['timer', 'Süre'], ['archive', 'Arşiv']] as const).map(([tab, label]) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`flex-1 min-w-0 py-2.5 md:py-3 text-[11px] md:text-sm font-black uppercase tracking-tight truncate transition-all border-b-[3px] -mb-[2px] ${activeTab === tab ? 'text-indigo-700 bg-indigo-50 border-indigo-600' : 'text-slate-600 border-transparent hover:bg-slate-50'}`}
+          >{label}</button>
         ))}
       </nav>
 
@@ -406,7 +412,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                 <table className="w-full text-left border-collapse min-w-[280px] min-h-full">
                   <thead className="sticky top-0 z-20 bg-slate-50 shadow-sm">
                     <tr className="border-b border-slate-100">
-                      <th className="py-1 md:py-2.5 px-2 text-[8px] md:text-[10px] font-black text-slate-400 uppercase w-10 md:w-20 tracking-tighter">Rnd</th>
+                      <th className="py-1 md:py-2.5 px-1.5 md:px-2 text-[10px] md:text-xs font-black text-slate-500 uppercase w-9 md:w-20 tracking-tighter">Rnd</th>
                       {players.map(p => (
                         <th key={p.id} className="py-1 md:py-2.5 text-center">
                           <button type="button" disabled={!canEdit} onClick={() => setRenameId(p.id)} className="text-[9px] md:text-sm font-black text-center bg-transparent border-0 w-full truncate uppercase tracking-tighter py-1" style={{ color: p.color }}>{p.name}</button>
@@ -417,10 +423,10 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                   <tbody className="divide-y divide-slate-50">
                     {rounds.map((r, rIdx) => (
                       <tr key={rIdx} className="hover:bg-slate-50/40 transition-colors">
-                        <td className="py-0.5 md:py-2 px-2 text-[8px] md:text-[10px] font-black text-slate-300">R{r.round}</td>
+                        <td className="py-0.5 md:py-2 px-1.5 md:px-2 text-[11px] md:text-sm font-black text-slate-500">R{r.round}</td>
                         {players.map(p => (
                           <td key={p.id} className="p-0.5 md:p-1">
-                            <input {...scoreInputProps} value={scoreValue(r.scores[p.id])} readOnly={!canEdit} onChange={(e) => handleScoreChange(rIdx, p.id, e.target.value)} className={`${SCORE_INPUT_CLASS} w-full bg-slate-50/50 border-0 rounded-md py-1 md:py-2 text-center font-black ${scoreTextClass(r.scores[p.id])} text-[11px] md:text-base focus:bg-white focus:ring-1 focus:ring-indigo-200 transition-all placeholder:text-slate-200`} placeholder="0" />
+                            <input {...scoreInputProps} value={scoreValue(r.scores[p.id])} readOnly={!canEdit} onChange={(e) => handleScoreChange(rIdx, p.id, e.target.value)} className={`${SCORE_INPUT_CLASS} w-full bg-slate-50/50 border-0 rounded-md py-1 md:py-2 text-center font-black ${scoreTextClass(r.scores[p.id])} text-[14px] md:text-lg focus:bg-white focus:ring-1 focus:ring-indigo-200 transition-all placeholder:text-slate-200`} placeholder="0" />
                           </td>
                         ))}
                       </tr>
@@ -448,6 +454,9 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
           {activeTab === 'fark' && <GapPanel players={players} rounds={rounds} />}
 
           {activeTab === 'dice' && <DiceRoller />}
+
+          {/* Sayaç sekme değişince durmasın diye hep açık, sadece gizlenir */}
+          <div className={activeTab === 'timer' ? 'flex-1 flex flex-col overflow-hidden' : 'hidden'}><TimerPanel /></div>
 
           {activeTab === 'archive' && archive}
         </div>

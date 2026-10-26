@@ -35,6 +35,7 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
   const [pendingPin, setPendingPin] = useState<string | null>(null); // doğrulanmayı bekleyen PIN
   const [editPin, setEditPin] = useState<string | null>(null);       // doğrulanmış PIN (kaydetmede gönderilir)
   const [view, setView] = useState<'games' | 'cards'>('games');
+  const [showUnranked, setShowUnranked] = useState(false); // 20 oyun altı listesi (kapalı başlar)
   // Karnede bir oyuncuya dokununca Oyunlar listesi o oyuncunun oyunlarına süzülür
   const [filter, setFilter] = useState<{ key: string; name: string } | null>(null);
   const cards = useMemo(() => buildReportCards(items), [items]);
@@ -106,12 +107,14 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
                   <React.Fragment key={c.name}>
                   {c.rank === null && (i === 0 || cards[i - 1].rank !== null) && (
                     <tr className="bg-slate-50">
-                      <td colSpan={4 + placeCols} className="py-1.5 text-[9px] md:text-[11px] font-black uppercase tracking-tight text-slate-400 border-t-2 border-slate-300">
-                        {MIN_RANKED_GAMES} oyun altı · sıralamaya girmez
+                      <td colSpan={4 + placeCols} className="p-0 border-t-2 border-slate-300">
+                        <button onClick={() => setShowUnranked(v => !v)} aria-expanded={showUnranked} className="w-full py-2 text-[10px] md:text-xs font-black uppercase tracking-tight text-slate-500 hover:bg-slate-100">
+                          {showUnranked ? '▾' : '▸'} {MIN_RANKED_GAMES} oyun altı · sıralamaya girmez ({cards.filter(x => x.rank === null).length} kişi)
+                        </button>
                       </td>
                     </tr>
                   )}
-                  <tr
+                  {(c.rank !== null || showUnranked) && <tr
                     role="button"
                     tabIndex={0}
                     title={`${c.name} oyunlarını göster`}
@@ -136,7 +139,7 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
                     {Array.from({ length: placeCols }, (_, i) => (
                       <td key={i} className={`py-1.5 ${i === 0 && c.places[0] ? 'text-[#006100] bg-[#c6efce]/50' : ''} ${c.places[i] ? '' : 'text-slate-200'}`}>{c.places[i] ?? 0}</td>
                     ))}
-                  </tr>
+                  </tr>}
                   </React.Fragment>
                 ))}
               </tbody>
