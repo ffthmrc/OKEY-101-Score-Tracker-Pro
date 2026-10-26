@@ -291,3 +291,29 @@ test('masa açan telefonu kilitlese de sonra gelenlere masa açma PIN\'i sorulma
     Room.openPin = '';
   }
 });
+
+test('ortak sayaç: masadakiler başlatır / oyun açtı / sıfırlar; izleyici dokunamaz; süreler sadece dururken değişir', () => {
+  const room = setup();
+  sit(room, 'fatih', 'Fatih');
+  assert.equal(room.apply('izleyici', { t: 'timer', action: 'start' }).ok, false);
+  assert.equal(room.apply('fatih', { t: 'timer', action: 'start' }, 1000).ok, true);
+  let v = room.view('izleyici', 0, []).timer;
+  assert.equal(v.phase, 'decide');
+  assert.equal(v.decideEndsAt, 61_000);
+  assert.equal(v.mine, false);
+  assert.equal(room.view('fatih', 0, []).timer.mine, true);
+  assert.equal(room.apply('fatih', { t: 'timerDurations', decideSec: 30, openSec: 60 }).ok, false); // çalışırken değişmez
+  assert.equal(room.apply('fatih', { t: 'timer', action: 'open' }, 21_000).ok, true);
+  v = room.view('x', 0, []).timer;
+  assert.equal(v.phase, 'open');
+  assert.equal(v.decideLeftMs, 40_000);
+  assert.equal(v.openEndsAt, 141_000);
+  assert.equal(room.apply('izleyici', { t: 'timer', action: 'reset' }).ok, false);
+  room.apply('fatih', { t: 'timer', action: 'reset' });
+  assert.equal(room.view('x', 0, []).timer.phase, 'idle');
+  assert.equal(room.apply('fatih', { t: 'timerDurations', decideSec: 45, openSec: 90 }).ok, true);
+  assert.equal(room.view('x', 0, []).timer.decideSec, 45);
+  // süresi biten 1. sayaçta "oyun açtı" denemez
+  room.apply('fatih', { t: 'timer', action: 'start' }, 0);
+  assert.equal(room.apply('fatih', { t: 'timer', action: 'open' }, 50_000).ok, false);
+});

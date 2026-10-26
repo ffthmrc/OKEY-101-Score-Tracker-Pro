@@ -1,28 +1,19 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import type { TimerState } from './shared/protocol';
 import { playFail } from './ui';
 
-// Hamle süresi: sıra gelen oyuncunun taş çekip karar vermesi için 1. sayaç (varsayılan 1 dk);
+// Ortak hamle sayacı: sıra gelen oyuncunun taş çekip karar vermesi için 1. sayaç (varsayılan 1 dk);
 // "Oyun açtı" denirse 1. sayaç durur, taşı atması için 2. sayaç (varsayılan 2 dk) başlar.
-// Süre biten sayaçta başarısızlık zili çalar. Sayaç sadece bu cihazda çalışır.
-
-type Phase = 'idle' | 'decide' | 'open';
+// Durum sunucuda; herkes aynı sayacı görür, sadece masadakiler kullanır.
+// Süre bitince zil sadece sayaca son dokunan telefonda çalar (masada 4 telefon birden çalmasın).
 
 const STEP = 15;           // süre ayarı adımı (sn)
 const MIN_SEC = 15;
 const MAX_SEC = 300;
-const DURATIONS_KEY = 'okey_timer_durations';
 
 const fmt = (ms: number) => {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-};
-
-const loadDurations = (): [number, number] => {
-  try {
-    const v = JSON.parse(localStorage.getItem(DURATIONS_KEY) ?? '');
-    if (Array.isArray(v) && v.length === 2 && v.every(n => Number.isInteger(n) && n >= MIN_SEC && n <= MAX_SEC)) return [v[0], v[1]];
-  } catch { /* varsayılan */ }
-  return [60, 120];
 };
 
 // Ekran sayaç çalışırken kapanmasın (destekleyen tarayıcılarda)
@@ -54,69 +45,52 @@ const Clock: React.FC<{ label: string; ms: number; total: number; active: boolea
   );
 };
 
-export const TimerPanel: React.FC = () => {
-  const [[decideSec, openSec], setDurations] = useState(loadDurations);
-  const [phase, setPhase] = useState<Phase>('idle');
-  const [decideLeft, setDecideLeft] = useState(decideSec * 1000);
-  const [openLeft, setOpenLeft] = useState(openSec * 1000);
-  const endsAt = useRef(0);
-  const rang = useRef(false);
+interface TimerPanelProps {
+  timer: TimerState & { mine: boolean };
+  serverOffset: React.MutableRefObject<number>;
+  canControl: boolean;
+  onAction: (action: 'start' | 'open' | 'reset') => void;
+  onDurations: (decideSec: number, openSec: number) => void;
+}
+
+export const TimerPanel: React.FC<TimerPanelProps> = ({ timer, serverOffset, canControl, onAction, onDurations }) => {
+  const { phase, decideSec, openSec } = timer;
+  const [now, setNow] = useState(() => Date.now() + serverOffset.current);
+  const rangFor = useRef<number | null>(null); // hangi bitiş anı için zil çaldı
 
   useWakeLock(phase !== 'idle');
 
-  useEffect(() => {
-    try { localStorage.setItem(DURATIONS_KEY, JSON.stringify([decideSec, openSec])); } catch { /* yok say */ }
-    if (phase === 'idle') {
-      setDecideLeft(decideSec * 1000);
-      setOpenLeft(openSec * 1000);
-    }
-  }, [decideSec, openSec, phase]);
-
-  // Zamanı bitiş anına göre hesaplar: telefon yavaşlasa da sayaç kaymaz
+  // Sayaç çalışırken ekranı yenile (sunucu saatine göre)
   useEffect(() => {
     if (phase === 'idle') return;
-    const tick = () => {
-      const left = endsAt.current - Date.now();
-      if (phase === 'decide') setDecideLeft(left); else setOpenLeft(left);
-      if (left <= 0 && !rang.current) {
-        rang.current = true;
-        playFail();
-      }
-    };
+    const tick = () => setNow(Date.now() + serverOffset.current);
     tick();
     const id = setInterval(tick, 200);
     return () => clearInterval(id);
-  }, [phase]);
+  }, [phase, serverOffset]);
 
-  const start = useCallback(() => {
-    rang.current = false;
-    endsAt.current = Date.now() + decideSec * 1000;
-    setOpenLeft(openSec * 1000);
-    setPhase('decide');
-  }, [decideSec, openSec]);
+  const decideLeft = phase === 'idle' ? decideSec * 1000
+    : phase === 'decide' ? (timer.decideEndsAt ?? now) - now
+    : timer.decideLeftMs ?? 0;
+  const openLeft = phase === 'open' ? (timer.openEndsAt ?? now) - now : openSec * 1000;
+  const decideDone = phase === 'decide' && decideLeft <= 0;
+  const openDone = phase === 'open' && openLeft <= 0;
 
-  const opened = useCallback(() => {
-    rang.current = false;
-    setDecideLeft(Math.max(0, endsAt.current - Date.now()));   // 1. sayaç kaldığı yerde durur
-    endsAt.current = Date.now() + openSec * 1000;
-    setPhase('open');
-  }, [openSec]);
+  // Zil: sadece sayaca son dokunan telefonda, her bitiş için bir kez
+  const runningEnd = phase === 'decide' ? timer.decideEndsAt : phase === 'open' ? timer.openEndsAt : null;
+  useEffect(() => {
+    if (!timer.mine || runningEnd === null || !(decideDone || openDone)) return;
+    if (rangFor.current === runningEnd) return;
+    rangFor.current = runningEnd;
+    // geç açılan sayfada eski bitiş için çalma
+    if (now - runningEnd < 5000) playFail();
+  }, [timer.mine, runningEnd, decideDone, openDone, now]);
 
-  const reset = useCallback(() => {
-    rang.current = false;
-    setPhase('idle');
-    setDecideLeft(decideSec * 1000);
-    setOpenLeft(openSec * 1000);
-  }, [decideSec, openSec]);
-
-  const decideDone = decideLeft <= 0 && phase === 'decide';
-  const openDone = openLeft <= 0 && phase === 'open';
-
-  const adjust = (which: 0 | 1, delta: number) =>
-    setDurations(([a, b]) => {
-      const clamp = (n: number) => Math.max(MIN_SEC, Math.min(MAX_SEC, n));
-      return which === 0 ? [clamp(a + delta), b] : [a, clamp(b + delta)];
-    });
+  const adjust = (which: 0 | 1, delta: number) => {
+    const clamp = (n: number) => Math.max(MIN_SEC, Math.min(MAX_SEC, n));
+    if (which === 0) onDurations(clamp(decideSec + delta), openSec);
+    else onDurations(decideSec, clamp(openSec + delta));
+  };
 
   const Stepper = ({ which, label, sec }: { which: 0 | 1; label: string; sec: number }) => (
     <div className="flex items-center gap-1.5">
@@ -132,27 +106,35 @@ export const TimerPanel: React.FC = () => {
       <Clock label="1 · Taş çek, karar ver" ms={decideLeft} total={decideSec} active={phase === 'decide'} done={decideDone} dim={phase === 'open'} />
       <Clock label="2 · Oyun açtı, taş at" ms={openLeft} total={openSec} active={phase === 'open'} done={openDone} dim={phase !== 'open'} />
 
-      <div className="flex gap-2">
-        {phase === 'idle' && (
-          <button onClick={start} className="flex-1 h-14 md:h-16 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-base md:text-lg font-black uppercase tracking-tight shadow active:scale-[0.98]">Başlat</button>
-        )}
-        {phase === 'decide' && !decideDone && (
-          <button onClick={opened} className="flex-1 h-14 md:h-16 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-base md:text-lg font-black uppercase tracking-tight shadow active:scale-[0.98]">Oyun açtı</button>
-        )}
-        {phase !== 'idle' && (
-          <button onClick={reset} className={`h-14 md:h-16 rounded-2xl border-2 border-slate-900 text-slate-900 text-base md:text-lg font-black uppercase tracking-tight active:scale-[0.98] ${decideDone || phase === 'open' ? 'flex-1 bg-slate-900 text-white' : 'px-5 bg-white'}`}>Sıfırla</button>
-        )}
-      </div>
-
-      {phase === 'idle' && (
-        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] md:text-xs font-black uppercase tracking-tight">
-          <Stepper which={0} label="1. süre" sec={decideSec} />
-          <Stepper which={1} label="2. süre" sec={openSec} />
-        </div>
+      {canControl ? (
+        <>
+          <div className="flex gap-2">
+            {phase === 'idle' && (
+              <button onClick={() => onAction('start')} className="flex-1 h-14 md:h-16 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-base md:text-lg font-black uppercase tracking-tight shadow active:scale-[0.98]">Başlat</button>
+            )}
+            {phase === 'decide' && !decideDone && (
+              <button onClick={() => onAction('open')} className="flex-1 h-14 md:h-16 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-base md:text-lg font-black uppercase tracking-tight shadow active:scale-[0.98]">Oyun açtı</button>
+            )}
+            {phase !== 'idle' && (
+              <button onClick={() => onAction('reset')} className={`h-14 md:h-16 rounded-2xl border-2 border-slate-900 text-base md:text-lg font-black uppercase tracking-tight active:scale-[0.98] ${decideDone || phase === 'open' ? 'flex-1 bg-slate-900 text-white' : 'px-5 bg-white text-slate-900'}`}>Sıfırla</button>
+            )}
+          </div>
+          {phase === 'idle' && (
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] md:text-xs font-black uppercase tracking-tight">
+              <Stepper which={0} label="1. süre" sec={decideSec} />
+              <Stepper which={1} label="2. süre" sec={openSec} />
+            </div>
+          )}
+          <p className="text-[10px] md:text-xs font-bold text-slate-400 text-center">
+            Sıra gelince <b>Başlat</b>. Oyun açarsa <b>Oyun açtı</b>. Taş atılınca <b>Sıfırla</b>, sıradaki için tekrar <b>Başlat</b>.
+            Sayaç herkeste görünür; süre bitince zil sayaca son dokunan telefonda çalar.
+          </p>
+        </>
+      ) : (
+        <p className="text-[11px] md:text-xs font-bold text-slate-400 text-center bg-slate-50 rounded-xl py-3 px-2">
+          Sayacı masadakiler kullanır. Sen canlı izliyorsun.
+        </p>
       )}
-      <p className="text-[10px] md:text-xs font-bold text-slate-400 text-center">
-        Sıra gelince <b>Başlat</b>. Oyun açarsa <b>Oyun açtı</b>. Taş atılınca <b>Sıfırla</b>, sıradaki için tekrar <b>Başlat</b>. Süre bitince zil çalar. Sayaç sadece bu telefonda çalışır.
-      </p>
     </div>
   );
 };

@@ -30,6 +30,7 @@ export function useRoom() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const clientRef = useRef<SyncClient | null>(null);
+  const serverOffset = useRef(0); // sunucu saati - telefon saati (ms)
   const pendingRef = useRef<PendingOp[]>([]);
   const seqRef = useRef(0);
 
@@ -48,6 +49,7 @@ export function useRoom() {
       onMessage: msg => {
         switch (msg.type) {
           case 'state':
+            serverOffset.current = msg.room.serverTime - Date.now();
             setRoom(msg.room);
             if (msg.room.code !== code) {
               const url = new URL(window.location.href);
@@ -156,6 +158,6 @@ export function useRoom() {
     code, room, game, status, error, sendOp,
     archiveItems, archiveGame, archiveSavedId, archiveDeletedId, archiveUnlockSeq,
     openArchiveGame, unlockArchive, saveArchiveGame, deleteArchiveGame,
-    lastDeleted, undoDelete, notice,
+    lastDeleted, undoDelete, notice, serverOffset,
   };
 }

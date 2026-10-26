@@ -1,5 +1,5 @@
 // Oda mantığı: sandalyeler, katılma onayı + masa şifresi, yetki (masaya oturan her şeyi yapar, oturmayan izler), ortak geri al/ileri al geçmişi. Ağdan bağımsızdır (test edilebilir).
-import type { ArchivedGame, GameState, JoinRequestView, RoomOp, RoomView } from '../shared/protocol.ts';
+import type { ArchivedGame, GameState, JoinRequestView, RoomOp, RoomView, TimerState } from '../shared/protocol.ts';
 import { applyGameOp, cleanName, hasAnyScore, MAX_PLAYERS, MAX_TITLE_LEN, tidyTable } from '../shared/game.ts';
 import { getInitialPlayers, getInitialRounds, PLAYER_COLORS } from '../constants.ts';
 import { personKey } from '../shared/stats.ts';
@@ -18,6 +18,11 @@ const PIN_LOCK_MS = 60_000;    // 1 dakika bekletilir
 
 interface JoinRequest { id: string; clientId: string; name: string }
 
+const TIMER_MIN_SEC = 15;
+const TIMER_MAX_SEC = 300;
+const idleTimer = (decideSec = 60, openSec = 120): TimerState =>
+  ({ phase: 'idle', decideSec, openSec, decideEndsAt: null, decideLeftMs: null, openEndsAt: null });
+
 // Bu kadar süre bağlı olmayan cihaz masadan kendiliğinden kalkar (süre son bağlantıdan sayılır)
 export const SEAT_IDLE_MS = 6 * 3600_000;
 
@@ -25,6 +30,8 @@ export interface RoomData {
   code: string;
   adminClientId: string | null;
   title?: string | null; // masa adı (boşsa ekranda bugünün tarihi)
+  timer?: TimerState;    // ortak hamle sayacı
+  timerBy?: string | null; // sayaca son dokunan cihaz (zil onda çalar)
   pin?: string | null;   // masa şifresi (katılırken sorulur; istemciye gönderilmez)
   lastSeen?: Record<string, number>; // clientId -> son bağlı olduğu an (ms); sunucu yeniden başlasa da korunur
   createdAt: string;
@@ -234,6 +241,31 @@ export class Room {
         this.touch();
         return { ok: true };
       }
+      case 'timer': {
+        const t = this.data.timer ?? idleTimer();
+        if (op.action === 'start') {
+          this.data.timer = { ...idleTimer(t.decideSec, t.openSec), phase: 'decide', decideEndsAt: now + t.decideSec * 1000 };
+        } else if (op.action === 'open') {
+          if (t.phase !== 'decide' || !t.decideEndsAt || t.decideEndsAt <= now) return { ok: false, error: 'Önce sayacı başlat' };
+          this.data.timer = { ...t, phase: 'open', decideEndsAt: null, decideLeftMs: t.decideEndsAt - now, openEndsAt: now + t.openSec * 1000 };
+        } else if (op.action === 'reset') {
+          this.data.timer = idleTimer(t.decideSec, t.openSec);
+        } else {
+          return { ok: false, error: 'Geçersiz işlem' };
+        }
+        this.data.timerBy = clientId;
+        this.touch();
+        return { ok: true };
+      }
+      case 'timerDurations': {
+        const t = this.data.timer ?? idleTimer();
+        if (t.phase !== 'idle') return { ok: false, error: 'Süreler sayaç dururken değişir' };
+        const ok = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= TIMER_MIN_SEC && (n as number) <= TIMER_MAX_SEC;
+        if (!ok(op.decideSec) || !ok(op.openSec)) return { ok: false, error: 'Süre 15 sn ile 5 dk arasında olmalı' };
+        this.data.timer = idleTimer(op.decideSec, op.openSec);
+        this.touch();
+        return { ok: true };
+      }
       case 'setTitle': {
         // Geri-al geçmişine girmez; boş bırakılırsa tarihe döner
         const raw = typeof op.title === 'string' ? op.title.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, MAX_TITLE_LEN) : '';
@@ -334,6 +366,8 @@ export class Room {
       code,
       version: this.version,
       title: this.data.title ?? null,
+      timer: { ...(this.data.timer ?? idleTimer()), mine: this.data.timerBy === clientId },
+      serverTime: Date.now(),
       pinSet: !!this.data.pin,
       needsOpenPin: !!Room.openPin && this.tableEmpty(),
       approversOnline: unique.some(id => id !== clientId && this.seatOf(id) !== null),

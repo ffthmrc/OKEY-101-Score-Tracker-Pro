@@ -247,11 +247,12 @@ interface GameDashboardProps {
   onVacate: (id: string) => void;
   roomBar: React.ReactNode;
   archive: React.ReactNode;
+  timer: React.ReactNode;
 }
 
 const GameDashboard: React.FC<GameDashboardProps> = ({
   players, rounds, actions, onReset, onAddPlayer, onRemovePlayer, undo, redo, canUndo, canRedo,
-  canEdit, occupied, mySeat, onVacate, roomBar, archive
+  canEdit, occupied, mySeat, onVacate, roomBar, archive, timer
 }) => {
   const [renameId, setRenameId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'table' | 'charts' | 'fark' | 'dice' | 'timer' | 'archive'>('table');
@@ -456,7 +457,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
           {activeTab === 'dice' && <DiceRoller />}
 
           {/* Sayaç sekme değişince durmasın diye hep açık, sadece gizlenir */}
-          <div className={activeTab === 'timer' ? 'flex-1 flex flex-col overflow-hidden' : 'hidden'}><TimerPanel /></div>
+          <div className={activeTab === 'timer' ? 'flex-1 flex flex-col overflow-hidden' : 'hidden'}>{timer}</div>
 
           {activeTab === 'archive' && archive}
         </div>
@@ -481,7 +482,7 @@ export default function App() {
     code, room, game, status, error, sendOp,
     archiveItems, archiveGame, archiveSavedId, archiveDeletedId, archiveUnlockSeq,
     openArchiveGame, unlockArchive, saveArchiveGame, deleteArchiveGame,
-    lastDeleted, undoDelete, notice: roomNotice,
+    lastDeleted, undoDelete, notice: roomNotice, serverOffset,
   } = useRoom();
   const [joinOpen, setJoinOpen] = useState(false);
   const [closeConfirm, setCloseConfirm] = useState(false);
@@ -623,6 +624,15 @@ export default function App() {
         mySeat={room.mySeat}
         onVacate={playerId => sendOp({ t: 'vacate', playerId })}
         roomBar={roomBar}
+        timer={
+          <TimerPanel
+            timer={room.timer}
+            serverOffset={serverOffset}
+            canControl={canEdit}
+            onAction={action => sendOp({ t: 'timer', action })}
+            onDurations={(decideSec, openSec) => sendOp({ t: 'timerDurations', decideSec, openSec })}
+          />
+        }
         archive={
           <ArchivePanel
             items={archiveItems} game={archiveGame} savedId={archiveSavedId} deletedId={archiveDeletedId} unlockSeq={archiveUnlockSeq}

@@ -17,6 +17,8 @@ export interface RoomView {
   code: string;
   version: number;
   title: string | null;               // masa adı; null ise ekranda bugünün tarihi görünür
+  timer: TimerState & { mine: boolean }; // mine: sayaca son bu cihaz dokundu (zil sadece onda çalar)
+  serverTime: number;                 // gönderildiği andaki sunucu saati (telefon saati farkını düzeltmek için)
   pinSet: boolean;                    // masa şifresi konmuş mu (şifrenin kendisi gönderilmez)
   needsOpenPin: boolean;              // masada oturan kimse yok: katılan masa açma PIN'i girmeli
   approversOnline: boolean;           // masadakilerden biri şu an bağlı mı (değilse istek, telefonunu açınca görülür)
@@ -31,6 +33,16 @@ export interface RoomView {
   viewers: number;                   // bağlı cihaz sayısı
   online: { name: string | null; me: boolean }[]; // bağlı cihazlar: masadaysa oyuncu ismi, değilse null (izleyici)
   ack: number;                       // bu oturumdan işlenen son op seq'i
+}
+
+// Ortak hamle sayacı (sunucuda tutulur). Zamanlar sunucu saatine göre ms.
+export interface TimerState {
+  phase: 'idle' | 'decide' | 'open';
+  decideSec: number;            // 1. sayaç süresi (taş çek, karar ver)
+  openSec: number;              // 2. sayaç süresi (oyun açtı, taş at)
+  decideEndsAt: number | null;  // 1. sayaç çalışırken bitiş anı
+  decideLeftMs: number | null;  // "Oyun açtı" denince 1. sayaçta kalan (donmuş)
+  openEndsAt: number | null;    // 2. sayaç çalışırken bitiş anı
 }
 
 export interface JoinRequestView {
@@ -60,6 +72,8 @@ export type RoomOp =
   | { t: 'setPin'; pin: string | null }
   | { t: 'leave' }
   | { t: 'setTitle'; title: string | null }
+  | { t: 'timer'; action: 'start' | 'open' | 'reset' }
+  | { t: 'timerDurations'; decideSec: number; openSec: number }
   | { t: 'vacate'; playerId: string };
 
 export interface ArchivedGame {
