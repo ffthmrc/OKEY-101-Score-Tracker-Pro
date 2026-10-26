@@ -636,6 +636,7 @@ export default function App() {
         open={joinOpen}
         needPin={room.pinSet}
         needOpenPin={room.needsOpenPin}
+        approversOnline={room.approversOnline}
         onCancel={() => setJoinOpen(false)}
         onJoin={(name, pin, openPin) => { sendOp({ t: 'join', name, pin, openPin }); setJoinOpen(false); }}
       />

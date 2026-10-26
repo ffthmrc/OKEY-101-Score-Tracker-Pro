@@ -135,11 +135,12 @@ interface JoinDialogProps {
   open: boolean;
   needPin: boolean;       // masa şifresi konmuş
   needOpenPin: boolean;   // masada kimse yok: masa açma PIN'i
+  approversOnline: boolean;
   onJoin: (name: string, pin?: string, openPin?: string) => void;
   onCancel: () => void;
 }
 
-export const JoinDialog: React.FC<JoinDialogProps> = ({ open, needPin, needOpenPin, onJoin, onCancel }) => {
+export const JoinDialog: React.FC<JoinDialogProps> = ({ open, needPin, needOpenPin, approversOnline, onJoin, onCancel }) => {
   const [name, setName] = useState('');
   const [pin, setPin] = useState('');
   const [openPin, setOpenPin] = useState('');
@@ -154,7 +155,8 @@ export const JoinDialog: React.FC<JoinDialogProps> = ({ open, needPin, needOpenP
         <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 mb-1">Masaya katıl</h3>
         <p className="text-xs text-slate-500 mb-3">{needOpenPin
             ? 'Masada kimse yok. Masayı açmak için masa açma PIN\'ini gir; sonra gelenleri sen onaylarsın.'
-            : 'Masadaki biri onaylayınca oturursun. Adın masada yazılıysa o sandalyeye, değilse boş bir sandalyeye (P1, P5…) geçersin.'}</p>
+            : 'Masadaki biri onaylayınca oturursun. Adın masada yazılıysa o sandalyeye, değilse boş bir sandalyeye (P1, P5…) geçersin.'}
+          {!needOpenPin && !approversOnline && ' Masadakilerin telefonu şu an kapalı; açınca isteğini görürler, bu ekranı açık tut.'}</p>
         <input
           autoFocus
           value={name}

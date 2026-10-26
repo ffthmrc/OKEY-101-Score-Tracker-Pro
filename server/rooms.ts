@@ -139,6 +139,10 @@ export class Room {
     return { ok: true };
   }
 
+  private tableEmpty() {
+    return !Object.values(this.data.seats).some(devices => devices.length > 0);
+  }
+
   // Bağlantısı kopan cihazın bekleyen isteği silinir
   dropRequests(clientId: string) {
     const before = this.requests.length;
@@ -164,9 +168,10 @@ export class Room {
           return { ok: false, error };
         };
         if (this.data.pin && op.pin !== this.data.pin) return wrong('Masa şifresi yanlış');
-        const approverOnline = onlineIds.some(id => id !== clientId && this.seatOf(id) !== null);
-        if (!approverOnline) {
-          // Onaylayacak kimse yok: masayı ancak masa açma PIN'ini bilen açar, sonra gelenleri o onaylar
+        // Masada oturan biri varsa (telefonu kilitli / bağlantısı kopmuş olsa bile) istek onaya düşer;
+        // masa açma PIN'i sadece masada gerçekten kimse oturmuyorsa sorulur
+        if (this.tableEmpty()) {
+          // Masayı ancak masa açma PIN'ini bilen açar, sonra gelenleri o onaylar
           if (Room.openPin && op.openPin !== Room.openPin) {
             return wrong(op.openPin ? 'Masa açma PIN\'i yanlış' : 'Masada kimse yok. Masayı açmak için masa açma PIN\'i gerekli.');
           }
@@ -330,7 +335,8 @@ export class Room {
       version: this.version,
       title: this.data.title ?? null,
       pinSet: !!this.data.pin,
-      needsOpenPin: !!Room.openPin && !unique.some(id => id !== clientId && this.seatOf(id) !== null),
+      needsOpenPin: !!Room.openPin && this.tableEmpty(),
+      approversOnline: unique.some(id => id !== clientId && this.seatOf(id) !== null),
       myRequest: this.requests.find(r => r.clientId === clientId)?.name ?? null,
       requests: this.seatOf(clientId) ? this.requests.map(r => this.requestView(r)) : [],
       game,

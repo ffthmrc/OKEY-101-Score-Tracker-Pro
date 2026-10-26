@@ -4,36 +4,45 @@ import { Room } from './rooms.ts';
 
 const setup = () => Room.create('TEST1', 'admin');
 
+// Katıl; masada oturan biri varsa istek onaya düşer, masadakilerden biri onaylar
+const sit = (room: Room, clientId: string, name: string) => {
+  const r = room.apply(clientId, { t: 'join', name });
+  if (!r.ok || room.seatOf(clientId)) return r;
+  const approver = Object.values(room.data.seats).flat()[0];
+  const req = room.view(approver, 0, []).requests.at(-1)!;
+  return room.apply(approver, { t: 'approve', id: req.id });
+};
+
 test('katılan ilk adsız sandalyeye oturur, masa 4 kişide dolar', () => {
   const room = setup();
   for (const [i, c] of ['a', 'b', 'c', 'd'].entries()) {
-    assert.deepEqual(room.apply(c, { t: 'join', name: c.toUpperCase() }), { ok: true });
+    assert.deepEqual(sit(room, c, c.toUpperCase()), { ok: true });
     assert.equal(room.seatOf(c), `p${i + 1}`);
   }
   assert.equal(room.data.game.players[2].name, 'C');
-  assert.equal(room.apply('e', { t: 'join', name: 'E' }).ok, false);
+  assert.equal(sit(room, 'e', 'E').ok, false);
 });
 
 test('yazılmış isme geçemez; kendi ismini yazan o sandalyeye oturur; + Player ile P5 açılır', () => {
   const room = setup();
-  room.apply('fatih-tel', { t: 'join', name: 'Fatih' });
+  sit(room, 'fatih-tel', 'Fatih');
   room.apply('fatih-tel', { t: 'setName', playerId: 'p2', name: 'Ketenci' });
   room.apply('fatih-tel', { t: 'setName', playerId: 'p3', name: 'Zeki' });
   room.apply('fatih-tel', { t: 'setName', playerId: 'p4', name: 'Hasan' });
   // aynı kişi PC'den: kendi sandalyesine, Ketenci'nin adı bozulmaz
-  assert.equal(room.apply('fatih-pc', { t: 'join', name: 'FATİH' }).ok, true);
+  assert.equal(sit(room, 'fatih-pc', 'FATİH').ok, true);
   assert.equal(room.seatOf('fatih-pc'), 'p1');
   assert.equal(room.seatOf('fatih-tel'), 'p1');
   assert.equal(room.data.game.players[1].name, 'Ketenci');
   // Ketenci kendi adıyla katılır
-  assert.equal(room.apply('ketenci', { t: 'join', name: 'ketenci' }).ok, true);
+  assert.equal(sit(room, 'ketenci', 'ketenci').ok, true);
   assert.equal(room.seatOf('ketenci'), 'p2');
   // yabancı: yer yok
-  const r = room.apply('ali', { t: 'join', name: 'Ali' });
+  const r = sit(room, 'ali', 'Ali');
   assert.equal(r.ok, false);
   // masadaki biri yer açar, Ali P5'e oturur
   room.apply('fatih-pc', { t: 'addPlayer' }, 1000);
-  assert.equal(room.apply('ali', { t: 'join', name: 'Ali' }).ok, true);
+  assert.equal(sit(room, 'ali', 'Ali').ok, true);
   assert.equal(room.seatOf('ali'), 'p-1000');
   assert.equal(room.data.game.players[4].name, 'Ali');
   // bir cihaz ayrılınca diğeri sandalyede kalır
@@ -52,20 +61,20 @@ test('eski kayıt biçimi (sandalye = tek cihaz) yüklenir', () => {
 
 test('yeniden katılan aynı sandalyesine döner, ayrılınca sandalye boşalır', () => {
   const room = setup();
-  room.apply('a', { t: 'join', name: 'ALI' });
-  room.apply('b', { t: 'join', name: 'VELI' });
-  room.apply('a', { t: 'join', name: 'ALI' });
+  sit(room, 'a', 'ALI');
+  sit(room, 'b', 'VELI');
+  sit(room, 'a', 'ALI');
   assert.equal(room.seatOf('a'), 'p1');
   room.apply('a', { t: 'leave' });
   assert.equal(room.seatOf('a'), null);
-  room.apply('c', { t: 'join', name: 'CAN' });
+  sit(room, 'c', 'CAN');
   assert.equal(room.seatOf('c'), 'p3'); // ALI'nin sandalyesi adlı, yeni gelen sıradaki adsız sandalyeye
 });
 
 test('izleyici düzenleyemez, oturan herkes her şeyi yapabilir', () => {
   const room = setup();
   assert.equal(room.apply('x', { t: 'setScore', round: 0, playerId: 'p1', value: 5 }).ok, false);
-  room.apply('b', { t: 'join', name: 'B' });
+  sit(room, 'b', 'B');
   assert.equal(room.apply('b', { t: 'setScore', round: 0, playerId: 'p3', value: 50 }).ok, true);
   assert.equal(room.data.game.rounds[0].scores.p3, 50);
   assert.equal(room.apply('b', { t: 'newGame' }).ok, true);
@@ -75,8 +84,8 @@ test('izleyici düzenleyemez, oturan herkes her şeyi yapabilir', () => {
 test('oyuncu ekle/sil ve sandalye boşaltma: oturan herkes yapar, izleyici (kurucu dahil) yapamaz', () => {
   const room = setup();
   assert.equal(room.apply('admin', { t: 'addPlayer' }).ok, false);
-  room.apply('b', { t: 'join', name: 'B' });
-  room.apply('c', { t: 'join', name: 'C' });
+  sit(room, 'b', 'B');
+  sit(room, 'c', 'C');
   assert.equal(room.apply('x', { t: 'vacate', playerId: 'p1' }).ok, false);
   assert.equal(room.apply('c', { t: 'vacate', playerId: 'p1' }).ok, true);
   assert.equal(room.seatOf('b'), null);
@@ -90,7 +99,7 @@ test('oyuncu ekle/sil ve sandalye boşaltma: oturan herkes yapar, izleyici (kuru
 
 test('aynı hücreye art arda yazma tek geri-al adımı, geri al/ileri al çalışır', () => {
   const room = setup();
-  room.apply('a', { t: 'join', name: 'A' });
+  sit(room, 'a', 'A');
   room.apply('a', { t: 'setScore', round: 0, playerId: 'p1', value: 1 }, 1000);
   room.apply('a', { t: 'setScore', round: 0, playerId: 'p1', value: 12 }, 1200);
   room.apply('a', { t: 'setScore', round: 1, playerId: 'p1', value: 7 }, 1400);
@@ -106,7 +115,7 @@ test('aynı hücreye art arda yazma tek geri-al adımı, geri al/ileri al çalı
 
 test('oyunu kapat skoru arşive verir ve yeni boş oyun açar, isimler kalır', () => {
   const room = setup();
-  room.apply('a', { t: 'join', name: 'ALI' });
+  sit(room, 'a', 'ALI');
   assert.equal(room.apply('a', { t: 'closeGame' }).ok, false);
   room.apply('a', { t: 'setScore', round: 0, playerId: 'p2', value: -101 });
   const res = room.apply('a', { t: 'closeGame' }, 5000);
@@ -119,7 +128,7 @@ test('oyunu kapat skoru arşive verir ve yeni boş oyun açar, isimler kalır', 
 
 test('geçersiz skor ve uzun isim reddedilir/kırpılır', () => {
   const room = setup();
-  room.apply('a', { t: 'join', name: 'ABCDEFGHIJK' });
+  sit(room, 'a', 'ABCDEFGHIJK');
   assert.equal(room.data.game.players[0].name, 'ABCDEFGH');
   assert.equal(room.apply('a', { t: 'setScore', round: 0, playerId: 'p1', value: 1.5 as any }).ok, false);
   assert.equal(room.apply('a', { t: 'setScore', round: 99, playerId: 'p1', value: 1 }).ok, false);
@@ -128,7 +137,7 @@ test('geçersiz skor ve uzun isim reddedilir/kırpılır', () => {
 
 test('bağlı cihaz listesi: masadakiler isimle, izleyiciler isimsiz, aynı cihaz tek sayılır', () => {
   const room = setup();
-  room.apply('a', { t: 'join', name: 'Fatih' });
+  sit(room, 'a', 'Fatih');
   const v = room.view('x', 0, ['x', 'a', 'y', 'a']);
   assert.equal(v.viewers, 3);
   assert.deepEqual(v.online, [{ name: null, me: true }, { name: 'Fatih', me: false }, { name: null, me: false }]);
@@ -137,7 +146,7 @@ test('bağlı cihaz listesi: masadakiler isimle, izleyiciler isimsiz, aynı ciha
 test('masa adı: oturan değiştirir, boş bırakılırsa tarihe döner, izleyici değiştiremez', () => {
   const room = setup();
   assert.equal(room.apply('x', { t: 'setTitle', title: 'Cuma Masası' }).ok, false);
-  room.apply('a', { t: 'join', name: 'A' });
+  sit(room, 'a', 'A');
   assert.equal(room.apply('a', { t: 'setTitle', title: '  Cuma Masası  ' }).ok, true);
   assert.equal(room.view('a', 0, []).title, 'Cuma Masası');
   room.apply('a', { t: 'setTitle', title: '   ' });
@@ -203,9 +212,9 @@ test('silinen oyuncunun sandalyesindeki cihaz yetkisini kaybeder', () => {
 
 test('Oyunu kapat: masadakiler kalkar, kapatanın sandalyesi (tüm cihazları) kalır', () => {
   const room = setup();
-  room.apply('fatih-tel', { t: 'join', name: 'Fatih' });
-  room.apply('fatih-pc', { t: 'join', name: 'Fatih' });
-  room.apply('zeki', { t: 'join', name: 'Zeki' });
+  sit(room, 'fatih-tel', 'Fatih');
+  sit(room, 'fatih-pc', 'Fatih');
+  sit(room, 'zeki', 'Zeki');
   room.apply('zeki', { t: 'setScore', round: 0, playerId: 'p2', value: 50 });
   assert.equal(room.apply('fatih-tel', { t: 'closeGame' }).ok, true);
   assert.equal(room.seatOf('fatih-tel'), 'p1');
@@ -216,17 +225,17 @@ test('Oyunu kapat: masadakiler kalkar, kapatanın sandalyesi (tüm cihazları) k
 
 test('New game masadakilere dokunmaz', () => {
   const room = setup();
-  room.apply('a', { t: 'join', name: 'A' });
-  room.apply('b', { t: 'join', name: 'B' });
+  sit(room, 'a', 'A');
+  sit(room, 'b', 'B');
   room.apply('a', { t: 'newGame' });
   assert.equal(room.seatOf('b'), 'p2');
 });
 
 test('6 saat bağlı olmayan cihaz kalkar; bağlı olan ya da yakında görülen kalır', () => {
   const room = setup();
-  room.apply('a', { t: 'join', name: 'A' });
-  room.apply('b', { t: 'join', name: 'B' });
-  room.apply('c', { t: 'join', name: 'C' });
+  sit(room, 'a', 'A');
+  sit(room, 'b', 'B');
+  sit(room, 'c', 'C');
   const t0 = 1_000_000_000_000;
   room.markSeen(['a', 'b', 'c'], t0);
   room.markSeen(['c'], t0 + 5 * 3600_000);              // c 5 saat sonra da görüldü
@@ -255,6 +264,29 @@ test('masa açma PIN\'i: masada bağlı kimse yokken ilk gelen PIN ister; masada
     room.apply('fatih-pc', { t: 'join', name: 'FATIH' }, 0, ['fatih', 'fatih-pc']);
     room.apply('fatih', { t: 'approve', id: room.view('fatih', 0, []).requests.find(r => r.name === 'FATIH')!.id });
     assert.equal(room.seatOf('fatih-pc'), 'p1');
+  } finally {
+    Room.openPin = '';
+  }
+});
+
+test('masa açan telefonu kilitlese de sonra gelenlere masa açma PIN\'i sorulmaz, istek onaya düşer', () => {
+  Room.openPin = '9999';
+  try {
+    const room = setup();
+    room.apply('fatih', { t: 'join', name: 'Fatih', openPin: '9999' }, 0, ['fatih']);
+    // Fatih'in telefonu kilitli: bağlı değil (onlineIds'de yok)
+    const v = room.view('zeki', 0, ['zeki']);
+    assert.equal(v.needsOpenPin, false);
+    assert.equal(v.approversOnline, false);
+    assert.equal(room.apply('zeki', { t: 'join', name: 'Zeki' }, 0, ['zeki']).ok, true);
+    assert.equal(room.view('zeki', 0, []).myRequest, 'Zeki');
+    // Fatih telefonu açınca isteği görür ve onaylar
+    room.apply('fatih', { t: 'approve', id: room.view('fatih', 0, ['fatih', 'zeki']).requests[0].id });
+    assert.equal(room.seatOf('zeki') !== null, true);
+    // herkes kalkarsa masa yine PIN ister
+    room.apply('fatih', { t: 'leave' });
+    room.apply('zeki', { t: 'leave' });
+    assert.equal(room.view('ali', 0, ['ali']).needsOpenPin, true);
   } finally {
     Room.openPin = '';
   }
