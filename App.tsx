@@ -359,7 +359,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
 
       {/* Sekmeler: büyük harf, aralarında çizgi, seçili olan altı çizili */}
       <nav className="flex bg-white border-b-2 border-slate-200 shrink-0 divide-x divide-slate-200">
-        {([['table', 'Tablo'], ['charts', 'Grafik'], ['fark', 'Fark'], ['dice', 'Zar'], ['timer', 'Süre'], ['archive', 'Arşiv']] as const).map(([tab, label]) => (
+        {([['table', 'Tablo'], ['charts', 'Sıra'], ['fark', 'Fark'], ['dice', 'Zar'], ['timer', 'Süre'], ['archive', 'Arşiv']] as const).map(([tab, label]) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
