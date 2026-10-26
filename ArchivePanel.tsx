@@ -4,7 +4,7 @@ import type { Player, RoundScore } from './types';
 import { parseScoreInput, totalOf, placesFromTotals, placesOf, placeEmoji, hasAnyScore, MAX_NAME_LEN, MAX_ROUNDS } from './shared/game';
 import { GapPanel } from './GapPanel';
 import { scoreTextClass, scoreInputProps, scoreValue, SCORE_INPUT_CLASS } from './ui';
-import { buildReportCards, personKey } from './shared/stats';
+import { buildReportCards, personKey, MIN_RANKED_GAMES, PLACE_POINTS } from './shared/stats';
 import { GameCharts } from './GameCharts';
 import { ConfirmDialog } from './Dialogs';
 
@@ -92,17 +92,26 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
             <table className="w-full text-center border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr className="text-[9px] md:text-[11px] font-black uppercase text-slate-400 tracking-tighter">
-                  <th className="py-2 pl-2 text-left">Oyuncu</th>
+                  <th className="py-2 pl-2 w-5 md:w-8">#</th>
+                  <th className="py-2 text-left">Oyuncu</th>
                   <th className="py-2">Oyun</th>
+                  <th className="py-2">Puan</th>
                   {Array.from({ length: placeCols }, (_, i) => (
                     <th key={i} className="py-2">{['🏆', '🥈', '🥉'][i] ?? `${i + 1}.`}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {cards.map(c => (
+                {cards.map((c, i) => (
+                  <React.Fragment key={c.name}>
+                  {c.rank === null && (i === 0 || cards[i - 1].rank !== null) && (
+                    <tr className="bg-slate-50">
+                      <td colSpan={4 + placeCols} className="py-1.5 text-[9px] md:text-[11px] font-black uppercase tracking-tight text-slate-400 border-t-2 border-slate-300">
+                        {MIN_RANKED_GAMES} oyun altı · sıralamaya girmez
+                      </td>
+                    </tr>
+                  )}
                   <tr
-                    key={c.name}
                     role="button"
                     tabIndex={0}
                     title={`${c.name} oyunlarını göster`}
@@ -110,7 +119,8 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
                     onKeyDown={e => { if (e.key === 'Enter') { setFilter({ key: personKey(c.name), name: c.name }); setView('games'); } }}
                     className="text-[11px] md:text-sm font-black text-slate-700 cursor-pointer hover:bg-indigo-50/60 active:bg-indigo-50"
                   >
-                    <td className="py-1.5 pl-2 text-left">
+                    <td className="py-1.5 pl-2 text-slate-400">{c.rank ?? ''}</td>
+                    <td className="py-1.5 text-left">
                       <div className="flex items-center gap-1.5">
                         <span className="h-2.5 w-1 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
                         <div className="min-w-0">
@@ -119,10 +129,15 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
                       </div>
                     </td>
                     <td className="py-1.5 text-slate-400">{c.played}</td>
+                    <td className={`py-1 ${c.rank !== null ? 'text-indigo-700' : 'text-slate-400'}`}>
+                      <div className="leading-tight">{c.avgPoints.toFixed(2)}</div>
+                      <div className="text-[8px] md:text-[10px] font-bold text-slate-300 leading-tight">{c.points}</div>
+                    </td>
                     {Array.from({ length: placeCols }, (_, i) => (
                       <td key={i} className={`py-1.5 ${i === 0 && c.places[0] ? 'text-[#006100] bg-[#c6efce]/50' : ''} ${c.places[i] ? '' : 'text-slate-200'}`}>{c.places[i] ?? 0}</td>
                     ))}
                   </tr>
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
@@ -130,7 +145,14 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
           </div>
         )}
         {view === 'cards' && cards.length > 0 && (
-          <p className="text-[10px] md:text-xs font-bold text-slate-400 text-center">Oyuncuya dokun: hangi oyunlardan oluştuğunu gör.</p>
+          <div className="text-[10px] md:text-xs font-bold text-slate-400 space-y-1 px-1">
+            <p className="text-center">Oyuncuya dokun: hangi oyunlardan oluştuğunu gör.</p>
+            <p>
+              <b className="text-slate-500">Sıralama nasıl yapılır?</b> Her oyunda 1. {PLACE_POINTS[0]}, 2. {PLACE_POINTS[1]}, 3. {PLACE_POINTS[2]} puan alır; 4. ve sonrası 0.
+              Eşit bitirenler aynı puanı alır. Sıra, <b className="text-slate-500">oyun başına ortalama puana</b> göredir (büyük sayı); altındaki küçük sayı toplam puandır.
+              Sadece en az {MIN_RANKED_GAMES} oyun oynayanlar sıralanır, diğerleri çizginin altında görünür.
+            </p>
+          </div>
         )}
         {view === 'games' && filter && (
           <div className="flex items-center justify-between gap-2 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
