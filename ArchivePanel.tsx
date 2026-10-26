@@ -20,6 +20,7 @@ interface ArchivePanelProps {
   savedId: string | null;
   deletedId: string | null;
   unlockSeq: number;          // sunucu arşiv PIN'ini doğruladıkça artar
+  canEdit: boolean;           // masaya katılmış mı: değilse Sil / Düzenle hiç görünmez
   onOpen: (id: string) => void;
   onUnlock: (pin: string) => boolean;
   onSave: (id: string, players: Player[], rounds: RoundScore[], pin: string) => boolean;
@@ -27,7 +28,7 @@ interface ArchivePanelProps {
 }
 
 // Arşivde düzenleme ve silme arşiv PIN'i ister (sunucuda tanımlı; masaya katılmak gerekmez)
-export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId, deletedId, unlockSeq, onOpen, onUnlock, onSave, onDelete }) => {
+export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId, deletedId, unlockSeq, canEdit, onOpen, onUnlock, onSave, onDelete }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ players: Player[]; rounds: RoundScore[] } | null>(null);
   const [confirm, setConfirm] = useState<'edit' | 'save' | 'delete' | null>(null);
@@ -64,6 +65,11 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
     setPendingPin(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unlockSeq]);
+
+  // Masadan kalkınca açık düzenleme kapanır (sunucu da kaydetmeyi reddeder)
+  useEffect(() => {
+    if (!canEdit) { setDraft(null); setConfirm(null); setPendingPin(null); }
+  }, [canEdit]);
 
   // Silinen oyun (bu cihazdan ya da başkasından) açıksa listeye dön
   useEffect(() => {
@@ -224,10 +230,10 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
         <button onClick={() => { setSelectedId(null); setDraft(null); }} className="text-[10px] md:text-xs font-black text-indigo-600 uppercase">‹ Arşiv</button>
         <span className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-tight truncate">{loaded ? formatDate(loaded.closedAt, loaded.roomCode) : ''}</span>
         <div className="flex items-center gap-1">
-          {!editing && (
+          {!editing && canEdit && (
             <button onClick={() => setConfirm('delete')} disabled={!loaded} className="h-7 md:h-9 px-2 rounded-md border border-red-200 bg-red-50 text-red-600 text-[9px] md:text-[10px] font-black uppercase disabled:opacity-30">Sil</button>
           )}
-          {!editing && (
+          {!editing && canEdit && (
             <button onClick={() => setConfirm('edit')} disabled={!loaded || pendingPin !== null} className="h-7 md:h-9 px-2 rounded-md bg-slate-900 text-white text-[9px] md:text-[10px] font-black uppercase disabled:opacity-30">Düzenle</button>
           )}
           {editing && (

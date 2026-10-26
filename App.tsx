@@ -635,7 +635,7 @@ export default function App() {
         }
         archive={
           <ArchivePanel
-            items={archiveItems} game={archiveGame} savedId={archiveSavedId} deletedId={archiveDeletedId} unlockSeq={archiveUnlockSeq}
+            items={archiveItems} game={archiveGame} savedId={archiveSavedId} deletedId={archiveDeletedId} unlockSeq={archiveUnlockSeq} canEdit={canEdit}
             onOpen={openArchiveGame} onUnlock={unlockArchive} onSave={saveArchiveGame} onDelete={deleteArchiveGame}
           />
         }

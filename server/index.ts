@@ -207,10 +207,12 @@ wss.on('connection', ws => {
         return send(ws, { type: 'archive:game', game });
       }
       case 'archive:unlock': {
+        if (!room.seatOf(conn.clientId)) return send(ws, { type: 'error', message: 'Arşivi değiştirmek için önce masaya katıl' });
         const err = checkArchivePin(conn.clientId, msg.pin, now);
         return send(ws, err ? { type: 'error', message: err } : { type: 'archive:unlocked' });
       }
       case 'archive:update': {
+        if (!room.seatOf(conn.clientId)) return send(ws, { type: 'error', message: 'Arşivi değiştirmek için önce masaya katıl' });
         const pinErr = checkArchivePin(conn.clientId, msg.pin, now);
         if (pinErr) return send(ws, { type: 'error', message: pinErr });
         const game = archive.find(g => g.id === msg.id);
@@ -223,6 +225,7 @@ wss.on('connection', ws => {
         return broadcastArchive();
       }
       case 'archive:delete': {
+        if (!room.seatOf(conn.clientId)) return send(ws, { type: 'error', message: 'Arşivi değiştirmek için önce masaya katıl' });
         const pinErr = checkArchivePin(conn.clientId, msg.pin, now);
         if (pinErr) return send(ws, { type: 'error', message: pinErr });
         const idx = archive.findIndex(g => g.id === msg.id);
@@ -236,6 +239,7 @@ wss.on('connection', ws => {
         return broadcastArchive();
       }
       case 'archive:restore': {
+        if (!room.seatOf(conn.clientId)) return send(ws, { type: 'error', message: 'Arşivi değiştirmek için önce masaya katıl' });
         const pinErr = checkArchivePin(conn.clientId, msg.pin, now);
         if (pinErr) return send(ws, { type: 'error', message: pinErr });
         const idx = trash.findIndex(g => g.id === msg.id);
