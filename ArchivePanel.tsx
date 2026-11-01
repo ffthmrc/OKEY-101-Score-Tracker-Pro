@@ -4,7 +4,7 @@ import type { Player, RoundScore } from './types';
 import { parseScoreInput, totalOf, placesFromTotals, placesOf, placeEmoji, hasAnyScore, MAX_NAME_LEN, MAX_ROUNDS } from './shared/game';
 import { GapPanel } from './GapPanel';
 import { scoreTextClass, scoreInputProps, scoreValue, SCORE_INPUT_CLASS } from './ui';
-import { buildReportCards, personKey, isCoreGame, isCorePlayer, CORE_PLAYERS, PLACE_POINTS } from './shared/stats';
+import { buildReportCards, personKey, isCoreGame, isCorePlayer, karnePlace, CORE_PLAYERS, PLACE_POINTS } from './shared/stats';
 import { GameCharts } from './GameCharts';
 import { ConfirmDialog } from './Dialogs';
 
@@ -51,6 +51,7 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
   const [month, setMonth] = useState<number | null>(null);
   // Karnede bir oyuncuya dokununca Oyunlar listesi o oyuncunun oyunlarına süzülür
   const [filter, setFilter] = useState<{ key: string; name: string; core: boolean } | null>(null);
+  const [winsOnly, setWinsOnly] = useState(false); // Liderlik: sadece 1. olduğu oyunlar
   const years = useMemo(() => [...new Set(items.map(i => yearOf(i.closedAt)))].sort((a, b) => b - a), [items]);
   const months = useMemo(
     () => (year === null ? [] : [...new Set(items.filter(i => yearOf(i.closedAt) === year).map(i => monthOf(i.closedAt)))].sort((a, b) => a - b)),
@@ -64,11 +65,12 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
   // Ana dörtten birine dokununca karneye sayılan oyunları, misafire dokununca tüm oyunları gösterir
   const shownItems = useMemo(
     () => (filter
-      ? periodItems.filter(i => i.players.some(p => personKey(p.name) === filter.key) && (!filter.core || isCoreGame(i)))
+      ? periodItems.filter(i => i.players.some(p => personKey(p.name) === filter.key) && (!filter.core || isCoreGame(i))
+          && (!winsOnly || karnePlace(i, filter.key) === 1))
       : periodItems),
-    [periodItems, filter]
+    [periodItems, filter, winsOnly]
   );
-  const pickFilter = (name: string) => { setFilter({ key: personKey(name), name, core: isCorePlayer(name) }); setView('games'); };
+  const pickFilter = (name: string) => { setFilter({ key: personKey(name), name, core: isCorePlayer(name) }); setWinsOnly(false); setView('games'); };
   // 5. ve sonrası sadece görünen satırlarda (misafirler açıkken) 5+ sıra varsa sütun olarak görünür
   const placeCols = Math.max(4, ...cards.filter(c => c.rank !== null || showUnranked).map(c => c.places.length));
 
@@ -202,10 +204,12 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
         )}
         {view === 'games' && filter && (
           <div className="flex items-center justify-between gap-2 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
-            <span className="text-[11px] md:text-xs font-black uppercase tracking-tight text-indigo-700 truncate">
-              {filter.name} · {filter.core ? 'karneye sayılan oyunlar' : 'oyunları'} · {shownItems.length}
+            <span className="min-w-0 font-black uppercase tracking-tight text-indigo-700 leading-tight">
+              <span className="block truncate text-[11px] md:text-xs">{filter.name} · {shownItems.length} oyun</span>
+              <span className="block truncate text-[9px] md:text-[10px] text-indigo-400">{winsOnly ? '1. olduğu oyunlar' : filter.core ? 'karneye sayılan oyunlar' : 'tüm oyunları'}</span>
             </span>
-            <button onClick={() => setFilter(null)} className="shrink-0 h-7 px-2 rounded-md bg-white border border-indigo-200 text-indigo-600 text-[10px] font-black uppercase">✕ Tümü</button>
+            <button onClick={() => setWinsOnly(v => !v)} aria-pressed={winsOnly} className={`shrink-0 h-7 px-2 rounded-md border text-[10px] font-black uppercase ${winsOnly ? 'bg-amber-400 border-amber-500 text-slate-900' : 'bg-white border-indigo-200 text-indigo-600'}`}>🏆 Liderlik</button>
+            <button onClick={() => { setFilter(null); setWinsOnly(false); }} className="shrink-0 h-7 px-2 rounded-md bg-white border border-indigo-200 text-indigo-600 text-[10px] font-black uppercase">✕ Tümü</button>
           </div>
         )}
         {view === 'games' && shownItems.length === 0 && (

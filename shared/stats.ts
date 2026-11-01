@@ -35,6 +35,15 @@ export const isCoreGame = (game: ArchiveSummary) => {
   return [...CORE_KEYS].every(k => keys.has(k));
 };
 
+// Kişinin bu oyundaki karne sırası (karnedeki 🏆 sütunuyla aynı): ana dörtte, dördünün de olduğu
+// oyunda sadece dördü arasında; diğerlerinde tüm oyuncular arasında. Oyunda yoksa null.
+export const karnePlace = (game: ArchiveSummary, key: string): number | null => {
+  const me = game.players.find(p => personKey(p.name) === key);
+  if (!me) return null;
+  const pool = CORE_KEYS.has(key) && isCoreGame(game) ? game.players.filter(p => isCorePlayer(p.name)) : game.players;
+  return 1 + pool.filter(x => x.total < me.total).length;
+};
+
 type CardAcc = ReportCard & { placeSum: number; lastSeen: string };
 
 // Bir oyunun oyuncularını karta işler. Sıra ve 💩, sadece verilen oyuncular arasında hesaplanır.

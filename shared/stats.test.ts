@@ -88,3 +88,12 @@ test('karne: sadece ana dördün hepsinin oynadığı oyunlar, misafir yok sayı
   assert.equal(get('Ömer').points, 1);
   assert.deepEqual(cards.slice(4).map(c => c.rank), [null, null]);
 });
+
+test('liderlik süzgeci: karnedeki 🏆 ile aynı sayılır', async () => {
+  const { karnePlace } = await import('./stats.ts');
+  const g = game('2026-01-02', { Yücer: 5, Zeki: 10, Hasan: 20, Ketenci: 30, Fatih: 40 });
+  assert.equal(karnePlace(g, personKey('Zeki')), 1);   // misafir 1. ama Zeki dördü arasında 1.
+  assert.equal(karnePlace(g, personKey('Yücer')), 1);  // misafir gerçek sırasıyla
+  assert.equal(karnePlace(game('2026-01-03', { Yücer: 5, Zeki: 10, Hasan: 20 }), personKey('Zeki')), 2); // dördü yok: gerçek sıra
+  assert.equal(karnePlace(g, personKey('Ömer')), null);
+});
