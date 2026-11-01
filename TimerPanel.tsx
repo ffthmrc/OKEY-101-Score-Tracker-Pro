@@ -3,7 +3,8 @@ import type { TimerState } from './shared/protocol';
 import { playFail } from './ui';
 
 // Ortak hamle sayacı: sıra gelen oyuncunun taş çekip karar vermesi için 1. sayaç (varsayılan 1 dk);
-// "Oyun açtı" denirse 1. sayaç durur, taşı atması için 2. sayaç (varsayılan 2 dk) başlar.
+// "Oyun açtı" denirse 1. sayaç durur, taşı atması için 2. sayaç (varsayılan 2 dk) başlar;
+// 1. sayaçta kalan süre 2. sayaca eklenir (20. sn'de açtıysa 40 sn kalır: 2:00 + 0:40 = 2:40).
 // Durum sunucuda; herkes aynı sayacı görür, sadece masadakiler kullanır.
 // Süre bitince zil sadece sayaca son dokunan telefonda çalar (masada 4 telefon birden çalmasın).
 
@@ -27,7 +28,7 @@ const useWakeLock = (on: boolean) => {
   }, [on]);
 };
 
-const Clock: React.FC<{ label: string; ms: number; total: number; active: boolean; done: boolean; dim?: boolean }> = ({ label, ms, total, active, done, dim }) => {
+const Clock: React.FC<{ label: string; ms: number; total: number; active: boolean; done: boolean; dim?: boolean; note?: string }> = ({ label, ms, total, active, done, dim, note }) => {
   const warn = active && ms <= 10_000;
   const color = done ? 'text-red-600' : warn ? 'text-amber-500' : active ? 'text-slate-900' : 'text-slate-300';
   const bar = done ? 'bg-red-500' : warn ? 'bg-amber-400' : 'bg-emerald-500';
@@ -35,7 +36,7 @@ const Clock: React.FC<{ label: string; ms: number; total: number; active: boolea
     <div className={`bg-white border rounded-2xl p-3 md:p-5 shadow-sm transition-opacity ${done ? 'border-red-300 bg-red-50' : 'border-slate-100'} ${dim ? 'opacity-40' : ''}`}>
       <div className="flex items-center justify-between text-[10px] md:text-xs font-black uppercase tracking-tight text-slate-400">
         <span>{label}</span>
-        {done && <span className="text-red-600">Süre bitti</span>}
+        {done ? <span className="text-red-600">Süre bitti</span> : note && <span className="text-emerald-600">{note}</span>}
       </div>
       <div className={`text-center font-black tabular-nums leading-none text-[64px] md:text-[96px] my-2 ${color}`}>{fmt(ms)}</div>
       <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
@@ -71,7 +72,8 @@ export const TimerPanel: React.FC<TimerPanelProps> = ({ timer, serverOffset, can
 
   const decideLeft = phase === 'idle' ? decideSec * 1000
     : phase === 'decide' ? (timer.decideEndsAt ?? now) - now
-    : timer.decideLeftMs ?? 0;
+    : 0; // kalan süre 2. sayaca aktarıldı
+  const bonusMs = phase === 'open' ? timer.decideLeftMs ?? 0 : 0;
   const openLeft = phase === 'open' ? (timer.openEndsAt ?? now) - now : openSec * 1000;
   const decideDone = phase === 'decide' && decideLeft <= 0;
   const openDone = phase === 'open' && openLeft <= 0;
@@ -104,7 +106,8 @@ export const TimerPanel: React.FC<TimerPanelProps> = ({ timer, serverOffset, can
   return (
     <div className="p-2 md:p-4 flex-1 overflow-auto custom-scrollbar flex flex-col gap-3">
       <Clock label="1 · Taş çek, karar ver" ms={decideLeft} total={decideSec} active={phase === 'decide'} done={decideDone} dim={phase === 'open'} />
-      <Clock label="2 · Oyun açtı, taş at" ms={openLeft} total={openSec} active={phase === 'open'} done={openDone} dim={phase !== 'open'} />
+      <Clock label="2 · Oyun açtı, taş at" ms={openLeft} total={openSec + bonusMs / 1000} active={phase === 'open'} done={openDone} dim={phase !== 'open'}
+        note={bonusMs >= 1000 ? `+${fmt(bonusMs)} eklendi` : undefined} />
 
       {canControl ? (
         <>
@@ -126,7 +129,7 @@ export const TimerPanel: React.FC<TimerPanelProps> = ({ timer, serverOffset, can
             </div>
           )}
           <p className="text-[10px] md:text-xs font-bold text-slate-400 text-center">
-            Sıra gelince <b>Başlat</b>. Oyun açarsa <b>Oyun açtı</b>. Taş atılınca <b>Sıfırla</b>, sıradaki için tekrar <b>Başlat</b>.
+            Sıra gelince <b>Başlat</b>. Oyun açarsa <b>Oyun açtı</b>: 1. sayaçta kalan süre 2. sayaca eklenir. Taş atılınca <b>Sıfırla</b>, sıradaki için tekrar <b>Başlat</b>.
             Sayaç herkeste görünür; süre bitince zil sayaca son dokunan telefonda çalar.
           </p>
         </>

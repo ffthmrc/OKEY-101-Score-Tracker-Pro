@@ -247,7 +247,8 @@ export class Room {
           this.data.timer = { ...idleTimer(t.decideSec, t.openSec), phase: 'decide', decideEndsAt: now + t.decideSec * 1000 };
         } else if (op.action === 'open') {
           if (t.phase !== 'decide' || !t.decideEndsAt || t.decideEndsAt <= now) return { ok: false, error: 'Önce sayacı başlat' };
-          this.data.timer = { ...t, phase: 'open', decideEndsAt: null, decideLeftMs: t.decideEndsAt - now, openEndsAt: now + t.openSec * 1000 };
+          this.data.timer = { ...t, phase: 'open', decideEndsAt: null, decideLeftMs: t.decideEndsAt - now, openEndsAt: now + t.openSec * 1000 + (t.decideEndsAt - now) };
+          // 1. sayaçta kalan süre 2. sayaca eklenir (hızlı karar veren taş atmak için daha çok süre alır)
         } else if (op.action === 'reset') {
           this.data.timer = idleTimer(t.decideSec, t.openSec);
         } else {

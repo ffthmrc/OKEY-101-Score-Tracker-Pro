@@ -4,7 +4,7 @@ import type { Player, RoundScore } from './types';
 import { parseScoreInput, totalOf, placesFromTotals, placesOf, placeEmoji, hasAnyScore, MAX_NAME_LEN, MAX_ROUNDS } from './shared/game';
 import { GapPanel } from './GapPanel';
 import { scoreTextClass, scoreInputProps, scoreValue, SCORE_INPUT_CLASS } from './ui';
-import { buildReportCards, personKey, MIN_RANKED_GAMES, PLACE_POINTS } from './shared/stats';
+import { buildReportCards, personKey, isCoreGame, isCorePlayer, CORE_PLAYERS, PLACE_POINTS } from './shared/stats';
 import { GameCharts } from './GameCharts';
 import { ConfirmDialog } from './Dialogs';
 
@@ -13,6 +13,15 @@ const formatDate = (iso: string, roomCode: string) =>
   new Date(iso).toLocaleString('tr-TR', roomCode === 'EXCEL'
     ? { day: '2-digit', month: 'long', year: 'numeric' }
     : { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+const MONTHS = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+const yearOf = (iso: string) => new Date(iso).getFullYear();
+const monthOf = (iso: string) => new Date(iso).getMonth();
+
+// Dönem seçici düğmesi
+const Chip: React.FC<{ on: boolean; onClick: () => void; children: React.ReactNode }> = ({ on, onClick, children }) => (
+  <button onClick={onClick} className={`shrink-0 h-7 px-2.5 rounded-md text-[10px] md:text-xs font-black uppercase tracking-tight border ${on ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-500'}`}>{children}</button>
+);
 
 interface ArchivePanelProps {
   items: ArchiveSummary[];
@@ -36,16 +45,32 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
   const [pendingPin, setPendingPin] = useState<string | null>(null); // doğrulanmayı bekleyen PIN
   const [editPin, setEditPin] = useState<string | null>(null);       // doğrulanmış PIN (kaydetmede gönderilir)
   const [view, setView] = useState<'games' | 'cards'>('games');
-  const [showUnranked, setShowUnranked] = useState(false); // 20 oyun altı listesi (kapalı başlar)
+  const [showUnranked, setShowUnranked] = useState(false); // misafir listesi (kapalı başlar)
+  // Dönem: yıl seçilince o yılın ayları çıkar; Oyunlar ve Karne ikisi de buna göre süzülür
+  const [year, setYear] = useState<number | null>(null);
+  const [month, setMonth] = useState<number | null>(null);
   // Karnede bir oyuncuya dokununca Oyunlar listesi o oyuncunun oyunlarına süzülür
-  const [filter, setFilter] = useState<{ key: string; name: string } | null>(null);
-  const cards = useMemo(() => buildReportCards(items), [items]);
-  const shownItems = useMemo(
-    () => (filter ? items.filter(i => i.players.some(p => personKey(p.name) === filter.key)) : items),
-    [items, filter]
+  const [filter, setFilter] = useState<{ key: string; name: string; core: boolean } | null>(null);
+  const years = useMemo(() => [...new Set(items.map(i => yearOf(i.closedAt)))].sort((a, b) => b - a), [items]);
+  const months = useMemo(
+    () => (year === null ? [] : [...new Set(items.filter(i => yearOf(i.closedAt) === year).map(i => monthOf(i.closedAt)))].sort((a, b) => a - b)),
+    [items, year]
   );
-  // 5. ve sonrası sadece 5+ kişilik oyun varsa sütun olarak görünür
-  const placeCols = Math.max(4, ...cards.map(c => c.places.length));
+  const periodItems = useMemo(
+    () => items.filter(i => (year === null || yearOf(i.closedAt) === year) && (month === null || monthOf(i.closedAt) === month)),
+    [items, year, month]
+  );
+  const cards = useMemo(() => buildReportCards(periodItems), [periodItems]);
+  // Ana dörtten birine dokununca karneye sayılan oyunları, misafire dokununca tüm oyunları gösterir
+  const shownItems = useMemo(
+    () => (filter
+      ? periodItems.filter(i => i.players.some(p => personKey(p.name) === filter.key) && (!filter.core || isCoreGame(i)))
+      : periodItems),
+    [periodItems, filter]
+  );
+  const pickFilter = (name: string) => { setFilter({ key: personKey(name), name, core: isCorePlayer(name) }); setView('games'); };
+  // 5. ve sonrası sadece görünen satırlarda (misafirler açıkken) 5+ sıra varsa sütun olarak görünür
+  const placeCols = Math.max(4, ...cards.filter(c => c.rank !== null || showUnranked).map(c => c.places.length));
 
   useEffect(() => {
     if (saving && savedId === selectedId) {
@@ -94,6 +119,20 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
             <button key={v} onClick={() => setView(v)} className={`flex-1 py-1.5 rounded-md transition-all ${view === v ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>{label}</button>
           ))}
         </div>
+        {years.length > 0 && (
+          <div className="space-y-1">
+            <div className="flex gap-1 overflow-x-auto custom-scrollbar pb-0.5">
+              <Chip on={year === null} onClick={() => { setYear(null); setMonth(null); }}>Tümü</Chip>
+              {years.map(y => <Chip key={y} on={year === y} onClick={() => { setYear(y); setMonth(null); }}>{y}</Chip>)}
+            </div>
+            {year !== null && (
+              <div className="flex gap-1 overflow-x-auto custom-scrollbar pb-0.5">
+                <Chip on={month === null} onClick={() => setMonth(null)}>Tüm yıl</Chip>
+                {months.map(m => <Chip key={m} on={month === m} onClick={() => setMonth(m)}>{MONTHS[m]}</Chip>)}
+              </div>
+            )}
+          </div>
+        )}
         {view === 'cards' && (
           <div className="bg-white border border-slate-100 rounded-xl shadow-sm overflow-hidden">
             <table className="w-full text-center border-collapse">
@@ -115,7 +154,7 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
                     <tr className="bg-slate-50">
                       <td colSpan={4 + placeCols} className="p-0 border-t-2 border-slate-300">
                         <button onClick={() => setShowUnranked(v => !v)} aria-expanded={showUnranked} className="w-full py-2 text-[10px] md:text-xs font-black uppercase tracking-tight text-slate-500 hover:bg-slate-100">
-                          {showUnranked ? '▾' : '▸'} {MIN_RANKED_GAMES} oyun altı · sıralamaya girmez ({cards.filter(x => x.rank === null).length} kişi)
+                          {showUnranked ? '▾' : '▸'} Misafirler · sıralamaya girmez ({cards.filter(x => x.rank === null).length} kişi)
                         </button>
                       </td>
                     </tr>
@@ -124,8 +163,8 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
                     role="button"
                     tabIndex={0}
                     title={`${c.name} oyunlarını göster`}
-                    onClick={() => { setFilter({ key: personKey(c.name), name: c.name }); setView('games'); }}
-                    onKeyDown={e => { if (e.key === 'Enter') { setFilter({ key: personKey(c.name), name: c.name }); setView('games'); } }}
+                    onClick={() => pickFilter(c.name)}
+                    onKeyDown={e => { if (e.key === 'Enter') pickFilter(c.name); }}
                     className="text-[11px] md:text-sm font-black text-slate-700 cursor-pointer hover:bg-indigo-50/60 active:bg-indigo-50"
                   >
                     <td className="py-1.5 pl-2 text-slate-400">{c.rank ?? ''}</td>
@@ -138,10 +177,7 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
                       </div>
                     </td>
                     <td className="py-1.5 text-slate-400">{c.played}</td>
-                    <td className={`py-1 ${c.rank !== null ? 'text-indigo-700' : 'text-slate-400'}`}>
-                      <div className="leading-tight">{c.avgPoints.toFixed(2)}</div>
-                      <div className="text-[8px] md:text-[10px] font-bold text-slate-300 leading-tight">{c.points}</div>
-                    </td>
+                    <td className={`py-1.5 ${c.rank !== null ? 'text-indigo-700' : 'text-slate-400'}`}>{c.points}</td>
                     {Array.from({ length: placeCols }, (_, i) => (
                       <td key={i} className={`py-1.5 ${i === 0 && c.places[0] ? 'text-[#006100] bg-[#c6efce]/50' : ''} ${c.places[i] ? '' : 'text-slate-200'}`}>{c.places[i] ?? 0}</td>
                     ))}
@@ -150,29 +186,30 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
                 ))}
               </tbody>
             </table>
-            {cards.length === 0 && <div className="py-8 text-center text-slate-300 text-xs font-bold uppercase italic">Arşivde oyun yok</div>}
+            {cards.length === 0 && <div className="py-8 text-center text-slate-300 text-xs font-bold uppercase italic">Bu dönemde oyun yok</div>}
           </div>
         )}
         {view === 'cards' && cards.length > 0 && (
           <div className="text-[10px] md:text-xs font-bold text-slate-400 space-y-1 px-1">
             <p className="text-center">Oyuncuya dokun: hangi oyunlardan oluştuğunu gör.</p>
             <p>
-              <b className="text-slate-500">Sıralama nasıl yapılır?</b> Her oyunda 1. {PLACE_POINTS[0]}, 2. {PLACE_POINTS[1]}, 3. {PLACE_POINTS[2]} puan alır; 4. ve sonrası 0.
-              Eşit bitirenler aynı puanı alır. Sıra, <b className="text-slate-500">oyun başına ortalama puana</b> göredir (büyük sayı); altındaki küçük sayı toplam puandır.
-              Sadece en az {MIN_RANKED_GAMES} oyun oynayanlar sıralanır, diğerleri çizginin altında görünür.
+              <b className="text-slate-500">Sıralama nasıl yapılır?</b> Sadece {CORE_PLAYERS.join(', ')} dördünün de oynadığı oyunlar sayılır.
+              Misafir varsa yok sayılır, sıra dördü arasında verilir. Her oyunda 1. {PLACE_POINTS[0]}, 2. {PLACE_POINTS[1]}, 3. {PLACE_POINTS[2]}, 4. {PLACE_POINTS[3]} puan alır;
+              eşit bitirenler aynı puanı alır. Sıra <b className="text-slate-500">toplam puana</b> göredir, eşitse birincilik sayısına.
+              Misafirler çizginin altında, oynadıkları tüm oyunlarla görünür (5. ve sonrası {PLACE_POINTS[3]} puan).
             </p>
           </div>
         )}
         {view === 'games' && filter && (
           <div className="flex items-center justify-between gap-2 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
             <span className="text-[11px] md:text-xs font-black uppercase tracking-tight text-indigo-700 truncate">
-              {filter.name} oyunları · {shownItems.length}
+              {filter.name} · {filter.core ? 'karneye sayılan oyunlar' : 'oyunları'} · {shownItems.length}
             </span>
             <button onClick={() => setFilter(null)} className="shrink-0 h-7 px-2 rounded-md bg-white border border-indigo-200 text-indigo-600 text-[10px] font-black uppercase">✕ Tümü</button>
           </div>
         )}
         {view === 'games' && shownItems.length === 0 && (
-          <div className="h-full flex items-center justify-center text-slate-300 text-xs font-bold uppercase italic">Arşivde oyun yok</div>
+          <div className="py-8 flex items-center justify-center text-slate-300 text-xs font-bold uppercase italic">{items.length ? 'Bu dönemde oyun yok' : 'Arşivde oyun yok'}</div>
         )}
         {view === 'games' && shownItems.map(item => {
           const sorted = [...item.players].sort((a, b) => a.total - b.total);

@@ -62,21 +62,29 @@ test('isim eşleştirme Türkçe harf ve büyük/küçük harf farkını yok say
   assert.ok(!same('Ali', 'Veli') && !same('Ali Yılmaz', 'Ali Demir'));
 });
 
-test('karne puanı 3-2-1-0, 20 oyun barajı, sıralama oyun başına puana göre', () => {
-  const games: ArchiveSummary[] = [];
-  // A: 20 oyun, hep 2. (40 puan, 2.00) · B: 20 oyun, 10 kez 1. 10 kez 4. (30 puan, 1.50) · C: 3 oyun hep 1. (baraj altı)
-  for (let i = 0; i < 20; i++) {
-    const day = `2026-01-${String(i + 1).padStart(2, '0')}`;
-    games.push(i < 10 ? game(day, { B: 10, A: 20, X: 30, Y: 40 }) : game(day, { Z: 10, A: 20, W: 30, B: 40 }));
-  }
-  for (let i = 0; i < 3; i++) games.push(game(`2026-02-0${i + 1}`, { C: 1, D: 2, E: 3, F: 4 }));
-  const cards = buildReportCards(games);
-  const get = (n: string) => cards.find(c => c.name === n)!;
-  assert.equal(get('A').points, 40);
-  assert.equal(get('B').points, 30);
-  assert.equal(get('A').rank, 1);
-  assert.equal(get('B').rank, 2);
-  assert.equal(get('C').rank, null);           // 3 oyun: sıralamaya girmez
-  assert.equal(get('C').avgPoints, 3);
-  assert.deepEqual(cards.slice(0, 2).map(c => c.name), ['A', 'B']); // barajı geçenler üstte
+test('karne: sadece ana dördün hepsinin oynadığı oyunlar, misafir yok sayılır, puan 4-3-2-1', () => {
+  const cards = buildReportCards([
+    game('2026-01-01', { Fatih: 10, Ketenci: 20, Hasan: 30, Zeki: 40 }),
+    // misafir 1. oldu: dördü kendi arasında sıralanır (Zeki 1., Hasan 2. ...)
+    game('2026-01-02', { Yücer: 5, ZEKİ: 10, Hasan: 20, Ketenci: 30, Fatih: 40, Ömer: 50 }),
+    // Zeki yok: karneye sayılmaz
+    game('2026-01-03', { Fatih: 10, Ketenci: 20, Hasan: 30, Yücer: 40 }),
+  ]);
+  const get = (n: string) => cards.find(c => personKey(c.name) === personKey(n))!;
+  assert.equal(get('Fatih').played, 2);
+  assert.equal(get('Fatih').points, 4 + 1);
+  assert.equal(get('Zeki').points, 1 + 4);
+  assert.equal(get('Hasan').points, 2 + 3);
+  assert.equal(get('Ketenci').points, 3 + 2);
+  assert.deepEqual(get('Zeki').places, [1, 0, 0, 1]);
+  // eşit puan + eşit birincilik aynı sırayı paylaşır
+  assert.deepEqual(cards.slice(0, 4).map(c => c.rank), [1, 1, 3, 3]);
+  // misafirler altta, sırasız; tüm oyunları ve gerçek sırası sayılır (5. ve sonrası 1 puan)
+  const yucer = get('Yücer');
+  assert.equal(yucer.rank, null);
+  assert.equal(yucer.played, 2);
+  assert.equal(yucer.points, 4 + 1);
+  assert.equal(get('Ömer').places[5], 1);
+  assert.equal(get('Ömer').points, 1);
+  assert.deepEqual(cards.slice(4).map(c => c.rank), [null, null]);
 });

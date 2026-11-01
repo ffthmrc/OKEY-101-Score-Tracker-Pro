@@ -307,7 +307,7 @@ test('ortak sayaç: masadakiler başlatır / oyun açtı / sıfırlar; izleyici 
   v = room.view('x', 0, []).timer;
   assert.equal(v.phase, 'open');
   assert.equal(v.decideLeftMs, 40_000);
-  assert.equal(v.openEndsAt, 141_000);
+  assert.equal(v.openEndsAt, 181_000); // 2 dk + 1. sayaçtan kalan 40 sn
   assert.equal(room.apply('izleyici', { t: 'timer', action: 'reset' }).ok, false);
   room.apply('fatih', { t: 'timer', action: 'reset' });
   assert.equal(room.view('x', 0, []).timer.phase, 'idle');

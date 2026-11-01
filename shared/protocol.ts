@@ -41,7 +41,7 @@ export interface TimerState {
   decideSec: number;            // 1. sayaç süresi (taş çek, karar ver)
   openSec: number;              // 2. sayaç süresi (oyun açtı, taş at)
   decideEndsAt: number | null;  // 1. sayaç çalışırken bitiş anı
-  decideLeftMs: number | null;  // "Oyun açtı" denince 1. sayaçta kalan (donmuş)
+  decideLeftMs: number | null;  // "Oyun açtı" denince 1. sayaçta kalan; 2. sayaca eklenir
   openEndsAt: number | null;    // 2. sayaç çalışırken bitiş anı
 }
 
