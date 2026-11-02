@@ -117,7 +117,7 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
     return (
       <div className="p-2 md:p-4 flex-1 overflow-auto custom-scrollbar space-y-2">
         <div className="flex bg-slate-100 rounded-lg p-0.5 text-[10px] md:text-xs font-black uppercase tracking-tight">
-          {([['games', 'Oyunlar'], ['cards', 'Karne']] as const).map(([v, label]) => (
+          {([['games', 'Oyunlar'], ['cards', 'Lig']] as const).map(([v, label]) => (
             <button key={v} onClick={() => setView(v)} className={`flex-1 py-1.5 rounded-md transition-all ${view === v ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>{label}</button>
           ))}
         </div>
@@ -206,7 +206,7 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
           <div className="flex items-center justify-between gap-2 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
             <span className="min-w-0 font-black uppercase tracking-tight text-indigo-700 leading-tight">
               <span className="block truncate text-[11px] md:text-xs">{filter.name} · {shownItems.length} oyun</span>
-              <span className="block truncate text-[9px] md:text-[10px] text-indigo-400">{winsOnly ? '1. olduğu oyunlar' : filter.core ? 'karneye sayılan oyunlar' : 'tüm oyunları'}</span>
+              <span className="block truncate text-[9px] md:text-[10px] text-indigo-400">{winsOnly ? '1. olduğu oyunlar' : filter.core ? 'lige sayılan oyunlar' : 'tüm oyunları'}</span>
             </span>
             <button onClick={() => setWinsOnly(v => !v)} aria-pressed={winsOnly} className={`shrink-0 h-7 px-2 rounded-md border text-[10px] font-black uppercase ${winsOnly ? 'bg-amber-400 border-amber-500 text-slate-900' : 'bg-white border-indigo-200 text-indigo-600'}`}>🏆 Liderlik</button>
             <button onClick={() => { setFilter(null); setWinsOnly(false); }} className="shrink-0 h-7 px-2 rounded-md bg-white border border-indigo-200 text-indigo-600 text-[10px] font-black uppercase">✕ Tümü</button>
@@ -364,7 +364,7 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
       <ConfirmDialog
         open={confirm === 'delete'}
         title="Oyunu sil"
-        message="Bu oyun arşivden kalıcı olarak silinecek ve karne yeniden hesaplanacak. Emin misin?"
+        message="Bu oyun arşivden kalıcı olarak silinecek ve lig yeniden hesaplanacak. Emin misin?"
         confirmLabel="Evet, sil"
         danger
         askPin="Arşiv PIN'i"
