@@ -5,6 +5,7 @@ import { playFail } from './ui';
 // Ortak hamle sayacı: sıra gelen oyuncunun taş çekip karar vermesi için 1. sayaç (varsayılan 1 dk);
 // "Oyun açtı" denirse 1. sayaç durur, taşı atması için 2. sayaç (varsayılan 2 dk) başlar;
 // 1. sayaçta kalan süre 2. sayaca eklenir (20. sn'de açtıysa 40 sn kalır: 2:00 + 0:40 = 2:40).
+// "Sonraki": sıra yan oyuncuya geçince 1. sayaç baştan başlar (Sıfırla + Başlat yerine tek tuş).
 // Durum sunucuda; herkes aynı sayacı görür, sadece masadakiler kullanır.
 // Süre bitince zil sadece sayaca son dokunan telefonda çalar (masada 4 telefon birden çalmasın).
 
@@ -113,25 +114,33 @@ export const TimerPanel: React.FC<TimerPanelProps> = ({ timer, serverOffset, can
         <>
           <div className="flex gap-2">
             {phase === 'idle' && (
-              <button onClick={() => onAction('start')} className="flex-1 h-14 md:h-16 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-base md:text-lg font-black uppercase tracking-tight shadow active:scale-[0.98]">Başlat</button>
+              <button onClick={() => onAction('start')} className="flex-1 h-14 md:h-16 rounded-2xl text-base md:text-lg font-black uppercase tracking-tight shadow active:scale-[0.98] bg-emerald-600 hover:bg-emerald-700 text-white">Başlat</button>
             )}
             {phase === 'decide' && !decideDone && (
-              <button onClick={() => onAction('open')} className="flex-1 h-14 md:h-16 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-base md:text-lg font-black uppercase tracking-tight shadow active:scale-[0.98]">Oyun açtı</button>
+              <button onClick={() => onAction('open')} className="flex-1 h-14 md:h-16 rounded-2xl text-base md:text-lg font-black uppercase tracking-tight shadow active:scale-[0.98] bg-indigo-600 hover:bg-indigo-700 text-white">Oyun açtı</button>
             )}
+            {/* Sıra yan oyuncuya geçti: 1. sayaç baştan */}
             {phase !== 'idle' && (
-              <button onClick={() => onAction('reset')} className={`h-14 md:h-16 rounded-2xl border-2 border-slate-900 text-base md:text-lg font-black uppercase tracking-tight active:scale-[0.98] ${decideDone || phase === 'open' ? 'flex-1 bg-slate-900 text-white' : 'px-5 bg-white text-slate-900'}`}>Sıfırla</button>
+              <button onClick={() => onAction('start')} className="flex-1 h-14 md:h-16 rounded-2xl text-base md:text-lg font-black uppercase tracking-tight shadow active:scale-[0.98] bg-emerald-600 hover:bg-emerald-700 text-white">Sonraki ›</button>
             )}
           </div>
+          {phase !== 'idle' && (
+            <button onClick={() => onAction('reset')} className="h-10 rounded-xl border-2 border-slate-300 bg-white text-slate-600 text-xs md:text-sm font-black uppercase tracking-tight active:scale-[0.98]">Sıfırla (oyunu durdur)</button>
+          )}
           {phase === 'idle' && (
             <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] md:text-xs font-black uppercase tracking-tight">
               <Stepper which={0} label="1. süre" sec={decideSec} />
               <Stepper which={1} label="2. süre" sec={openSec} />
             </div>
           )}
-          <p className="text-[10px] md:text-xs font-bold text-slate-400 text-center">
-            Sıra gelince <b>Başlat</b>. Oyun açarsa <b>Oyun açtı</b>: 1. sayaçta kalan süre 2. sayaca eklenir. Taş atılınca <b>Sıfırla</b>, sıradaki için tekrar <b>Başlat</b>.
-            Sayaç herkeste görünür; süre bitince zil sayaca son dokunan telefonda çalar.
-          </p>
+          <ol className="text-[11px] md:text-xs font-bold text-slate-400 space-y-1 px-1">
+            <li>1. İlk oyuncu için <b className="text-slate-600">Başlat</b>. 1. sayaç geri sayar.</li>
+            <li>2. Oyuncu açmadan taş attı → <b className="text-slate-600">Sonraki</b>. Yan oyuncu için 1. sayaç baştan başlar.</li>
+            <li>3. Oyuncu oyun açtı → <b className="text-slate-600">Oyun açtı</b>. 1. sayaçta kalan süre 2. sayaca eklenir.</li>
+            <li>4. Açtıktan sonra taş attı → <b className="text-slate-600">Sonraki</b>.</li>
+            <li>5. Oyunu durdurmak için (mola) → <b className="text-slate-600">Sıfırla</b>. Devam etmek için tekrar <b className="text-slate-600">Başlat</b>.</li>
+            <li className="pt-1 text-slate-300">Sayaç herkeste görünür. Süre bitince zil, sayaca son dokunan telefonda çalar.</li>
+          </ol>
         </>
       ) : (
         <p className="text-[11px] md:text-xs font-bold text-slate-400 text-center bg-slate-50 rounded-xl py-3 px-2">

@@ -194,12 +194,15 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
         {view === 'cards' && cards.length > 0 && (
           <div className="text-[10px] md:text-xs font-bold text-slate-400 space-y-1 px-1">
             <p className="text-center">Oyuncuya dokun: hangi oyunlardan oluştuğunu gör.</p>
-            <p>
-              <b className="text-slate-500">Sıralama nasıl yapılır?</b> Sadece {CORE_PLAYERS.join(', ')} dördünün de oynadığı oyunlar sayılır.
-              Misafir varsa yok sayılır, sıra dördü arasında verilir. Her oyunda 1. {PLACE_POINTS[0]}, 2. {PLACE_POINTS[1]}, 3. {PLACE_POINTS[2]}, 4. {PLACE_POINTS[3]} puan alır;
-              eşit bitirenler aynı puanı alır. Sıra <b className="text-slate-500">toplam puana</b> göredir, eşitse birincilik sayısına.
-              Misafirler çizginin altında, oynadıkları tüm oyunlarla görünür (5. ve sonrası {PLACE_POINTS[3]} puan).
-            </p>
+            <p className="text-slate-500 pt-1">Sıralama nasıl yapılır?</p>
+            <ul className="list-disc pl-4 space-y-0.5">
+              <li>Sadece {CORE_PLAYERS.join(', ')} dördünün de oynadığı oyunlar sayılır.</li>
+              <li>Misafir varsa yok sayılır. Sıra dördü arasında verilir.</li>
+              <li>Puan: 1. = {PLACE_POINTS[0]}, 2. = {PLACE_POINTS[1]}, 3. = {PLACE_POINTS[2]}, 4. = {PLACE_POINTS[3]}.</li>
+              <li>Eşit bitirenler aynı puanı alır.</li>
+              <li>Sıra <b className="text-slate-500">toplam puana</b> göredir. Puan eşitse birincilik sayısına bakılır.</li>
+              <li>Misafirler çizginin altında görünür. Oynadıkları tüm oyunlar sayılır (5. ve sonrası {PLACE_POINTS[3]} puan).</li>
+            </ul>
           </div>
         )}
         {view === 'games' && filter && (
