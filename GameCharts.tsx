@@ -4,7 +4,7 @@ import {
   AreaChart, Area
 } from 'recharts';
 import type { Player, RoundScore } from './types';
-import { placesOf, placeEmoji, hasAnyScore } from './shared/game';
+import { placesOf, placeEmoji, hasAnyScore, hasPlayerScore, totalOf } from './shared/game';
 
 // RANKING tablosu + Performance Trend grafiği. Canlı oyunun charts sekmesi ve arşivdeki oyun detayı aynı parçayı kullanır.
 // show: 'ranking' sadece RANKING tablosu, 'trend' sadece grafik (arşivde grafik en altta durur)
@@ -99,6 +99,15 @@ export const GameCharts: React.FC<{ players: Player[]; rounds: RoundScore[]; idP
                     <span className="text-sm md:text-xl drop-shadow-sm select-none leading-none">
                       {started ? placeEmoji(finalPlaces[p.id], finalPlaces) : ''}
                     </span>
+                  </td>
+                ))}
+              </tr>
+              {/* SCR altında oyuncuların toplam puanı */}
+              <tr className="border-t border-slate-200 h-8 md:h-10">
+                <td className="py-1 px-3 text-[10px] font-black text-slate-900 uppercase tracking-widest border-r border-slate-200">Total</td>
+                {players.map(p => (
+                  <td key={p.id} className="py-1 px-1 text-[11px] md:text-base font-black text-slate-900 border-r border-slate-200 last:border-0 tabular-nums">
+                    {hasPlayerScore(rounds, p.id) ? totalOf(rounds, p.id) : '-'}
                   </td>
                 ))}
               </tr>
