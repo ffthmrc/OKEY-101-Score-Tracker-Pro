@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { TimerState } from './shared/protocol';
 import { playFail } from './ui';
 
-// Ortak hamle sayacı: sıra gelen oyuncunun taş çekip karar vermesi için 1. sayaç (varsayılan 1 dk);
-// "Oyun açtı" denirse 1. sayaç durur, taşı atması için 2. sayaç (varsayılan 2 dk) başlar;
+// Ortak hamle sayacı: sıra gelen oyuncu taş çeker; taş atar, açmışsa işler ya da elini açar: 1. sayaç (varsayılan 1 dk);
+// oyuncu İLK KEZ açınca "Oyun açtı": 1. sayaç durur, işleyip taş atması için 2. sayaç (varsayılan 2 dk) başlar;
 // 1. sayaçta kalan süre 2. sayaca eklenir (20. sn'de açtıysa 40 sn kalır: 2:00 + 0:40 = 2:40).
 // "Sonraki": sıra yan oyuncuya geçince 1. sayaç baştan başlar (Sıfırla + Başlat yerine tek tuş).
 // Durum sunucuda; herkes aynı sayacı görür, sadece masadakiler kullanır.
@@ -106,8 +106,8 @@ export const TimerPanel: React.FC<TimerPanelProps> = ({ timer, serverOffset, can
 
   return (
     <div className="p-2 md:p-4 flex-1 overflow-auto custom-scrollbar flex flex-col gap-3">
-      <Clock label="1 · Taş çek, karar ver" ms={decideLeft} total={decideSec} active={phase === 'decide'} done={decideDone} dim={phase === 'open'} />
-      <Clock label="2 · Oyun açtı, taş at" ms={openLeft} total={openSec + bonusMs / 1000} active={phase === 'open'} done={openDone} dim={phase !== 'open'}
+      <Clock label="1 · Taş çek, taş at, el aç" ms={decideLeft} total={decideSec} active={phase === 'decide'} done={decideDone} dim={phase === 'open'} />
+      <Clock label="2 · Oyun açtı, işledi, taş at, bitti" ms={openLeft} total={openSec + bonusMs / 1000} active={phase === 'open'} done={openDone} dim={phase !== 'open'}
         note={bonusMs >= 1000 ? `+${fmt(bonusMs)} eklendi` : undefined} />
 
       {canControl ? (
@@ -135,10 +135,11 @@ export const TimerPanel: React.FC<TimerPanelProps> = ({ timer, serverOffset, can
           )}
           <ol className="text-[11px] md:text-xs font-bold text-slate-400 space-y-1 px-1">
             <li>1. İlk oyuncu için <b className="text-slate-600">Başlat</b>. 1. sayaç geri sayar.</li>
-            <li>2. Oyuncu açmadan taş attı → <b className="text-slate-600">Sonraki</b>. Yan oyuncu için 1. sayaç baştan başlar.</li>
-            <li>3. Oyuncu oyun açtı → <b className="text-slate-600">Oyun açtı</b>. 1. sayaçta kalan süre 2. sayaca eklenir.</li>
-            <li>4. Açtıktan sonra taş attı → <b className="text-slate-600">Sonraki</b>.</li>
-            <li>5. Oyunu durdurmak için (mola) → <b className="text-slate-600">Sıfırla</b>. Devam etmek için tekrar <b className="text-slate-600">Başlat</b>.</li>
+            <li>2. Oyuncu taş çekti, yana taş attı → <b className="text-slate-600">Sonraki</b>. Yan oyuncu için 1. sayaç baştan başlar.</li>
+            <li>3. Oyuncu elini İLK KEZ açtı → <b className="text-slate-600">Oyun açtı</b>. Ek süre: 2. sayaç + 1. sayaçta kalan süre.</li>
+            <li>4. Taşlarını işledi, yana taş attı → <b className="text-slate-600">Sonraki</b>.</li>
+            <li>5. Daha önce açmış oyuncuya sıra geldi → ek süre yok. Sadece 1. sayaç: taş çeker, işler, yana atar → <b className="text-slate-600">Sonraki</b>.</li>
+            <li>6. Oyunu durdurmak için (mola) → <b className="text-slate-600">Sıfırla</b>. Devam etmek için tekrar <b className="text-slate-600">Başlat</b>.</li>
             <li className="pt-1 text-slate-300">Sayaç herkeste görünür. Süre bitince zil, sayaca son dokunan telefonda çalar.</li>
           </ol>
         </>
