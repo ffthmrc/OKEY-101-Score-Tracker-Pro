@@ -114,18 +114,18 @@ export const TimerPanel: React.FC<TimerPanelProps> = ({ timer, serverOffset, can
         <>
           <div className="flex gap-2">
             {phase === 'idle' && (
-              <button onClick={() => onAction('start')} className="flex-1 h-14 md:h-16 rounded-2xl text-base md:text-lg font-black uppercase tracking-tight shadow active:scale-[0.98] bg-emerald-600 hover:bg-emerald-700 text-white">Başlat</button>
+              <button onClick={() => onAction('start')} className="flex-1 h-24 md:h-28 rounded-2xl text-lg md:text-xl touch-manipulation select-none font-black uppercase tracking-tight shadow active:scale-[0.98] bg-emerald-600 hover:bg-emerald-700 text-white">Başlat</button>
             )}
             {phase === 'decide' && !decideDone && (
-              <button onClick={() => onAction('open')} className="flex-1 h-14 md:h-16 rounded-2xl text-base md:text-lg font-black uppercase tracking-tight shadow active:scale-[0.98] bg-indigo-600 hover:bg-indigo-700 text-white">Oyun açtı</button>
+              <button onClick={() => onAction('open')} className="flex-1 h-24 md:h-28 rounded-2xl text-lg md:text-xl touch-manipulation select-none font-black uppercase tracking-tight shadow active:scale-[0.98] bg-indigo-600 hover:bg-indigo-700 text-white">Oyun açtı</button>
             )}
             {/* Sıra yan oyuncuya geçti: 1. sayaç baştan */}
             {phase !== 'idle' && (
-              <button onClick={() => onAction('start')} className="flex-1 h-14 md:h-16 rounded-2xl text-base md:text-lg font-black uppercase tracking-tight shadow active:scale-[0.98] bg-emerald-600 hover:bg-emerald-700 text-white">Sonraki ›</button>
+              <button onClick={() => onAction('start')} className="flex-1 h-24 md:h-28 rounded-2xl text-lg md:text-xl touch-manipulation select-none font-black uppercase tracking-tight shadow active:scale-[0.98] bg-emerald-600 hover:bg-emerald-700 text-white">Sonraki ›</button>
             )}
           </div>
           {phase !== 'idle' && (
-            <button onClick={() => onAction('reset')} className="h-10 rounded-xl border-2 border-slate-300 bg-white text-slate-600 text-xs md:text-sm font-black uppercase tracking-tight active:scale-[0.98]">Sıfırla (oyunu durdur)</button>
+            <button onClick={() => onAction('reset')} className="mt-1 h-10 rounded-xl border-2 border-slate-300 touch-manipulation bg-white text-slate-600 text-xs md:text-sm font-black uppercase tracking-tight active:scale-[0.98]">Sıfırla (oyunu durdur)</button>
           )}
           {phase === 'idle' && (
             <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] md:text-xs font-black uppercase tracking-tight">
