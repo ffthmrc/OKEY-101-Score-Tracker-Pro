@@ -271,8 +271,10 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
   };
 
   return (
+    // Üst boşluk: iPhone saat çubuğu yüksekliğinin 1,75 katı. iOS 26 saat çubuğunun altına ~38 pt daha
+    // bulanıklık (buzlu cam) uyguluyor; kartlar bu bölgenin altından başlar. Android'de saat çubuğu ölçüsü 0: boşluk yok.
     <div className="h-dvh font-sans bg-slate-50 flex flex-col overflow-hidden"
-      style={{ paddingTop: 'env(safe-area-inset-top)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
+      style={{ paddingTop: 'calc(env(safe-area-inset-top) * 1.75)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
       <main className="max-w-7xl mx-auto w-full px-1.5 md:px-6 pt-0.5 md:pt-3 pb-0 md:pb-3 flex flex-col flex-1 gap-1.5 md:gap-3 overflow-hidden">
         {activeTab === 'table' && (
           <div className="w-full shrink-0 bg-slate-100/30 rounded-xl">
