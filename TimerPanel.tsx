@@ -29,21 +29,59 @@ const useWakeLock = (on: boolean) => {
   }, [on]);
 };
 
-const Clock: React.FC<{ label: string; ms: number; total: number; active: boolean; done: boolean; dim?: boolean; note?: string }> = ({ label, ms, total, active, done, dim, note }) => {
+// Çalışan sayaç büyük, diğeri tek satır (ekrana sığsın, sayfa kaymasın).
+// Yan çevrilmiş telefonda (phoneland) büyük sayaç sol sütunu doldurur.
+const Clock: React.FC<{ label: string; ms: number; total: number; active: boolean; done: boolean; big: boolean; note?: string }> = ({ label, ms, total, active, done, big, note }) => {
   const warn = active && ms <= 10_000;
   const color = done ? 'text-red-600' : warn ? 'text-amber-500' : active ? 'text-slate-900' : 'text-slate-300';
   const bar = done ? 'bg-red-500' : warn ? 'bg-amber-400' : 'bg-emerald-500';
-  return (
-    <div className={`bg-white border rounded-2xl p-3 md:p-5 shadow-sm transition-opacity ${done ? 'border-red-300 bg-red-50' : 'border-slate-100'} ${dim ? 'opacity-40' : ''}`}>
-      <div className="flex items-center justify-between text-[10px] md:text-xs font-black uppercase tracking-tight text-slate-400">
-        <span>{label}</span>
-        {done ? <span className="text-red-600">Süre bitti</span> : note && <span className="text-emerald-600">{note}</span>}
+  const status = done ? <span className="text-red-600 shrink-0">Süre bitti</span> : note ? <span className="text-emerald-600 shrink-0">{note}</span> : null;
+  if (!big) {
+    return (
+      <div className={`flex items-center justify-between gap-2 bg-white border rounded-xl px-3 py-1.5 ${done ? 'border-red-300 bg-red-50' : 'border-slate-100'}`}>
+        <span className="text-[10px] md:text-xs font-black uppercase tracking-tight text-slate-400 truncate">{label}</span>
+        {status && <span className="text-[10px] font-black uppercase">{status}</span>}
+        <span className={`text-2xl md:text-3xl font-black tabular-nums leading-none shrink-0 ${active ? color : 'text-slate-300'}`}>{fmt(ms)}</span>
       </div>
-      <div className={`text-center font-black tabular-nums leading-none text-[64px] md:text-[96px] my-2 ${color}`}>{fmt(ms)}</div>
-      <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+    );
+  }
+  return (
+    <div className={`bg-white border rounded-2xl p-3 md:p-5 shadow-sm phoneland:flex-1 phoneland:flex phoneland:flex-col phoneland:justify-center ${done ? 'border-red-300 bg-red-50' : 'border-slate-100'}`}>
+      <div className="flex items-center justify-between gap-2 text-[10px] md:text-xs font-black uppercase tracking-tight text-slate-400">
+        <span className="truncate">{label}</span>
+        {status}
+      </div>
+      <div className={`text-center font-black tabular-nums leading-none text-[96px] md:text-[140px] phoneland:text-[110px] my-2 ${color}`}>{fmt(ms)}</div>
+      <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
         <div className={`h-full ${bar} transition-[width] duration-200`} style={{ width: `${Math.max(0, Math.min(100, (ms / (total * 1000)) * 100))}%` }} />
       </div>
     </div>
+  );
+};
+
+// Parmak ekrana değdiği an çalışan tuş. onClick parmak kalkınca ve hiç kaymadıysa çalışır;
+// oyun sırasında hızlı dokunuşta parmak az kayınca tarayıcı bunu kaydırma sayıp tıklamayı yutuyordu.
+// Kısa titreşim + parlama: basıldığı hemen anlaşılır (sunucu cevabını beklemeden). Çift tetiklemeye karşı 400 ms kilit.
+const TapButton: React.FC<{ onTap: () => void; disabled?: boolean; className: string; children: React.ReactNode }> = ({ onTap, disabled, className, children }) => {
+  const last = useRef(0);
+  const [flash, setFlash] = useState(false);
+  const fire = () => {
+    const t = Date.now();
+    if (disabled || t - last.current < 400) return;
+    last.current = t;
+    navigator.vibrate?.(30);
+    setFlash(true);
+    setTimeout(() => setFlash(false), 180);
+    onTap();
+  };
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onPointerDown={e => { if (e.pointerType === 'mouse' && e.button !== 0) return; e.preventDefault(); fire(); }}
+      onClick={e => { if (e.detail === 0) fire(); }} // klavye (Enter / boşluk)
+      className={`${className} touch-none select-none font-black uppercase tracking-tight rounded-2xl transition-[filter,transform] duration-100 ${flash ? 'brightness-125 scale-[0.98]' : ''}`}
+    >{children}</button>
   );
 };
 
@@ -95,59 +133,73 @@ export const TimerPanel: React.FC<TimerPanelProps> = ({ timer, serverOffset, can
     else onDurations(decideSec, clamp(openSec + delta));
   };
 
-  const Stepper = ({ which, label, sec }: { which: 0 | 1; label: string; sec: number }) => (
+  const stepper = (which: 0 | 1, label: string, sec: number) => (
     <div className="flex items-center gap-1.5">
       <span className="text-slate-400">{label}</span>
-      <button onClick={() => adjust(which, -STEP)} className="h-7 w-7 rounded-md border border-slate-200 bg-white text-slate-600" aria-label={`${label} azalt`}>−</button>
+      <button onClick={() => adjust(which, -STEP)} className="h-8 w-8 rounded-md border border-slate-200 bg-white text-slate-600" aria-label={`${label} azalt`}>−</button>
       <span className="w-10 text-center tabular-nums text-slate-700">{fmt(sec * 1000)}</span>
-      <button onClick={() => adjust(which, STEP)} className="h-7 w-7 rounded-md border border-slate-200 bg-white text-slate-600" aria-label={`${label} artır`}>+</button>
+      <button onClick={() => adjust(which, STEP)} className="h-8 w-8 rounded-md border border-slate-200 bg-white text-slate-600" aria-label={`${label} artır`}>+</button>
     </div>
   );
 
-  return (
-    <div className="p-2 md:p-4 flex-1 overflow-auto custom-scrollbar flex flex-col gap-3">
-      <Clock label="1 · Taş çek, taş at, el aç" ms={decideLeft} total={decideSec} active={phase === 'decide'} done={decideDone} dim={phase === 'open'} />
-      <Clock label="2 · Oyun açtı, işledi, taş at, bitti" ms={openLeft} total={openSec + bonusMs / 1000} active={phase === 'open'} done={openDone} dim={phase !== 'open'}
-        note={bonusMs >= 1000 ? `+${fmt(bonusMs)} eklendi` : undefined} />
+  const canOpen = phase === 'decide' && !decideDone;
+  const B = 'text-slate-600';
 
-      {canControl ? (
-        <>
-          <div className="flex gap-2">
-            {phase === 'idle' && (
-              <button onClick={() => onAction('start')} className="flex-1 h-24 md:h-28 rounded-2xl text-lg md:text-xl touch-manipulation select-none font-black uppercase tracking-tight shadow active:scale-[0.98] bg-emerald-600 hover:bg-emerald-700 text-white">Başlat</button>
-            )}
-            {phase === 'decide' && !decideDone && (
-              <button onClick={() => onAction('open')} className="flex-1 h-24 md:h-28 rounded-2xl text-lg md:text-xl touch-manipulation select-none font-black uppercase tracking-tight shadow active:scale-[0.98] bg-indigo-600 hover:bg-indigo-700 text-white">Oyun açtı</button>
-            )}
-            {/* Sıra yan oyuncuya geçti: 1. sayaç baştan */}
-            {phase !== 'idle' && (
-              <button onClick={() => onAction('start')} className="flex-1 h-24 md:h-28 rounded-2xl text-lg md:text-xl touch-manipulation select-none font-black uppercase tracking-tight shadow active:scale-[0.98] bg-emerald-600 hover:bg-emerald-700 text-white">Sonraki ›</button>
-            )}
-          </div>
-          {phase !== 'idle' && (
-            <button onClick={() => onAction('reset')} className="mt-1 h-10 rounded-xl border-2 border-slate-300 touch-manipulation bg-white text-slate-600 text-xs md:text-sm font-black uppercase tracking-tight active:scale-[0.98]">Sıfırla (oyunu durdur)</button>
-          )}
-          {phase === 'idle' && (
+  return (
+    // Dikey: alt alta. Yan çevrilmiş telefon: tam ekran, solda sayaç, sağda tuşlar.
+    <div className="p-2 md:p-4 flex-1 overflow-auto custom-scrollbar flex flex-col gap-2.5
+      phoneland:fixed phoneland:inset-0 phoneland:z-50 phoneland:bg-slate-50 phoneland:overflow-hidden phoneland:grid phoneland:grid-cols-[1.15fr_1fr] phoneland:gap-3 phoneland:p-3">
+      <div className="flex flex-col gap-2 phoneland:min-h-0">
+        <Clock label="1 · Taş çek, taş at, el aç" ms={decideLeft} total={decideSec} big={phase !== 'open'}
+          active={phase === 'decide'} done={decideDone} />
+        <Clock label="2 · Oyun açtı, işledi, taş at, bitti" ms={openLeft} total={openSec + bonusMs / 1000} big={phase === 'open'}
+          active={phase === 'open'} done={openDone} note={bonusMs >= 1000 ? `+${fmt(bonusMs)} eklendi` : undefined} />
+      </div>
+
+      <div className="flex flex-col gap-2.5 phoneland:min-h-0">
+        {canControl && phase === 'idle' && (
+          <>
             <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] md:text-xs font-black uppercase tracking-tight">
-              <Stepper which={0} label="1. süre" sec={decideSec} />
-              <Stepper which={1} label="2. süre" sec={openSec} />
+              {stepper(0, '1. süre', decideSec)}
+              {stepper(1, '2. süre', openSec)}
             </div>
-          )}
-          <ol className="text-[11px] md:text-xs font-bold text-slate-400 space-y-1 px-1">
-            <li>1. İlk oyuncu için <b className="text-slate-600">Başlat</b>. 1. sayaç geri sayar.</li>
-            <li>2. Oyuncu taş çekti, yana taş attı → <b className="text-slate-600">Sonraki</b>. Yan oyuncu için 1. sayaç baştan başlar.</li>
-            <li>3. Oyuncu elini İLK KEZ açtı → <b className="text-slate-600">Oyun açtı</b>. Ek süre: 2. sayaç + 1. sayaçta kalan süre.</li>
-            <li>4. Taşlarını işledi, yana taş attı → <b className="text-slate-600">Sonraki</b>.</li>
-            <li>5. Daha önce açmış oyuncuya sıra geldi → ek süre yok. Sadece 1. sayaç: taş çeker, işler, yana atar → <b className="text-slate-600">Sonraki</b>.</li>
-            <li>6. Oyunu durdurmak için (mola) → <b className="text-slate-600">Sıfırla</b>. Devam etmek için tekrar <b className="text-slate-600">Başlat</b>.</li>
-            <li className="pt-1 text-slate-300">Sayaç herkeste görünür. Süre bitince zil, sayaca son dokunan telefonda çalar.</li>
-          </ol>
-        </>
-      ) : (
-        <p className="text-[11px] md:text-xs font-bold text-slate-400 text-center bg-slate-50 rounded-xl py-3 px-2">
-          Sayacı masadakiler kullanır. Sen canlı izliyorsun.
-        </p>
-      )}
+            <TapButton onTap={() => onAction('start')} className="h-32 md:h-36 phoneland:h-auto phoneland:flex-1 text-2xl md:text-3xl bg-emerald-600 text-white shadow">Başlat</TapButton>
+          </>
+        )}
+        {canControl && phase !== 'idle' && (
+          <>
+            {/* Yerler hiç değişmez: Oyun açtı kullanılamazken soluk durur, Sonraki hep aynı yerde */}
+            <div className="flex justify-end">
+              <TapButton onTap={() => onAction('reset')} className="h-9 px-4 rounded-xl border-2 border-slate-300 bg-white text-slate-500 text-[11px] md:text-xs">Sıfırla (mola)</TapButton>
+            </div>
+            <TapButton onTap={() => onAction('open')} disabled={!canOpen}
+              className={`h-16 md:h-20 phoneland:h-auto phoneland:flex-1 text-lg md:text-xl ${canOpen ? 'bg-indigo-600 text-white shadow' : 'bg-slate-100 text-slate-300'}`}>Oyun açtı</TapButton>
+            <TapButton onTap={() => onAction('start')} className="h-32 md:h-40 phoneland:h-auto phoneland:flex-[2] text-3xl md:text-4xl bg-emerald-600 text-white shadow-lg">Sonraki ›</TapButton>
+          </>
+        )}
+        {!canControl && (
+          <p className="text-[11px] md:text-xs font-bold text-slate-400 text-center bg-slate-50 rounded-xl py-3 px-2">
+            Sayacı masadakiler kullanır. Sen canlı izliyorsun.
+          </p>
+        )}
+        {canControl && (
+          <details className="group text-[11px] md:text-xs font-bold text-slate-400 phoneland:hidden">
+            <summary className="cursor-pointer select-none list-none py-1 text-slate-500 font-black uppercase tracking-tight">
+              <span className="inline-block transition-transform group-open:rotate-90">▸</span> Nasıl kullanılır?
+            </summary>
+            <ol className="space-y-1 px-1 pt-1">
+              <li>1. İlk oyuncu için <b className={B}>Başlat</b>. 1. sayaç geri sayar.</li>
+              <li>2. Oyuncu taş çekti, yana taş attı → <b className={B}>Sonraki</b>. Yan oyuncu için 1. sayaç baştan başlar.</li>
+              <li>3. Oyuncu elini İLK KEZ açtı → <b className={B}>Oyun açtı</b>. Ek süre: 2. sayaç + 1. sayaçta kalan süre.</li>
+              <li>4. Taşlarını işledi, yana taş attı → <b className={B}>Sonraki</b>.</li>
+              <li>5. Daha önce açmış oyuncuya sıra geldi → ek süre yok. Sadece 1. sayaç: taş çeker, işler, yana atar → <b className={B}>Sonraki</b>.</li>
+              <li>6. Oyunu durdurmak için (mola) → <b className={B}>Sıfırla</b>. Devam etmek için tekrar <b className={B}>Başlat</b>.</li>
+              <li>7. Telefonu yan çevirince sayaç tam ekran olur. Dik çevirince sekmeler geri gelir.</li>
+              <li className="pt-1 text-slate-300">Sayaç herkeste görünür. Süre bitince zil, sayaca son dokunan telefonda çalar.</li>
+            </ol>
+          </details>
+        )}
+      </div>
     </div>
   );
 };

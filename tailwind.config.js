@@ -2,6 +2,7 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './*.{ts,tsx}', './shared/**/*.ts'],
-  theme: { extend: {} },
+  // phoneland: yan çevrilmiş telefon (Süre sekmesi tam ekran olur)
+  theme: { extend: { screens: { phoneland: { raw: '(orientation: landscape) and (max-height: 540px)' } } } },
   plugins: [],
 };

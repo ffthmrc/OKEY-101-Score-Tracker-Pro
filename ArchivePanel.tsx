@@ -194,7 +194,10 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
         {view === 'cards' && cards.length > 0 && (
           <div className="text-[10px] md:text-xs font-bold text-slate-400 space-y-1 px-1">
             <p className="text-center">Oyuncuya dokun: hangi oyunlardan oluştuğunu gör.</p>
-            <p className="text-slate-500 pt-1">Sıralama nasıl yapılır?</p>
+            <details className="group">
+            <summary className="cursor-pointer select-none list-none py-1 text-slate-500 font-black uppercase tracking-tight">
+              <span className="inline-block transition-transform group-open:rotate-90">▸</span> Sıralama nasıl yapılır?
+            </summary>
             <ul className="list-disc pl-4 space-y-0.5">
               <li>Sadece {CORE_PLAYERS.join(', ')} dördünün de oynadığı oyunlar sayılır.</li>
               <li>Misafir varsa yok sayılır. Sıra dördü arasında verilir.</li>
@@ -203,6 +206,7 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
               <li>Sıra <b className="text-slate-500">toplam puana</b> göredir. Puan eşitse birincilik sayısına bakılır.</li>
               <li>Misafirler çizginin altında görünür. Oynadıkları tüm oyunlar sayılır (5. ve sonrası {PLACE_POINTS[3]} puan).</li>
             </ul>
+            </details>
           </div>
         )}
         {view === 'games' && filter && (
