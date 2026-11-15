@@ -8,19 +8,49 @@ export const scoreTextClass = (v: unknown) =>
 export const formatDay = (d: Date) =>
   d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
 
-// Katılma isteği bildirim sesi. iPhone ses çalmak için önce bir dokunuş ister: ilk dokunuşta ses birimi hazırlanır.
+// Ses birimi. Telefon ses çalmak için bir dokunuş ister ve izni parmak kalkınca verir (dokunuşun başında değil);
+// ekran kilitlenince / uygulamadan çıkınca ses birimi yeniden uyur. Bu yüzden her dokunuşta, parmak kalkınca da
+// uyandırılır ve sessiz bir ses çalınarak açık tutulur. Süre bitince uyuyorsa önce uyandırılır, sonra çalınır.
 let audio: AudioContext | null = null;
 const ensureAudio = () => {
   try {
     audio ??= new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-    if (audio.state === 'suspended') void audio.resume();
+    if (audio.state !== 'running') void audio.resume().catch(() => {});
   } catch { /* ses desteklenmiyor */ }
 };
-if (typeof window !== 'undefined') window.addEventListener('pointerdown', ensureAudio, { passive: true });
-
-export const playChime = () => {
+const unlockAudio = () => {
   ensureAudio();
   if (!audio) return;
+  try {
+    // sessiz kısa ses: iPhone ses birimini ancak dokunuş içinde bir şey çalınınca açar
+    const src = audio.createBufferSource();
+    src.buffer = audio.createBuffer(1, 1, 22050);
+    src.connect(audio.destination);
+    src.start(0);
+  } catch { /* yok say */ }
+};
+if (typeof window !== 'undefined') {
+  for (const ev of ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']) {
+    window.addEventListener(ev, unlockAudio, { passive: true, capture: true });
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') ensureAudio(); });
+  // iPhone (iOS 17+): sessiz tuşu açıkken de zil çalsın
+  try {
+    const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
+    if (session) session.type = 'playback';
+  } catch { /* desteklenmiyor */ }
+}
+
+// Ses birimi uyuyorsa önce uyandır, sonra çal (uyurken kurulan sesler hiç duyulmayabiliyordu)
+const whenAudioReady = (play: (ctx: AudioContext) => void) => {
+  ensureAudio();
+  if (!audio) return;
+  const ctx = audio;
+  if (ctx.state === 'running') play(ctx);
+  else ctx.resume().then(() => play(ctx)).catch(() => {});
+};
+
+export const playChime = () => whenAudioReady(audio => {
   const t = audio.currentTime;
   for (const [i, freq] of [880, 1320].entries()) {
     const osc = audio.createOscillator();
@@ -34,7 +64,7 @@ export const playChime = () => {
     osc.stop(t + i * 0.18 + 0.32);
   }
   navigator.vibrate?.(150);
-};
+});
 
 // Puan kutusu: telefonda "sayılar ve işaretler" klavyesi açılır (eksi işareti var, ABC ile harfe geçilir).
 // Kutu sayı tipinde; "e", "+", "." gibi sayı dışı işaretler engellenir, tekerlek değeri değiştirmez.
@@ -55,9 +85,10 @@ export const scoreValue = (v: unknown) => (typeof v === 'number' ? v : '');
 
 // Süre bitti zili: inen "vah vah" tonları (başarısızlık sesi) + titreşim
 export const playFail = () => {
-  ensureAudio();
   navigator.vibrate?.([300, 120, 300, 120, 600]);
-  if (!audio) return;
+  whenAudioReady(playFailTones);
+};
+const playFailTones = (audio: AudioContext) => {
   const t = audio.currentTime;
   const notes: [number, number, number][] = [[392, 0, 0.32], [370, 0.36, 0.32], [349, 0.72, 0.32], [311, 1.08, 0.9]];
   for (const [freq, at, len] of notes) {

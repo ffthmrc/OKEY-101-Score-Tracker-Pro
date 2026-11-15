@@ -123,8 +123,8 @@ export const TimerPanel: React.FC<TimerPanelProps> = ({ timer, serverOffset, can
     if (!timer.mine || runningEnd === null || !(decideDone || openDone)) return;
     if (rangFor.current === runningEnd) return;
     rangFor.current = runningEnd;
-    // geç açılan sayfada eski bitiş için çalma
-    if (now - runningEnd < 5000) playFail();
+    // geç açılan sayfada eski bitiş için çalma (arka planda sayfa yavaşladıysa 30 sn'ye kadar yine çalar)
+    if (now - runningEnd < 30_000) playFail();
   }, [timer.mine, runningEnd, decideDone, openDone, now]);
 
   const adjust = (which: 0 | 1, delta: number) => {
