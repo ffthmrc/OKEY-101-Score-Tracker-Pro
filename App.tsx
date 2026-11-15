@@ -33,9 +33,10 @@ interface StatCardProps {
   isMine: boolean;
   onVacate?: (id: string) => void;
   onRename?: (id: string) => void;
+  compact?: boolean; // Leaderboard altında: isimsiz, toplam büyük
 }
 
-const StatCard: React.FC<StatCardProps> = ({ player, stat, totalPlayers, gameStarted, onRemove, canRemove, occupied, isMine, onVacate, onRename }) => {
+const StatCard: React.FC<StatCardProps> = ({ player, stat, totalPlayers, gameStarted, onRemove, canRemove, occupied, isMine, onVacate, onRename, compact }) => {
   const [isConfirming, setIsConfirming] = useState(false);
 
   useEffect(() => {
@@ -57,7 +58,7 @@ const StatCard: React.FC<StatCardProps> = ({ player, stat, totalPlayers, gameSta
   };
 
   return (
-    <div className={`group relative flex flex-col items-center justify-between rounded-lg border p-1 text-center transition-all md:p-3 h-full min-h-[70px] md:min-h-[120px] shadow-sm ${isConfirming ? 'border-red-500 bg-red-50 scale-105' : 'border-slate-100 bg-white hover:shadow-md'} ${isMine ? 'ring-2 ring-indigo-400' : ''}`}>
+    <div className={`group relative flex flex-col items-center justify-between rounded-lg border p-1 text-center transition-all md:p-3 h-full ${compact ? 'min-h-[58px] md:min-h-[84px] pt-2' : 'min-h-[70px] md:min-h-[120px]'} shadow-sm ${isConfirming ? 'border-red-500 bg-red-50 scale-105' : 'border-slate-100 bg-white hover:shadow-md'} ${isMine ? 'ring-2 ring-indigo-400' : ''}`}>
 
       {/* Sandalye durumu: dolu = yeşil nokta; odayı kuran boşaltabilir */}
       <div className="absolute top-0.5 left-0.5 md:top-1 md:left-1 flex items-center gap-0.5">
@@ -85,18 +86,18 @@ const StatCard: React.FC<StatCardProps> = ({ player, stat, totalPlayers, gameSta
         </div>
       </button>}
 
-      <div className="w-full px-0.5">
+      {!compact && <div className="w-full px-0.5">
         <h3 className={`font-black uppercase tracking-tighter leading-none transition-colors ${isConfirming ? 'text-red-700' : 'text-slate-900'} text-[9px] md:text-sm truncate`}>
           {onRename ? <button onClick={() => onRename(player.id)} className="uppercase underline decoration-dotted decoration-slate-300 underline-offset-2">{player.name}</button> : player.name}
         </h3>
-      </div>
+      </div>}
 
       <div className="flex items-center justify-center leading-none h-5 md:h-10">
         <Badge emoji={stat.emoji ?? ''} visible={gameStarted} size="small" />
       </div>
 
       <div className="w-full">
-        <div className={`font-black tracking-tighter leading-none transition-colors ${isConfirming ? 'text-red-800' : 'text-slate-600'} text-[12px] md:text-2xl`}>
+        <div className={`font-black tracking-tighter leading-none transition-colors ${isConfirming ? 'text-red-800' : compact ? 'text-slate-900' : 'text-slate-600'} ${compact ? 'text-[18px] md:text-3xl tabular-nums' : 'text-[12px] md:text-2xl'}`}>
           {stat.totalScore}
         </div>
       </div>
@@ -244,7 +245,12 @@ interface GameDashboardProps {
   occupied: Record<string, boolean>;
   mySeat: string | null;
   onVacate: (id: string) => void;
-  roomBar: React.ReactNode;
+  roomBar: React.ReactNode;       // katılma istekleri şeridi
+  headerTitle: React.ReactNode;   // masa adı (ya da bağlantı durumu)
+  headerJoin: React.ReactNode;    // oturmayan için Katıl
+  statusDot: string;              // logodaki bağlantı noktası rengi
+  onMenu: () => void;
+  onTimerNext: () => void;
   archive: React.ReactNode;
   timer: React.ReactNode;
   timerState: TimerState;
@@ -253,7 +259,8 @@ interface GameDashboardProps {
 
 const GameDashboard: React.FC<GameDashboardProps> = ({
   players, rounds, actions, onAddPlayer, onRemovePlayer, undo, redo, canUndo, canRedo,
-  canEdit, occupied, mySeat, onVacate, roomBar, archive, timer, timerState, serverOffset
+  canEdit, occupied, mySeat, onVacate, roomBar, archive, timer, timerState, serverOffset,
+  headerTitle, headerJoin, statusDot, onMenu, onTimerNext
 }) => {
   const [renameId, setRenameId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'table' | 'charts' | 'dice' | 'timer' | 'archive'>('table');
@@ -297,36 +304,38 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
 
   return (
     <div className="h-screen font-sans bg-slate-50 flex flex-col overflow-hidden">
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm px-3 md:px-4 h-12 md:h-14 flex items-center gap-2 shrink-0">
-        <div className="flex items-center gap-2 md:gap-3 min-w-0">
-          <div className="bg-slate-900 w-6 h-6 rounded flex items-center justify-center text-white"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg></div>
-          <h1 className="text-[11px] md:text-sm font-black text-slate-900 uppercase tracking-tighter truncate">Score Tracker</h1>
+      {/* Tek üst satır: logo (bağlantı noktası) · masa adı · sayaç + Sonraki · geri/ileri (ya da Katıl) · ☰ menü */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm px-2 md:px-4 h-12 md:h-14 flex items-center gap-1.5 md:gap-2 shrink-0">
+        <div className="relative bg-slate-900 w-7 h-7 rounded flex items-center justify-center text-white shrink-0" title="Score Tracker">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+          <span className={`absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white ${statusDot}`} />
         </div>
-        {/* Sayaç çalışırken kalan süre her sekmede görünür */}
-        <div className="flex-1 flex justify-center">
-          <HeaderTimer timer={timerState} serverOffset={serverOffset} onOpen={() => setActiveTab('timer')} />
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Enhanced Visibility Emoji Undo/Redo Controls */}
-          <div className="flex bg-slate-100/90 rounded-lg p-0.5 border border-slate-300 shadow-inner">
+        {/* Sayaç çalışırken dar ekranda masa adı yerini sayaca bırakır */}
+        <div className={`min-w-0 flex-1 ${timerState.phase !== 'idle' ? 'hidden xs:block' : ''}`}>{headerTitle}</div>
+        {timerState.phase !== 'idle' && <div className="flex-1 xs:hidden" />}
+        <HeaderTimer timer={timerState} serverOffset={serverOffset} onOpen={() => setActiveTab('timer')} canControl={canEdit && activeTab !== 'timer'} onNext={onTimerNext} />
+        <div className="flex items-center gap-1.5 shrink-0">
+          {headerJoin}
+          {canEdit && <div className="flex bg-slate-100/90 rounded-lg p-0.5 border border-slate-300 shadow-inner">
             <button
               onClick={undo}
               disabled={!canUndo || !canEdit}
               title="Backward / Undo"
-              className="px-2 py-1 md:px-3 md:py-1.5 rounded-md transition-all active:scale-90 disabled:opacity-20 disabled:grayscale disabled:scale-100 hover:bg-white flex items-center justify-center"
+              className="px-1.5 py-1 md:px-3 md:py-1.5 rounded-md transition-all active:scale-90 disabled:opacity-20 disabled:grayscale disabled:scale-100 hover:bg-white flex items-center justify-center"
             >
               <span className="text-sm md:text-xl" role="img" aria-label="Backward">⏪</span>
             </button>
-            <div className="w-px h-5 md:h-7 bg-slate-300 self-center mx-1" />
+            <div className="w-px h-5 md:h-7 bg-slate-300 self-center mx-0.5 md:mx-1" />
             <button
               onClick={redo}
               disabled={!canRedo || !canEdit}
               title="Forward / Redo"
-              className="px-2 py-1 md:px-3 md:py-1.5 rounded-md transition-all active:scale-90 disabled:opacity-20 disabled:grayscale disabled:scale-100 hover:bg-white flex items-center justify-center"
+              className="px-1.5 py-1 md:px-3 md:py-1.5 rounded-md transition-all active:scale-90 disabled:opacity-20 disabled:grayscale disabled:scale-100 hover:bg-white flex items-center justify-center"
             >
               <span className="text-sm md:text-xl" role="img" aria-label="Forward">⏩</span>
             </button>
-          </div>
+          </div>}
+          <button onClick={onMenu} className="h-9 w-9 md:h-10 md:w-10 rounded-lg bg-slate-900 text-white text-lg leading-none flex items-center justify-center" aria-haspopup="dialog" aria-label="Masa menüsü">☰</button>
         </div>
       </header>
 
@@ -344,26 +353,6 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
       </nav>
 
       <main className="max-w-7xl mx-auto w-full px-1.5 md:px-6 py-1.5 md:py-3 pb-0 md:pb-3 flex flex-col flex-1 gap-1.5 md:gap-3 overflow-hidden">
-        {activeTab === 'table' && (
-          <div className="w-full shrink-0 bg-slate-100/30 rounded-xl">
-            <section className="grid grid-cols-4 gap-1 p-1 md:flex md:flex-nowrap md:gap-4 md:p-4">
-              {stats.map(stat => {
-                const p = players.find(player => player.id === stat.id);
-                if (!p) return null;
-                return (
-                  <div key={stat.id}>
-                    <StatCard
-                      player={p} stat={stat} totalPlayers={players.length} gameStarted={hasGameStarted} onRemove={onRemovePlayer}
-                      canRemove={canEdit} occupied={!!occupied[p.id]} isMine={mySeat === p.id} onVacate={canEdit ? onVacate : undefined}
-                      onRename={canEdit ? setRenameId : undefined}
-                    />
-                  </div>
-                );
-              })}
-            </section>
-          </div>
-        )}
-
         <div className="bg-white rounded-xl rounded-b-none md:rounded-b-xl shadow-sm border border-slate-100 flex-1 flex flex-col overflow-hidden">
           {activeTab === 'table' && (
             <div className="p-1.5 md:p-3 flex flex-col flex-1 overflow-hidden">
@@ -402,18 +391,27 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                         <td className="py-0.5 md:py-2 px-1.5 md:px-2 text-[11px] md:text-sm font-black text-slate-500">R{r.round}</td>
                         {players.map(p => (
                           <td key={p.id} className="p-0.5 md:p-1">
-                            <input {...scoreInputProps} value={scoreValue(r.scores[p.id])} readOnly={!canEdit} onChange={(e) => handleScoreChange(rIdx, p.id, e.target.value)} className={`${SCORE_INPUT_CLASS} w-full bg-slate-50/50 border-0 rounded-md py-1 md:py-2 text-center font-black ${scoreTextClass(r.scores[p.id])} text-[14px] md:text-lg focus:bg-white focus:ring-1 focus:ring-indigo-200 transition-all placeholder:text-slate-200`} placeholder="0" />
+                            <input {...scoreInputProps} value={scoreValue(r.scores[p.id])} readOnly={!canEdit} onChange={(e) => handleScoreChange(rIdx, p.id, e.target.value)} className={`${SCORE_INPUT_CLASS} w-full bg-slate-50/50 border-0 rounded-md py-1 md:py-2 text-center font-black ${scoreTextClass(r.scores[p.id])} text-[16px] md:text-xl focus:bg-white focus:ring-1 focus:ring-indigo-200 transition-all placeholder:text-slate-200`} placeholder="0" />
                           </td>
                         ))}
                       </tr>
                     ))}
                   </tbody>
+                  {/* Toplam + sıra rozeti: her oyuncunun kartı kendi sütununun altında */}
                   <tfoot className="sticky bottom-0 bg-slate-900 text-white z-20 shadow-lg">
                     <tr>
-                      <td className="py-1.5 md:py-2.5 px-1.5 md:px-2 text-[10px] md:text-xs font-black uppercase tracking-tight">Total</td>
-                      {players.map(p => (
-                        <td key={p.id} className="py-1.5 md:py-2.5 text-center text-[18px] md:text-2xl font-black tabular-nums">{stats.find(s => s.id === p.id)?.totalScore}</td>
-                      ))}
+                      <td className="py-1 px-1.5 md:px-2 text-[10px] md:text-xs font-black uppercase tracking-tight">Total</td>
+                      {players.map(p => {
+                        const stat = stats.find(s => s.id === p.id)!;
+                        return (
+                          <td key={p.id} className="p-0.5 md:p-1">
+                            <StatCard
+                              compact player={p} stat={stat} totalPlayers={players.length} gameStarted={hasGameStarted} onRemove={onRemovePlayer}
+                              canRemove={canEdit} occupied={!!occupied[p.id]} isMine={mySeat === p.id} onVacate={canEdit ? onVacate : undefined}
+                            />
+                          </td>
+                        );
+                      })}
                     </tr>
                   </tfoot>
                 </table>
@@ -463,7 +461,6 @@ export default function App() {
   const [joinOpen, setJoinOpen] = useState(false);
   const [closeConfirm, setCloseConfirm] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [showOnline, setShowOnline] = useState(false);
   const [titleOpen, setTitleOpen] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);       // ☰ Masa menüsü
@@ -535,27 +532,22 @@ export default function App() {
   const tableTitle = room.title ?? formatDay(new Date()); // masa adı yoksa bugünün tarihi
   const hasScore = game.rounds.some(r => Object.values(r.scores).some(v => typeof v === 'number'));
 
+  // Üst satırdaki masa adı: oturan dokununca değiştirir; bağlantı yoksa durum yazılır
+  const headerTitle = status !== 'online' ? (
+    <span className="block truncate text-[11px] md:text-sm font-black uppercase tracking-tight text-amber-600">{STATUS_LABEL[status]}…</span>
+  ) : canEdit ? (
+    <button onClick={() => setTitleOpen(true)} className="block max-w-full truncate text-[12px] md:text-sm font-black uppercase tracking-tight text-slate-900 underline decoration-dotted decoration-slate-300 underline-offset-4" title="Masa adını değiştir">{tableTitle}</button>
+  ) : (
+    <span className="block truncate text-[12px] md:text-sm font-black uppercase tracking-tight text-slate-900">{tableTitle}</span>
+  );
+  const headerJoin = room.mySeat ? null : room.myRequest ? (
+    <button onClick={() => { cancelledByMe.current = true; sendOp({ t: 'cancelJoin' }); }} className="px-2 h-9 rounded-lg bg-amber-100 text-amber-700 text-[10px] font-black uppercase animate-pulse" title="İptal etmek için dokun">Onay bekleniyor…</button>
+  ) : (
+    <button onClick={() => setJoinOpen(true)} className="px-3 h-9 rounded-lg bg-indigo-600 text-white text-xs font-black uppercase shadow">Katıl</button>
+  );
+
   const roomBar = (
     <>
-    <div className="bg-slate-900 text-white px-3 h-9 md:h-10 flex items-center gap-2 text-[9px] md:text-[10px] font-black uppercase tracking-tight shrink-0">
-      <span className={`h-2 w-2 rounded-full shrink-0 ${STATUS_DOT[status]}`} title={STATUS_LABEL[status]} />
-      <span className={status === 'online' ? 'hidden sm:inline text-white/60' : 'text-amber-300'}>{STATUS_LABEL[status]}</span>
-      {canEdit ? (
-        <button onClick={() => setTitleOpen(true)} className="tracking-wide truncate max-w-[45vw] uppercase underline decoration-dotted decoration-white/40 underline-offset-4" title="Masa adını değiştir">{tableTitle}</button>
-      ) : (
-        <span className="tracking-wide truncate max-w-[45vw]">{tableTitle}</span>
-      )}
-      <button onClick={() => setShowOnline(v => !v)} className="px-1.5 py-0.5 rounded text-white/60 hover:bg-white/10" title="Kim bağlı?" aria-expanded={showOnline}>👁 {room.viewers}</button>
-      {/* Sağda sadece Katıl (oturmayan) ve ☰ Masa. Ayrıl / Oyunu kapat / Temizle menüde: sekmelere basarken yanlışlıkla basılmasın */}
-      <div className="ml-auto flex items-center gap-2">
-        {!room.mySeat && (room.myRequest ? (
-          <button onClick={() => { cancelledByMe.current = true; sendOp({ t: 'cancelJoin' }); }} className="px-2 h-7 rounded bg-amber-400/20 text-amber-200 animate-pulse" title="İptal etmek için dokun">Onay bekleniyor…</button>
-        ) : (
-          <button onClick={() => setJoinOpen(true)} className="px-3 h-7 rounded bg-indigo-500 hover:bg-indigo-400 shadow">Katıl</button>
-        ))}
-        <button onClick={() => setMenuOpen(true)} className="px-2.5 h-7 rounded bg-white/15 hover:bg-white/25 flex items-center gap-1" aria-haspopup="dialog">☰ Masa</button>
-      </div>
-    </div>
     {room.requests.length > 0 && (
       <div className="bg-amber-50 border-b border-amber-200 px-3 py-2 flex flex-col gap-1.5 shrink-0">
         {room.requests.map(r => (
@@ -564,15 +556,6 @@ export default function App() {
             <button onClick={() => sendOp({ t: 'reject', id: r.id })} className="h-7 px-2 rounded-md border border-amber-300 bg-white text-amber-800 uppercase">Reddet</button>
             <button onClick={() => sendOp({ t: 'approve', id: r.id })} className="h-7 px-2 rounded-md bg-emerald-600 text-white uppercase shadow">Onayla</button>
           </div>
-        ))}
-      </div>
-    )}
-    {showOnline && (
-      <div className="bg-slate-800 text-white px-3 py-2 text-[10px] md:text-xs font-black uppercase tracking-tight shrink-0 flex flex-wrap gap-1.5" onClick={() => setShowOnline(false)}>
-        {room.online.map((o, i) => (
-          <span key={i} className={`px-2 py-1 rounded ${o.name ? 'bg-emerald-500/20 text-emerald-200' : 'bg-white/10 text-white/60'}`}>
-            {o.name ?? 'İzleyici'}{o.name ? ' · masada' : ''}{o.me ? ' (sen)' : ''}
-          </span>
         ))}
       </div>
     )}
@@ -596,6 +579,11 @@ export default function App() {
         mySeat={room.mySeat}
         onVacate={playerId => sendOp({ t: 'vacate', playerId })}
         roomBar={roomBar}
+        headerTitle={headerTitle}
+        headerJoin={headerJoin}
+        statusDot={STATUS_DOT[status]}
+        onMenu={() => setMenuOpen(true)}
+        onTimerNext={() => sendOp({ t: 'timer', action: 'start' })}
         timerState={room.timer}
         serverOffset={serverOffset}
         timer={
@@ -645,6 +633,14 @@ export default function App() {
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-black uppercase tracking-tight text-slate-900">Masa · {tableTitle}</h3>
               <button onClick={() => setMenuOpen(false)} className="h-9 px-3 rounded-lg text-slate-400 text-xs font-black uppercase">Kapat</button>
+            </div>
+            <div className="flex flex-wrap gap-1.5 text-[10px] font-black uppercase tracking-tight">
+              <span className="text-slate-400 py-1">👁 Bağlı {room.viewers}:</span>
+              {room.online.map((o, i) => (
+                <span key={i} className={`px-2 py-1 rounded ${o.name ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>
+                  {o.name ?? 'İzleyici'}{o.name ? ' · masada' : ''}{o.me ? ' (sen)' : ''}
+                </span>
+              ))}
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs font-black uppercase">
               <button onClick={copyLink} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700">{copied ? '✓ Kopyalandı' : '🔗 Linki kopyala'}</button>

@@ -62,7 +62,7 @@ const Clock: React.FC<{ label: string; ms: number; total: number; active: boolea
 // Parmak ekrana değdiği an çalışan tuş. onClick parmak kalkınca ve hiç kaymadıysa çalışır;
 // oyun sırasında hızlı dokunuşta parmak az kayınca tarayıcı bunu kaydırma sayıp tıklamayı yutuyordu.
 // Kısa titreşim + parlama: basıldığı hemen anlaşılır (sunucu cevabını beklemeden). Çift tetiklemeye karşı 400 ms kilit.
-const TapButton: React.FC<{ onTap: () => void; disabled?: boolean; className: string; children: React.ReactNode }> = ({ onTap, disabled, className, children }) => {
+export const TapButton: React.FC<{ onTap: () => void; disabled?: boolean; className: string; children: React.ReactNode }> = ({ onTap, disabled, className, children }) => {
   const last = useRef(0);
   const [flash, setFlash] = useState(false);
   const fire = () => {
@@ -205,7 +205,8 @@ export const TimerPanel: React.FC<TimerPanelProps> = ({ timer, serverOffset, can
 };
 
 // Üst çubukta canlı kalan süre: sayaç çalışırken her sekmede görünür, dokununca Süre sekmesine gider
-export const HeaderTimer: React.FC<{ timer: TimerState; serverOffset: React.MutableRefObject<number>; onOpen: () => void }> = ({ timer, serverOffset, onOpen }) => {
+// Masadakiler için yanında Sonraki: Süre sekmesine gitmeden sıradaki oyuncuya geçilir
+export const HeaderTimer: React.FC<{ timer: TimerState; serverOffset: React.MutableRefObject<number>; onOpen: () => void; canControl: boolean; onNext: () => void }> = ({ timer, serverOffset, onOpen, canControl, onNext }) => {
   const { phase } = timer;
   const [now, setNow] = useState(() => Date.now() + serverOffset.current);
   useEffect(() => {
@@ -222,9 +223,14 @@ export const HeaderTimer: React.FC<{ timer: TimerState; serverOffset: React.Muta
     : left <= 10_000 ? 'bg-amber-100 border-amber-300 text-amber-700'
     : 'bg-emerald-50 border-emerald-200 text-emerald-700';
   return (
-    <button onClick={onOpen} title="Süre sekmesine git" className={`h-8 md:h-10 px-2 md:px-3 rounded-lg border flex items-center gap-1 font-black tabular-nums shrink-0 ${look}`}>
-      <span className="text-[9px] md:text-[11px] opacity-70">{phase === 'decide' ? '1' : '2'}</span>
-      <span className="text-lg md:text-2xl leading-none">{fmt(left)}</span>
-    </button>
+    <div className="flex items-center gap-1 shrink-0">
+      <button onClick={onOpen} title="Süre sekmesine git" className={`h-9 md:h-10 px-1.5 md:px-3 rounded-lg border flex items-center gap-1 font-black tabular-nums ${look}`}>
+        <span className="text-[9px] md:text-[11px] opacity-70">{phase === 'decide' ? '1' : '2'}</span>
+        <span className="text-lg md:text-2xl leading-none">{fmt(left)}</span>
+      </button>
+      {canControl && (
+        <TapButton onTap={onNext} className="h-9 md:h-10 px-2.5 md:px-3 !rounded-lg bg-emerald-600 text-white text-[11px] md:text-sm shadow">Sonraki ›</TapButton>
+      )}
+    </div>
   );
 };
