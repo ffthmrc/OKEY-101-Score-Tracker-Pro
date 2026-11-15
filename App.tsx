@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Player, RoundScore, PlayerStats } from './types';
-import type { CellValue } from './shared/protocol';
+import type { CellValue, TimerState } from './shared/protocol';
 import { parseScoreInput, placesOf, placeEmoji, hasAnyScore, MAX_TITLE_LEN } from './shared/game';
 import { scoreTextClass, formatDay, playChime, scoreInputProps, scoreValue, SCORE_INPUT_CLASS } from './ui';
 import { useRoom } from './useRoom';
@@ -9,7 +9,7 @@ import { ConfirmDialog, JoinDialog, NameDialog, TablePinDialog } from './Dialogs
 import { ArchivePanel } from './ArchivePanel';
 import { GapPanel } from './GapPanel';
 import { GameCharts } from './GameCharts';
-import { TimerPanel } from './TimerPanel';
+import { TimerPanel, HeaderTimer } from './TimerPanel';
 
 // --- Sub-components ---
 
@@ -234,7 +234,6 @@ interface GameDashboardProps {
   players: Player[];
   rounds: RoundScore[];
   actions: GameActions;
-  onReset: () => void;
   onAddPlayer: () => void;
   onRemovePlayer: (id: string) => void;
   undo: () => void;
@@ -248,32 +247,16 @@ interface GameDashboardProps {
   roomBar: React.ReactNode;
   archive: React.ReactNode;
   timer: React.ReactNode;
+  timerState: TimerState;
+  serverOffset: React.MutableRefObject<number>;
 }
 
 const GameDashboard: React.FC<GameDashboardProps> = ({
-  players, rounds, actions, onReset, onAddPlayer, onRemovePlayer, undo, redo, canUndo, canRedo,
-  canEdit, occupied, mySeat, onVacate, roomBar, archive, timer
+  players, rounds, actions, onAddPlayer, onRemovePlayer, undo, redo, canUndo, canRedo,
+  canEdit, occupied, mySeat, onVacate, roomBar, archive, timer, timerState, serverOffset
 }) => {
   const [renameId, setRenameId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'table' | 'charts' | 'fark' | 'dice' | 'timer' | 'archive'>('table');
-  const [isResetConfirming, setIsResetConfirming] = useState(false);
-
-  // Auto-reset confirmation state after 4 seconds
-  useEffect(() => {
-    if (isResetConfirming) {
-      const timer = setTimeout(() => setIsResetConfirming(false), 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [isResetConfirming]);
-
-  const handleResetClick = () => {
-    if (isResetConfirming) {
-      onReset();
-      setIsResetConfirming(false);
-    } else {
-      setIsResetConfirming(true);
-    }
-  };
+  const [activeTab, setActiveTab] = useState<'table' | 'charts' | 'dice' | 'timer' | 'archive'>('table');
 
   // Check if any non-null input has been made across all rounds
   const hasGameStarted = useMemo(() => hasAnyScore(rounds), [rounds]);
@@ -314,12 +297,16 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
 
   return (
     <div className="h-screen font-sans bg-slate-50 flex flex-col overflow-hidden">
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm px-4 h-11 md:h-14 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2 md:gap-3">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm px-3 md:px-4 h-12 md:h-14 flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0">
           <div className="bg-slate-900 w-6 h-6 rounded flex items-center justify-center text-white"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg></div>
-          <h1 className="text-[11px] md:text-sm font-black text-slate-900 uppercase tracking-tighter">Score Tracker</h1>
+          <h1 className="text-[11px] md:text-sm font-black text-slate-900 uppercase tracking-tighter truncate">Score Tracker</h1>
         </div>
-        <div className="flex items-center gap-2">
+        {/* Sayaç çalışırken kalan süre her sekmede görünür */}
+        <div className="flex-1 flex justify-center">
+          <HeaderTimer timer={timerState} serverOffset={serverOffset} onOpen={() => setActiveTab('timer')} />
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
           {/* Enhanced Visibility Emoji Undo/Redo Controls */}
           <div className="flex bg-slate-100/90 rounded-lg p-0.5 border border-slate-300 shadow-inner">
             <button
@@ -340,18 +327,6 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
               <span className="text-sm md:text-xl" role="img" aria-label="Forward">⏩</span>
             </button>
           </div>
-
-          <button
-            onClick={handleResetClick}
-            disabled={!canEdit}
-            className={`h-8 md:h-10 px-2 md:px-3 rounded-lg border text-[9px] md:text-[10px] font-black uppercase tracking-tighter transition-all flex items-center gap-1.5 ml-1 disabled:opacity-30 ${isResetConfirming ? 'bg-red-600 text-white border-red-700 scale-105 shadow-lg' : 'bg-red-50 text-red-600 border-red-100 hover:bg-red-100'}`}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 md:h-5 md:w-5 ${isResetConfirming ? 'animate-pulse' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-            <span className="hidden sm:inline">{isResetConfirming ? "SURE?" : "New Game"}</span>
-            {isResetConfirming && <span className="inline sm:hidden font-black">SURE?</span>}
-          </button>
         </div>
       </header>
 
@@ -359,7 +334,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
 
       {/* Sekmeler: büyük harf, aralarında çizgi, seçili olan altı çizili */}
       <nav className="flex bg-white border-b-2 border-slate-200 shrink-0 divide-x divide-slate-200">
-        {([['table', 'Tablo'], ['charts', 'Sıra'], ['fark', 'Fark'], ['dice', 'Zar'], ['timer', 'Süre'], ['archive', 'Arşiv']] as const).map(([tab, label]) => (
+        {([['table', 'Tablo'], ['charts', 'Sıra'], ['timer', 'Süre'], ['archive', 'Arşiv'], ['dice', 'Zar']] as const).map(([tab, label]) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -435,9 +410,9 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                   </tbody>
                   <tfoot className="sticky bottom-0 bg-slate-900 text-white z-20 shadow-lg">
                     <tr>
-                      <td className="py-1 md:py-2.5 px-2 text-[8px] md:text-[10px] font-black uppercase tracking-widest">Total</td>
+                      <td className="py-1.5 md:py-2.5 px-1.5 md:px-2 text-[10px] md:text-xs font-black uppercase tracking-tight">Total</td>
                       {players.map(p => (
-                        <td key={p.id} className="py-1 md:py-2.5 text-center text-[11px] md:text-xl font-black">{stats.find(s => s.id === p.id)?.totalScore}</td>
+                        <td key={p.id} className="py-1.5 md:py-2.5 text-center text-[18px] md:text-2xl font-black tabular-nums">{stats.find(s => s.id === p.id)?.totalScore}</td>
                       ))}
                     </tr>
                   </tfoot>
@@ -448,11 +423,12 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
 
           {activeTab === 'charts' && (
             <div className="p-2 md:p-4 flex-1 flex flex-col gap-4 overflow-auto custom-scrollbar">
-              <GameCharts players={players} rounds={rounds} />
+              {/* Sıra ve Fark tek sekmede, arşiv detayıyla aynı düzen */}
+              <GameCharts players={players} rounds={rounds} show="ranking" />
+              <GapPanel players={players} rounds={rounds} embedded />
+              <GameCharts players={players} rounds={rounds} show="trend" />
             </div>
           )}
-
-          {activeTab === 'fark' && <GapPanel players={players} rounds={rounds} />}
 
           {activeTab === 'dice' && <DiceRoller />}
 
@@ -490,6 +466,8 @@ export default function App() {
   const [showOnline, setShowOnline] = useState(false);
   const [titleOpen, setTitleOpen] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);       // ☰ Masa menüsü
+  const [clearConfirm, setClearConfirm] = useState(false); // tabloyu arşivlemeden temizle
   const [notice, setNotice] = useState<string | null>(null);
 
   // Yeni katılma isteği gelince masadakilere ses + titreşim
@@ -567,20 +545,15 @@ export default function App() {
       ) : (
         <span className="tracking-wide truncate max-w-[45vw]">{tableTitle}</span>
       )}
-      <button onClick={copyLink} className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20" title="Linki kopyala">{copied ? '✓' : '🔗'}</button>
-      {canEdit && (
-        <button onClick={() => setPinOpen(true)} className="px-1.5 py-0.5 rounded hover:bg-white/10" title={room.pinSet ? 'Masa şifresi var' : 'Masa şifresi koy'}>{room.pinSet ? '🔒' : '🔓'}</button>
-      )}
       <button onClick={() => setShowOnline(v => !v)} className="px-1.5 py-0.5 rounded text-white/60 hover:bg-white/10" title="Kim bağlı?" aria-expanded={showOnline}>👁 {room.viewers}</button>
-      <div className="ml-auto flex items-center gap-1.5">
-        {room.mySeat ? (
-          <button onClick={() => sendOp({ t: 'leave' })} className="px-2 h-6 md:h-7 rounded bg-white/10 hover:bg-white/20">Ayrıl</button>
-        ) : room.myRequest ? (
-          <button onClick={() => { cancelledByMe.current = true; sendOp({ t: 'cancelJoin' }); }} className="px-2 h-6 md:h-7 rounded bg-amber-400/20 text-amber-200 animate-pulse" title="İptal etmek için dokun">Onay bekleniyor…</button>
+      {/* Sağda sadece Katıl (oturmayan) ve ☰ Masa. Ayrıl / Oyunu kapat / Temizle menüde: sekmelere basarken yanlışlıkla basılmasın */}
+      <div className="ml-auto flex items-center gap-2">
+        {!room.mySeat && (room.myRequest ? (
+          <button onClick={() => { cancelledByMe.current = true; sendOp({ t: 'cancelJoin' }); }} className="px-2 h-7 rounded bg-amber-400/20 text-amber-200 animate-pulse" title="İptal etmek için dokun">Onay bekleniyor…</button>
         ) : (
-          <button onClick={() => setJoinOpen(true)} className="px-2.5 h-6 md:h-7 rounded bg-indigo-500 hover:bg-indigo-400 shadow">Katıl</button>
-        )}
-        <button onClick={() => setCloseConfirm(true)} disabled={!canEdit || !hasScore} className="px-2 h-6 md:h-7 rounded bg-amber-500 hover:bg-amber-400 text-slate-900 disabled:opacity-30">Oyunu kapat</button>
+          <button onClick={() => setJoinOpen(true)} className="px-3 h-7 rounded bg-indigo-500 hover:bg-indigo-400 shadow">Katıl</button>
+        ))}
+        <button onClick={() => setMenuOpen(true)} className="px-2.5 h-7 rounded bg-white/15 hover:bg-white/25 flex items-center gap-1" aria-haspopup="dialog">☰ Masa</button>
       </div>
     </div>
     {room.requests.length > 0 && (
@@ -612,7 +585,6 @@ export default function App() {
         players={game.players}
         rounds={game.rounds}
         actions={actions}
-        onReset={() => sendOp({ t: 'newGame' })}
         onAddPlayer={() => sendOp({ t: 'addPlayer' })}
         onRemovePlayer={handleRemovePlayer}
         undo={() => sendOp({ t: 'undo' })}
@@ -624,6 +596,8 @@ export default function App() {
         mySeat={room.mySeat}
         onVacate={playerId => sendOp({ t: 'vacate', playerId })}
         roomBar={roomBar}
+        timerState={room.timer}
+        serverOffset={serverOffset}
         timer={
           <TimerPanel
             timer={room.timer}
@@ -664,6 +638,40 @@ export default function App() {
         pinSet={room.pinSet}
         onCancel={() => setPinOpen(false)}
         onSave={pin => { sendOp({ t: 'setPin', pin }); setPinOpen(false); }}
+      />
+      {menuOpen && (
+        <div className="fixed inset-0 z-[200] bg-slate-900/50 flex items-end justify-center" onClick={() => setMenuOpen(false)}>
+          <div className="w-full max-w-md bg-white rounded-t-2xl p-4 pb-6 space-y-4 shadow-2xl" onClick={e => e.stopPropagation()} role="dialog" aria-label="Masa">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black uppercase tracking-tight text-slate-900">Masa · {tableTitle}</h3>
+              <button onClick={() => setMenuOpen(false)} className="h-9 px-3 rounded-lg text-slate-400 text-xs font-black uppercase">Kapat</button>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs font-black uppercase">
+              <button onClick={copyLink} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700">{copied ? '✓ Kopyalandı' : '🔗 Linki kopyala'}</button>
+              {canEdit && <button onClick={() => { setMenuOpen(false); setTitleOpen(true); }} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700">✏️ Masa adı</button>}
+              {canEdit && <button onClick={() => { setMenuOpen(false); setPinOpen(true); }} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700">{room.pinSet ? '🔒 Masa şifresi' : '🔓 Masa şifresi'}</button>}
+              {canEdit && <button onClick={() => { setMenuOpen(false); sendOp({ t: 'leave' }); }} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700">🚪 Masadan ayrıl</button>}
+            </div>
+            {canEdit ? (
+              <div className="space-y-2 pt-3 border-t border-slate-100">
+                <p className="text-[10px] font-black uppercase tracking-tight text-slate-400">Oyun bitince</p>
+                <button onClick={() => { setMenuOpen(false); setCloseConfirm(true); }} disabled={!hasScore} className="w-full h-14 rounded-xl bg-amber-500 text-slate-900 text-sm font-black uppercase shadow disabled:opacity-30">📦 Oyunu kapat · arşive kaydet</button>
+                <button onClick={() => { setMenuOpen(false); setClearConfirm(true); }} disabled={!hasScore} className="w-full h-11 rounded-xl border-2 border-red-200 bg-red-50 text-red-600 text-xs font-black uppercase disabled:opacity-30">🗑 Tabloyu temizle · arşive kaydetmez</button>
+              </div>
+            ) : (
+              <p className="text-[11px] font-bold text-slate-400">Oyunu kapatmak ve masa ayarları için önce masaya katıl.</p>
+            )}
+          </div>
+        </div>
+      )}
+      <ConfirmDialog
+        open={clearConfirm}
+        title="Tabloyu temizle"
+        message="Tablodaki tüm puanlar silinecek ve oyun arşive KAYDEDİLMEYECEK. Oyunu saklamak için 'Oyunu kapat' kullan. Emin misin?"
+        confirmLabel="Evet, temizle"
+        danger
+        onCancel={() => setClearConfirm(false)}
+        onConfirm={() => { sendOp({ t: 'newGame' }); setClearConfirm(false); }}
       />
       <ConfirmDialog
         open={closeConfirm}
