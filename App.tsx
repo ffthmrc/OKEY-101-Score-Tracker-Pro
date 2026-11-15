@@ -30,15 +30,16 @@ interface StatCardProps {
   isMine: boolean;
   nameLen: number;
   totalLen: number;
+  stacked: boolean; // 5-6 kişi: alt alta düzen
   onVacate?: (id: string) => void;
   onRename?: (id: string) => void;
 }
 
-// Oyuncu kartı: solda sıra rozeti, sağda üstte isim, altında toplam.
-// Oyuncu çıkarma karttan kalktı (isme dokununca açılan pencerede): ✕ ismin üstüne biniyordu.
-// nameLen / totalLen: masadaki en uzun isim ve toplam; bütün kartlar aynı yazı boyunu kullanır
-const StatCard: React.FC<StatCardProps> = ({ player, stat, gameStarted, occupied, isMine, onVacate, onRename, nameLen, totalLen }) => (
-  <div className={`relative flex items-center gap-1 md:gap-3 rounded-lg border border-slate-100 bg-white shadow-sm h-full min-h-[56px] md:min-h-[96px] pl-1 pr-1.5 pt-2 pb-2.5 md:px-3 md:py-3 ${isMine ? 'ring-2 ring-indigo-400' : ''}`}>
+// Oyuncu kartı. 4 kişiye kadar: solda rozet, sağda isim ve altında toplam (ortalı).
+// 5-6 kişide kutu dar: rozet üstte, isim, toplam alt alta (isim kutunun bütün genişliğini kullanır).
+// nameLen / totalLen: masadaki en uzun isim ve toplam; bütün kartlar aynı yazı boyunu kullanır (kesilmez).
+const StatCard: React.FC<StatCardProps> = ({ player, stat, gameStarted, occupied, isMine, onVacate, onRename, nameLen, totalLen, stacked }) => (
+  <div className={`relative flex ${stacked ? 'flex-col justify-center gap-0.5 px-0.5' : 'items-center gap-0.5 md:gap-3 pl-0.5 pr-1 md:px-3'} rounded-lg border border-slate-100 bg-white shadow-sm h-full min-h-[56px] md:min-h-[96px] pt-2 pb-2.5 md:py-3 ${isMine ? 'ring-2 ring-indigo-400' : ''}`}>
     {/* Sandalye durumu: dolu = yeşil nokta; masadakiler boşaltabilir */}
     <div className="absolute top-0.5 left-0.5 md:top-1 md:left-1 flex items-center gap-0.5">
       <span className={`h-1.5 w-1.5 md:h-2 md:w-2 rounded-full ${occupied ? 'bg-emerald-500' : 'bg-slate-200'}`} title={occupied ? 'Oturuyor' : 'Boş sandalye'} />
@@ -47,12 +48,10 @@ const StatCard: React.FC<StatCardProps> = ({ player, stat, gameStarted, occupied
       )}
     </div>
 
-    <div className="w-7 md:w-12 shrink-0 flex items-center justify-center">
-      <Badge emoji={stat.emoji ?? ''} visible={gameStarted} size="large" />
+    <div className={`${stacked ? '' : 'w-6 md:w-12'} shrink-0 flex items-center justify-center`}>
+      <Badge emoji={stat.emoji ?? ''} visible={gameStarted} size={stacked ? 'small' : 'large'} />
     </div>
 
-    {/* İsim ve toplam ortalı. Boyları bütün kartlarda aynı: isim en uzun isme göre (kesilmez),
-        toplam Leaderboard TOTAL ile aynı (18 px; çok büyük sayı sığmazsa hepsi birlikte küçülür) */}
     <div className="min-w-0 flex-1 text-center" style={{ containerType: 'inline-size' }}>
       <div className="font-black uppercase tracking-tighter leading-tight text-slate-900 whitespace-nowrap"
         style={{ fontSize: `min(15px, calc(100cqw / ${Math.max(4, nameLen) * 0.6}))` }}>
@@ -319,15 +318,15 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
       <main className="max-w-7xl mx-auto w-full px-1.5 md:px-6 py-1.5 md:py-3 pb-0 md:pb-3 flex flex-col flex-1 gap-1.5 md:gap-3 overflow-hidden">
         {activeTab === 'table' && (
           <div className="w-full shrink-0 bg-slate-100/30 rounded-xl">
-            {/* Telefonda kartlar 2 (5-6 kişide 3) sütun: isim ve toplam büyük kalsın */}
-            <section className={`grid ${players.length <= 4 ? 'grid-cols-2' : 'grid-cols-3'} sm:grid-cols-4 gap-1 p-1 md:flex md:flex-nowrap md:gap-4 md:p-4`}>
+            {/* Kartlar tek satırda, eşit genişlikte; sıraları tablonun sütunlarıyla aynı */}
+            <section className="grid gap-1 p-1 md:gap-4 md:p-4" style={{ gridTemplateColumns: `repeat(${players.length}, minmax(0, 1fr))` }}>
               {stats.map(stat => {
                 const p = players.find(player => player.id === stat.id);
                 if (!p) return null;
                 return (
                   <div key={stat.id}>
                     <StatCard
-                      player={p} stat={stat} gameStarted={hasGameStarted} nameLen={cardNameLen} totalLen={cardTotalLen}
+                      player={p} stat={stat} gameStarted={hasGameStarted} nameLen={cardNameLen} totalLen={cardTotalLen} stacked={players.length > 4}
                       occupied={!!occupied[p.id]} isMine={mySeat === p.id} onVacate={canEdit ? onVacate : undefined}
                       onRename={canEdit ? setRenameId : undefined}
                     />
