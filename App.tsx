@@ -385,8 +385,10 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
 
       {/* Alt satır (başparmak bölgesi): logo (bağlantı noktası) · sayaç + Sonraki · geri/ileri (ya da Katıl) · ☰ menü.
           iPhone ev çizgisi ve yuvarlak köşeler için alttan güvenli boşluk */}
-      <footer className="bg-white border-t border-slate-200 z-50 px-3 md:px-4 pt-2 flex items-center gap-1.5 md:gap-2 shrink-0"
-        style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
+      {/* Yanlarda geniş boşluk: iPhone'un yuvarlak alt köşeleri logoyu ve ☰'yi kesmesin.
+          Altta en az 14 px (iOS 26'da ekran kenarı ölçüsü bazen 0 geliyor) */}
+      <footer className="bg-white border-t border-slate-200 z-50 px-5 md:px-6 pt-2 flex items-center gap-1.5 md:gap-2 shrink-0"
+        style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}>
         <div className="relative bg-slate-900 w-7 h-7 rounded flex items-center justify-center text-white shrink-0" title="Score Tracker">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
           <span className={`absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white ${statusDot}`} />

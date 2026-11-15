@@ -225,9 +225,9 @@ export const HeaderTimer: React.FC<{ timer: TimerState; serverOffset: React.Muta
     : 'bg-emerald-50 border-emerald-200 text-emerald-700';
   return (
     <div className="flex items-center gap-1 shrink-0">
-      <button onClick={onOpen} title="Süre sekmesine git" className={`h-11 px-2 md:px-3 rounded-lg border flex items-center gap-1 font-black tabular-nums ${look}`}>
-        <span className="text-[9px] md:text-[11px] opacity-70">{phase === 'decide' ? '1' : '2'}</span>
-        <span className="text-lg md:text-2xl leading-none">{fmt(left)}</span>
+      <button onClick={onOpen} title="Süre sekmesine git" className={`h-11 px-1 md:px-3 rounded-lg border flex items-center gap-0.5 font-black tabular-nums tracking-tighter ${look}`}>
+        <span className="text-[8px] md:text-[11px] opacity-70">{phase === 'decide' ? '1' : '2'}</span>
+        <span className="text-[24px] md:text-3xl leading-none">{fmt(left)}</span>
       </button>
       {canControl && (
         <TapButton onTap={onNext} className="h-11 px-3 md:px-4 !rounded-lg bg-emerald-600 text-white text-xs md:text-sm shadow">Sonraki ›</TapButton>
