@@ -28,13 +28,16 @@ interface StatCardProps {
   gameStarted: boolean;
   occupied: boolean;
   isMine: boolean;
+  nameLen: number;
+  totalLen: number;
   onVacate?: (id: string) => void;
   onRename?: (id: string) => void;
 }
 
 // Oyuncu kartı: solda sıra rozeti, sağda üstte isim, altında toplam.
 // Oyuncu çıkarma karttan kalktı (isme dokununca açılan pencerede): ✕ ismin üstüne biniyordu.
-const StatCard: React.FC<StatCardProps> = ({ player, stat, gameStarted, occupied, isMine, onVacate, onRename }) => (
+// nameLen / totalLen: masadaki en uzun isim ve toplam; bütün kartlar aynı yazı boyunu kullanır
+const StatCard: React.FC<StatCardProps> = ({ player, stat, gameStarted, occupied, isMine, onVacate, onRename, nameLen, totalLen }) => (
   <div className={`relative flex items-center gap-1 md:gap-3 rounded-lg border border-slate-100 bg-white shadow-sm h-full min-h-[56px] md:min-h-[96px] pl-1 pr-1.5 pt-2 pb-2.5 md:px-3 md:py-3 ${isMine ? 'ring-2 ring-indigo-400' : ''}`}>
     {/* Sandalye durumu: dolu = yeşil nokta; masadakiler boşaltabilir */}
     <div className="absolute top-0.5 left-0.5 md:top-1 md:left-1 flex items-center gap-0.5">
@@ -48,14 +51,15 @@ const StatCard: React.FC<StatCardProps> = ({ player, stat, gameStarted, occupied
       <Badge emoji={stat.emoji ?? ''} visible={gameStarted} size="large" />
     </div>
 
-    {/* Yazı boyu kutunun genişliğine göre: uzun isim / büyük sayı kesilmez, biraz küçülür */}
-    <div className="min-w-0 flex-1 text-left" style={{ containerType: 'inline-size' }}>
+    {/* İsim ve toplam ortalı. Boyları bütün kartlarda aynı: isim en uzun isme göre (kesilmez),
+        toplam Leaderboard TOTAL ile aynı (18 px; çok büyük sayı sığmazsa hepsi birlikte küçülür) */}
+    <div className="min-w-0 flex-1 text-center" style={{ containerType: 'inline-size' }}>
       <div className="font-black uppercase tracking-tighter leading-tight text-slate-900 whitespace-nowrap"
-        style={{ fontSize: `min(15px, calc(100cqw / ${Math.max(4, player.name.length) * 0.6}))` }}>
+        style={{ fontSize: `min(15px, calc(100cqw / ${Math.max(4, nameLen) * 0.6}))` }}>
         {onRename ? <button onClick={() => onRename(player.id)} className="uppercase underline decoration-dotted decoration-slate-300 underline-offset-2">{player.name}</button> : player.name}
       </div>
-      <div className="font-black tracking-tighter leading-none tabular-nums text-slate-700 mt-0.5 whitespace-nowrap"
-        style={{ fontSize: `min(24px, calc(100cqw / ${Math.max(3, String(stat.totalScore).length) * 0.58}))` }}>
+      <div className="font-black tracking-tighter leading-none tabular-nums text-slate-900 mt-1 whitespace-nowrap md:!text-2xl"
+        style={{ fontSize: `min(18px, calc(100cqw / ${Math.max(3, totalLen) * 0.58}))` }}>
         {stat.totalScore}
       </div>
     </div>
@@ -244,6 +248,10 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
     });
   }, [players, rounds]);
 
+  // Kartlarda ortak yazı boyu için en uzun isim ve toplam
+  const cardNameLen = Math.max(...players.map(p => p.name.length));
+  const cardTotalLen = Math.max(...stats.map(s => String(s.totalScore).length));
+
   const handleScoreChange = (roundIndex: number, playerId: string, value: string) => {
     actions.setScore(roundIndex, playerId, parseScoreInput(value));
   };
@@ -311,15 +319,15 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
       <main className="max-w-7xl mx-auto w-full px-1.5 md:px-6 py-1.5 md:py-3 pb-0 md:pb-3 flex flex-col flex-1 gap-1.5 md:gap-3 overflow-hidden">
         {activeTab === 'table' && (
           <div className="w-full shrink-0 bg-slate-100/30 rounded-xl">
-            {/* Dar telefonda kartlar 2 (5-6 kişide 3) sütun: isim ve toplam sığsın */}
-            <section className={`grid ${players.length <= 4 ? 'grid-cols-2' : 'grid-cols-3'} xs:grid-cols-4 gap-1 p-1 md:flex md:flex-nowrap md:gap-4 md:p-4`}>
+            {/* Telefonda kartlar 2 (5-6 kişide 3) sütun: isim ve toplam büyük kalsın */}
+            <section className={`grid ${players.length <= 4 ? 'grid-cols-2' : 'grid-cols-3'} sm:grid-cols-4 gap-1 p-1 md:flex md:flex-nowrap md:gap-4 md:p-4`}>
               {stats.map(stat => {
                 const p = players.find(player => player.id === stat.id);
                 if (!p) return null;
                 return (
                   <div key={stat.id}>
                     <StatCard
-                      player={p} stat={stat} gameStarted={hasGameStarted}
+                      player={p} stat={stat} gameStarted={hasGameStarted} nameLen={cardNameLen} totalLen={cardTotalLen}
                       occupied={!!occupied[p.id]} isMine={mySeat === p.id} onVacate={canEdit ? onVacate : undefined}
                       onRename={canEdit ? setRenameId : undefined}
                     />
