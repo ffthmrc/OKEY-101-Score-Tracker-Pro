@@ -33,10 +33,9 @@ interface StatCardProps {
   isMine: boolean;
   onVacate?: (id: string) => void;
   onRename?: (id: string) => void;
-  compact?: boolean; // Leaderboard altında: isimsiz, toplam büyük
 }
 
-const StatCard: React.FC<StatCardProps> = ({ player, stat, totalPlayers, gameStarted, onRemove, canRemove, occupied, isMine, onVacate, onRename, compact }) => {
+const StatCard: React.FC<StatCardProps> = ({ player, stat, totalPlayers, gameStarted, onRemove, canRemove, occupied, isMine, onVacate, onRename }) => {
   const [isConfirming, setIsConfirming] = useState(false);
 
   useEffect(() => {
@@ -58,7 +57,7 @@ const StatCard: React.FC<StatCardProps> = ({ player, stat, totalPlayers, gameSta
   };
 
   return (
-    <div className={`group relative flex flex-col items-center justify-between rounded-lg border p-1 text-center transition-all md:p-3 h-full ${compact ? 'min-h-[58px] md:min-h-[84px] pt-2' : 'min-h-[70px] md:min-h-[120px]'} shadow-sm ${isConfirming ? 'border-red-500 bg-red-50 scale-105' : 'border-slate-100 bg-white hover:shadow-md'} ${isMine ? 'ring-2 ring-indigo-400' : ''}`}>
+    <div className={`group relative flex flex-col items-center justify-between rounded-lg border p-1 text-center transition-all md:p-3 h-full min-h-[70px] md:min-h-[120px] shadow-sm ${isConfirming ? 'border-red-500 bg-red-50 scale-105' : 'border-slate-100 bg-white hover:shadow-md'} ${isMine ? 'ring-2 ring-indigo-400' : ''}`}>
 
       {/* Sandalye durumu: dolu = yeşil nokta; odayı kuran boşaltabilir */}
       <div className="absolute top-0.5 left-0.5 md:top-1 md:left-1 flex items-center gap-0.5">
@@ -86,18 +85,18 @@ const StatCard: React.FC<StatCardProps> = ({ player, stat, totalPlayers, gameSta
         </div>
       </button>}
 
-      {!compact && <div className="w-full px-0.5">
+      <div className="w-full px-0.5">
         <h3 className={`font-black uppercase tracking-tighter leading-none transition-colors ${isConfirming ? 'text-red-700' : 'text-slate-900'} text-[9px] md:text-sm truncate`}>
           {onRename ? <button onClick={() => onRename(player.id)} className="uppercase underline decoration-dotted decoration-slate-300 underline-offset-2">{player.name}</button> : player.name}
         </h3>
-      </div>}
+      </div>
 
       <div className="flex items-center justify-center leading-none h-5 md:h-10">
         <Badge emoji={stat.emoji ?? ''} visible={gameStarted} size="small" />
       </div>
 
       <div className="w-full">
-        <div className={`font-black tracking-tighter leading-none transition-colors ${isConfirming ? 'text-red-800' : compact ? 'text-slate-900' : 'text-slate-600'} ${compact ? 'text-[18px] md:text-3xl tabular-nums' : 'text-[12px] md:text-2xl'}`}>
+        <div className={`font-black tracking-tighter leading-none transition-colors ${isConfirming ? 'text-red-800' : 'text-slate-600'} text-[12px] md:text-2xl`}>
           {stat.totalScore}
         </div>
       </div>
@@ -246,7 +245,8 @@ interface GameDashboardProps {
   mySeat: string | null;
   onVacate: (id: string) => void;
   roomBar: React.ReactNode;       // katılma istekleri şeridi
-  headerTitle: React.ReactNode;   // masa adı (ya da bağlantı durumu)
+  headerTitle: React.ReactNode;   // masa adı (Leaderboard yazısının yanında)
+  headerStatus: React.ReactNode;  // bağlantı yoksa üst satırda uyarı
   headerJoin: React.ReactNode;    // oturmayan için Katıl
   statusDot: string;              // logodaki bağlantı noktası rengi
   onMenu: () => void;
@@ -260,7 +260,7 @@ interface GameDashboardProps {
 const GameDashboard: React.FC<GameDashboardProps> = ({
   players, rounds, actions, onAddPlayer, onRemovePlayer, undo, redo, canUndo, canRedo,
   canEdit, occupied, mySeat, onVacate, roomBar, archive, timer, timerState, serverOffset,
-  headerTitle, headerJoin, statusDot, onMenu, onTimerNext
+  headerTitle, headerStatus, headerJoin, statusDot, onMenu, onTimerNext
 }) => {
   const [renameId, setRenameId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'table' | 'charts' | 'dice' | 'timer' | 'archive'>('table');
@@ -304,15 +304,13 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
 
   return (
     <div className="h-screen font-sans bg-slate-50 flex flex-col overflow-hidden">
-      {/* Tek üst satır: logo (bağlantı noktası) · masa adı · sayaç + Sonraki · geri/ileri (ya da Katıl) · ☰ menü */}
+      {/* Tek üst satır: logo (bağlantı noktası) · sayaç + Sonraki · geri/ileri (ya da Katıl) · ☰ menü */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm px-2 md:px-4 h-12 md:h-14 flex items-center gap-1.5 md:gap-2 shrink-0">
         <div className="relative bg-slate-900 w-7 h-7 rounded flex items-center justify-center text-white shrink-0" title="Score Tracker">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
           <span className={`absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white ${statusDot}`} />
         </div>
-        {/* Sayaç çalışırken dar ekranda masa adı yerini sayaca bırakır */}
-        <div className={`min-w-0 flex-1 ${timerState.phase !== 'idle' ? 'hidden xs:block' : ''}`}>{headerTitle}</div>
-        {timerState.phase !== 'idle' && <div className="flex-1 xs:hidden" />}
+        <div className="min-w-0 flex-1">{headerStatus}</div>
         <HeaderTimer timer={timerState} serverOffset={serverOffset} onOpen={() => setActiveTab('timer')} canControl={canEdit && activeTab !== 'timer'} onNext={onTimerNext} />
         <div className="flex items-center gap-1.5 shrink-0">
           {headerJoin}
@@ -353,12 +351,34 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
       </nav>
 
       <main className="max-w-7xl mx-auto w-full px-1.5 md:px-6 py-1.5 md:py-3 pb-0 md:pb-3 flex flex-col flex-1 gap-1.5 md:gap-3 overflow-hidden">
+        {activeTab === 'table' && (
+          <div className="w-full shrink-0 bg-slate-100/30 rounded-xl">
+            <section className="grid grid-cols-4 gap-1 p-1 md:flex md:flex-nowrap md:gap-4 md:p-4">
+              {stats.map(stat => {
+                const p = players.find(player => player.id === stat.id);
+                if (!p) return null;
+                return (
+                  <div key={stat.id}>
+                    <StatCard
+                      player={p} stat={stat} totalPlayers={players.length} gameStarted={hasGameStarted} onRemove={onRemovePlayer}
+                      canRemove={canEdit} occupied={!!occupied[p.id]} isMine={mySeat === p.id} onVacate={canEdit ? onVacate : undefined}
+                      onRename={canEdit ? setRenameId : undefined}
+                    />
+                  </div>
+                );
+              })}
+            </section>
+          </div>
+        )}
+
         <div className="bg-white rounded-xl rounded-b-none md:rounded-b-xl shadow-sm border border-slate-100 flex-1 flex flex-col overflow-hidden">
           {activeTab === 'table' && (
             <div className="p-1.5 md:p-3 flex flex-col flex-1 overflow-hidden">
               <div className="flex items-center justify-between mb-1 px-1 shrink-0">
-                <h2 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-tight">Leaderboard</h2>
-                <div className="flex items-center gap-1">
+                <h2 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-tight shrink-0">Leaderboard</h2>
+                {/* bu tablonun ait olduğu masa */}
+                <div className="min-w-0 flex-1 px-2 text-center">{headerTitle}</div>
+                <div className="flex items-center gap-1 shrink-0">
                   {canEdit && <button
                     onClick={onAddPlayer}
                     className="flex bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-md p-0.5 items-center px-2 text-white shadow-sm transition-all h-6 md:h-10"
@@ -397,21 +417,12 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                       </tr>
                     ))}
                   </tbody>
-                  {/* Toplam + sıra rozeti: her oyuncunun kartı kendi sütununun altında */}
                   <tfoot className="sticky bottom-0 bg-slate-900 text-white z-20 shadow-lg">
                     <tr>
-                      <td className="py-1 px-1.5 md:px-2 text-[10px] md:text-xs font-black uppercase tracking-tight">Total</td>
-                      {players.map(p => {
-                        const stat = stats.find(s => s.id === p.id)!;
-                        return (
-                          <td key={p.id} className="p-0.5 md:p-1">
-                            <StatCard
-                              compact player={p} stat={stat} totalPlayers={players.length} gameStarted={hasGameStarted} onRemove={onRemovePlayer}
-                              canRemove={canEdit} occupied={!!occupied[p.id]} isMine={mySeat === p.id} onVacate={canEdit ? onVacate : undefined}
-                            />
-                          </td>
-                        );
-                      })}
+                      <td className="py-1.5 md:py-2.5 px-1.5 md:px-2 text-[10px] md:text-xs font-black uppercase tracking-tight">Total</td>
+                      {players.map(p => (
+                        <td key={p.id} className="py-1.5 md:py-2.5 text-center text-[18px] md:text-2xl font-black tabular-nums">{stats.find(s => s.id === p.id)?.totalScore}</td>
+                      ))}
                     </tr>
                   </tfoot>
                 </table>
@@ -532,14 +543,16 @@ export default function App() {
   const tableTitle = room.title ?? formatDay(new Date()); // masa adı yoksa bugünün tarihi
   const hasScore = game.rounds.some(r => Object.values(r.scores).some(v => typeof v === 'number'));
 
-  // Üst satırdaki masa adı: oturan dokununca değiştirir; bağlantı yoksa durum yazılır
-  const headerTitle = status !== 'online' ? (
-    <span className="block truncate text-[11px] md:text-sm font-black uppercase tracking-tight text-amber-600">{STATUS_LABEL[status]}…</span>
-  ) : canEdit ? (
-    <button onClick={() => setTitleOpen(true)} className="block max-w-full truncate text-[12px] md:text-sm font-black uppercase tracking-tight text-slate-900 underline decoration-dotted decoration-slate-300 underline-offset-4" title="Masa adını değiştir">{tableTitle}</button>
+  // Masa adı Leaderboard yazısının yanında: oturan dokununca değiştirir
+  const headerTitle = canEdit ? (
+    <button onClick={() => setTitleOpen(true)} className="max-w-full line-clamp-2 break-words leading-tight text-[11px] md:text-sm font-black uppercase tracking-tight text-indigo-700 underline decoration-dotted decoration-indigo-300 underline-offset-4" title="Masa adını değiştir">{tableTitle}</button>
   ) : (
-    <span className="block truncate text-[12px] md:text-sm font-black uppercase tracking-tight text-slate-900">{tableTitle}</span>
+    <span className="line-clamp-2 break-words leading-tight text-[11px] md:text-sm font-black uppercase tracking-tight text-indigo-700">{tableTitle}</span>
   );
+  // Bağlantı yoksa üst satırda uyarı (bağlıyken logo köşesindeki yeşil nokta yeter)
+  const headerStatus = status !== 'online'
+    ? <span className="block truncate text-[11px] md:text-sm font-black uppercase tracking-tight text-amber-600">{STATUS_LABEL[status]}…</span>
+    : null;
   const headerJoin = room.mySeat ? null : room.myRequest ? (
     <button onClick={() => { cancelledByMe.current = true; sendOp({ t: 'cancelJoin' }); }} className="px-2 h-9 rounded-lg bg-amber-100 text-amber-700 text-[10px] font-black uppercase animate-pulse" title="İptal etmek için dokun">Onay bekleniyor…</button>
   ) : (
@@ -580,6 +593,7 @@ export default function App() {
         onVacate={playerId => sendOp({ t: 'vacate', playerId })}
         roomBar={roomBar}
         headerTitle={headerTitle}
+        headerStatus={headerStatus}
         headerJoin={headerJoin}
         statusDot={STATUS_DOT[status]}
         onMenu={() => setMenuOpen(true)}
