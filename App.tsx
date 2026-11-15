@@ -10,6 +10,7 @@ import { ArchivePanel } from './ArchivePanel';
 import { GapPanel } from './GapPanel';
 import { GameCharts } from './GameCharts';
 import { TimerPanel, HeaderTimer } from './TimerPanel';
+import { ScreenRuler } from './ScreenRuler';
 
 // --- Sub-components ---
 
@@ -457,6 +458,7 @@ export default function App() {
   const [titleOpen, setTitleOpen] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);       // ☰ Masa menüsü
+  const [rulerOpen, setRulerOpen] = useState(false);     // geçici ekran ölçüsü (iPhone üst bulanıklık incelemesi)
   const [clearConfirm, setClearConfirm] = useState(false); // tabloyu arşivlemeden temizle
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -623,6 +625,7 @@ export default function App() {
         onCancel={() => setPinOpen(false)}
         onSave={pin => { sendOp({ t: 'setPin', pin }); setPinOpen(false); }}
       />
+      {rulerOpen && <ScreenRuler onClose={() => setRulerOpen(false)} />}
       {menuOpen && (
         <div className="fixed inset-0 z-[200] bg-slate-900/50 flex items-end justify-center" onClick={() => setMenuOpen(false)}>
           <div className="w-full max-w-md bg-white rounded-t-2xl p-4 space-y-4 shadow-2xl" style={{ paddingBottom: 'max(24px, calc(env(safe-area-inset-bottom) + 12px))' }} onClick={e => e.stopPropagation()} role="dialog" aria-label="Masa">
@@ -643,6 +646,7 @@ export default function App() {
               {canEdit && <button onClick={() => { setMenuOpen(false); setTitleOpen(true); }} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700">✏️ Masa adı</button>}
               {canEdit && <button onClick={() => { setMenuOpen(false); setPinOpen(true); }} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700">{room.pinSet ? '🔒 Masa şifresi' : '🔓 Masa şifresi'}</button>}
               {canEdit && <button onClick={() => { setMenuOpen(false); sendOp({ t: 'leave' }); }} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700">🚪 Masadan ayrıl</button>}
+              <button onClick={() => { setMenuOpen(false); setRulerOpen(true); }} className="h-12 rounded-xl border border-dashed border-red-300 bg-red-50 text-red-600">📏 Ekran ölçüsü</button>
             </div>
             {canEdit ? (
               <div className="space-y-2 pt-3 border-t border-slate-100">
