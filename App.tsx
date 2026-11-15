@@ -15,9 +15,9 @@ import { TimerPanel, HeaderTimer } from './TimerPanel';
 
 // emoji: 🏆 🥈 🥉 4️⃣ 5️⃣ 💩 (shared/game.ts placeEmoji); boşsa henüz puanı yok, rozet gösterilmez
 const Badge = ({ emoji, visible, size = 'small' }: { emoji: string, visible: boolean, size?: 'small' | 'large' }) => {
-  if (!visible || !emoji) return <div className={`${size === 'large' ? 'h-[30px] md:h-[45px]' : 'h-4 md:h-6'}`} />;
+  if (!visible || !emoji) return <div className={`${size === 'large' ? 'h-[24px] md:h-[40px]' : 'h-4 md:h-6'}`} />;
 
-  const emojiSize = size === 'large' ? 'text-xl md:text-3xl' : 'text-sm md:text-xl';
+  const emojiSize = size === 'large' ? 'text-[24px] md:text-4xl' : 'text-sm md:text-xl';
 
   return <span className={`${emojiSize} drop-shadow-sm select-none leading-none animate-in zoom-in duration-300`}>{emoji}</span>;
 };
@@ -25,86 +25,44 @@ const Badge = ({ emoji, visible, size = 'small' }: { emoji: string, visible: boo
 interface StatCardProps {
   player: Player;
   stat: PlayerStats;
-  totalPlayers: number;
   gameStarted: boolean;
-  onRemove: (id: string) => void;
-  canRemove: boolean;
   occupied: boolean;
   isMine: boolean;
   onVacate?: (id: string) => void;
   onRename?: (id: string) => void;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ player, stat, totalPlayers, gameStarted, onRemove, canRemove, occupied, isMine, onVacate, onRename }) => {
-  const [isConfirming, setIsConfirming] = useState(false);
-
-  useEffect(() => {
-    if (isConfirming) {
-      const timer = setTimeout(() => setIsConfirming(false), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [isConfirming]);
-
-  const handleDelete = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (isConfirming) {
-      onRemove(player.id);
-      setIsConfirming(false);
-    } else {
-      setIsConfirming(true);
-    }
-  };
-
-  return (
-    <div className={`group relative flex flex-col items-center justify-between rounded-lg border p-1 text-center transition-all md:p-3 h-full min-h-[70px] md:min-h-[120px] shadow-sm ${isConfirming ? 'border-red-500 bg-red-50 scale-105' : 'border-slate-100 bg-white hover:shadow-md'} ${isMine ? 'ring-2 ring-indigo-400' : ''}`}>
-
-      {/* Sandalye durumu: dolu = yeşil nokta; odayı kuran boşaltabilir */}
-      <div className="absolute top-0.5 left-0.5 md:top-1 md:left-1 flex items-center gap-0.5">
-        <span className={`h-1.5 w-1.5 md:h-2 md:w-2 rounded-full ${occupied ? 'bg-emerald-500' : 'bg-slate-200'}`} title={occupied ? 'Oturuyor' : 'Boş sandalye'} />
-        {onVacate && occupied && !isMine && (
-          <button onClick={() => onVacate(player.id)} className="text-[9px] md:text-xs leading-none text-slate-300 hover:text-red-500" title="Sandalyeyi boşalt" aria-label="Sandalyeyi boşalt">⏏</button>
-        )}
-      </div>
-
-      {canRemove && <button
-        onClick={handleDelete}
-        className="absolute top-[-4px] right-[-4px] z-[110] p-1 transition-transform active:scale-90"
-        aria-label={isConfirming ? "Confirm Delete" : "Remove Player"}
-      >
-        <div className={`flex h-5 w-5 items-center justify-center rounded-full border border-white shadow-sm transition-all md:h-7 md:w-7 ${isConfirming ? 'bg-red-600 scale-110' : 'bg-red-500'}`}>
-          {isConfirming ? (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" />
-            </svg>
-          ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          )}
-        </div>
-      </button>}
-
-      <div className="w-full px-0.5">
-        <h3 className={`font-black uppercase tracking-tighter leading-none transition-colors ${isConfirming ? 'text-red-700' : 'text-slate-900'} text-[9px] md:text-sm truncate`}>
-          {onRename ? <button onClick={() => onRename(player.id)} className="uppercase underline decoration-dotted decoration-slate-300 underline-offset-2">{player.name}</button> : player.name}
-        </h3>
-      </div>
-
-      <div className="flex items-center justify-center leading-none h-5 md:h-10">
-        <Badge emoji={stat.emoji ?? ''} visible={gameStarted} size="small" />
-      </div>
-
-      <div className="w-full">
-        <div className={`font-black tracking-tighter leading-none transition-colors ${isConfirming ? 'text-red-800' : 'text-slate-600'} text-[12px] md:text-2xl`}>
-          {stat.totalScore}
-        </div>
-      </div>
-
-      <div className="absolute bottom-0 left-0 right-0 h-1 md:h-2" style={{ backgroundColor: isConfirming ? '#dc2626' : player.color }} />
+// Oyuncu kartı: solda sıra rozeti, sağda üstte isim, altında toplam.
+// Oyuncu çıkarma karttan kalktı (isme dokununca açılan pencerede): ✕ ismin üstüne biniyordu.
+const StatCard: React.FC<StatCardProps> = ({ player, stat, gameStarted, occupied, isMine, onVacate, onRename }) => (
+  <div className={`relative flex items-center gap-1 md:gap-3 rounded-lg border border-slate-100 bg-white shadow-sm h-full min-h-[56px] md:min-h-[96px] pl-1 pr-1.5 pt-2 pb-2.5 md:px-3 md:py-3 ${isMine ? 'ring-2 ring-indigo-400' : ''}`}>
+    {/* Sandalye durumu: dolu = yeşil nokta; masadakiler boşaltabilir */}
+    <div className="absolute top-0.5 left-0.5 md:top-1 md:left-1 flex items-center gap-0.5">
+      <span className={`h-1.5 w-1.5 md:h-2 md:w-2 rounded-full ${occupied ? 'bg-emerald-500' : 'bg-slate-200'}`} title={occupied ? 'Oturuyor' : 'Boş sandalye'} />
+      {onVacate && occupied && !isMine && (
+        <button onClick={() => onVacate(player.id)} className="text-[9px] md:text-xs leading-none text-slate-300 hover:text-red-500" title="Sandalyeyi boşalt" aria-label="Sandalyeyi boşalt">⏏</button>
+      )}
     </div>
-  );
-};
+
+    <div className="w-7 md:w-12 shrink-0 flex items-center justify-center">
+      <Badge emoji={stat.emoji ?? ''} visible={gameStarted} size="large" />
+    </div>
+
+    {/* Yazı boyu kutunun genişliğine göre: uzun isim / büyük sayı kesilmez, biraz küçülür */}
+    <div className="min-w-0 flex-1 text-left" style={{ containerType: 'inline-size' }}>
+      <div className="font-black uppercase tracking-tighter leading-tight text-slate-900 whitespace-nowrap"
+        style={{ fontSize: `min(15px, calc(100cqw / ${Math.max(4, player.name.length) * 0.6}))` }}>
+        {onRename ? <button onClick={() => onRename(player.id)} className="uppercase underline decoration-dotted decoration-slate-300 underline-offset-2">{player.name}</button> : player.name}
+      </div>
+      <div className="font-black tracking-tighter leading-none tabular-nums text-slate-700 mt-0.5 whitespace-nowrap"
+        style={{ fontSize: `min(24px, calc(100cqw / ${Math.max(3, String(stat.totalScore).length) * 0.58}))` }}>
+        {stat.totalScore}
+      </div>
+    </div>
+
+    <div className="absolute bottom-0 left-0 right-0 h-1 md:h-2 rounded-b-lg" style={{ backgroundColor: player.color }} />
+  </div>
+);
 
 // --- Dice Component ---
 
@@ -353,15 +311,16 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
       <main className="max-w-7xl mx-auto w-full px-1.5 md:px-6 py-1.5 md:py-3 pb-0 md:pb-3 flex flex-col flex-1 gap-1.5 md:gap-3 overflow-hidden">
         {activeTab === 'table' && (
           <div className="w-full shrink-0 bg-slate-100/30 rounded-xl">
-            <section className="grid grid-cols-4 gap-1 p-1 md:flex md:flex-nowrap md:gap-4 md:p-4">
+            {/* Dar telefonda kartlar 2 (5-6 kişide 3) sütun: isim ve toplam sığsın */}
+            <section className={`grid ${players.length <= 4 ? 'grid-cols-2' : 'grid-cols-3'} xs:grid-cols-4 gap-1 p-1 md:flex md:flex-nowrap md:gap-4 md:p-4`}>
               {stats.map(stat => {
                 const p = players.find(player => player.id === stat.id);
                 if (!p) return null;
                 return (
                   <div key={stat.id}>
                     <StatCard
-                      player={p} stat={stat} totalPlayers={players.length} gameStarted={hasGameStarted} onRemove={onRemovePlayer}
-                      canRemove={canEdit} occupied={!!occupied[p.id]} isMine={mySeat === p.id} onVacate={canEdit ? onVacate : undefined}
+                      player={p} stat={stat} gameStarted={hasGameStarted}
+                      occupied={!!occupied[p.id]} isMine={mySeat === p.id} onVacate={canEdit ? onVacate : undefined}
                       onRename={canEdit ? setRenameId : undefined}
                     />
                   </div>
@@ -452,6 +411,8 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
         initial={players.find(p => p.id === renameId)?.name ?? ''}
         onCancel={() => setRenameId(null)}
         onSave={name => { if (renameId) handleNameChange(renameId, name); setRenameId(null); }}
+        removeLabel={canEdit && players.length > 1 ? 'Oyuncuyu çıkar' : undefined}
+        onRemove={() => { if (renameId) onRemovePlayer(renameId); setRenameId(null); }}
       />
     </div>
   );

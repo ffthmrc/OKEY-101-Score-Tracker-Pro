@@ -96,14 +96,17 @@ interface NameDialogProps {
   maxLength?: number;
   resetLabel?: string;   // verilirse ek düğme (ör. "Tarih yap")
   onReset?: () => void;
+  removeLabel?: string;   // verilirse 'Oyuncuyu çıkar' tuşu (iki dokunuş)
+  onRemove?: () => void;
 }
 
 // İsim değiştirme kutusu (oyuncu ismi, masa adı): telefonda rahat yazılır
 export const NameDialog: React.FC<NameDialogProps> = ({
-  open, initial, onSave, onCancel, heading = 'Oyuncu ismi', placeholder = 'İsim', maxLength = MAX_NAME_LEN, resetLabel, onReset,
+  open, initial, onSave, onCancel, heading = 'Oyuncu ismi', placeholder = 'İsim', maxLength = MAX_NAME_LEN, resetLabel, onReset, removeLabel, onRemove,
 }) => {
   const [name, setName] = useState(initial);
-  useEffect(() => { if (open) setName(initial); }, [open, initial]);
+  const [removeArmed, setRemoveArmed] = useState(false); // çıkarma iki dokunuş ister
+  useEffect(() => { if (open) { setName(initial); setRemoveArmed(false); } }, [open, initial]);
   if (!open) return null;
   const trimmed = name.trim();
   return (
@@ -119,6 +122,12 @@ export const NameDialog: React.FC<NameDialogProps> = ({
           placeholder={placeholder}
           className="w-full h-11 rounded-lg border border-slate-200 px-3 text-base font-black uppercase tracking-tight focus:outline-none focus:ring-2 focus:ring-indigo-300 mb-4"
         />
+        {onRemove && removeLabel && (
+          <button type="button" onClick={() => (removeArmed ? onRemove() : setRemoveArmed(true))}
+            className={`w-full h-10 mb-4 rounded-lg border-2 text-[11px] font-black uppercase ${removeArmed ? 'bg-red-600 border-red-700 text-white' : 'border-red-200 bg-red-50 text-red-600'}`}>
+            {removeArmed ? 'Emin misin? Tekrar dokun: çıkar' : `✕ ${removeLabel}`}
+          </button>
+        )}
         <div className="flex gap-2 justify-end">
           {onReset && resetLabel && (
             <button type="button" onClick={onReset} className="h-10 px-3 mr-auto rounded-lg border border-slate-200 text-[11px] font-black uppercase text-indigo-600 hover:bg-slate-50">{resetLabel}</button>
