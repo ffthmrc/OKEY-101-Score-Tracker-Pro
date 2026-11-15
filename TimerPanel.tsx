@@ -148,7 +148,8 @@ export const TimerPanel: React.FC<TimerPanelProps> = ({ timer, serverOffset, can
   return (
     // Dikey: alt alta. Yan çevrilmiş telefon: tam ekran, solda sayaç, sağda tuşlar.
     <div className="p-2 md:p-4 flex-1 overflow-auto custom-scrollbar flex flex-col gap-2.5
-      phoneland:fixed phoneland:inset-0 phoneland:z-50 phoneland:bg-slate-50 phoneland:overflow-hidden phoneland:grid phoneland:grid-cols-[1.15fr_1fr] phoneland:gap-3 phoneland:p-3">
+      phoneland:fixed phoneland:inset-0 phoneland:z-[100] phoneland:bg-slate-50 phoneland:overflow-hidden phoneland:grid phoneland:grid-cols-[1.15fr_1fr] phoneland:gap-3 phoneland:p-3
+      phoneland:pl-[max(12px,env(safe-area-inset-left))] phoneland:pr-[max(12px,env(safe-area-inset-right))] phoneland:pb-[max(12px,env(safe-area-inset-bottom))]">
       <div className="flex flex-col gap-2 phoneland:min-h-0">
         <Clock label="1 · Taş çek, taş at, el aç" ms={decideLeft} total={decideSec} big={phase !== 'open'}
           active={phase === 'decide'} done={decideDone} />
@@ -224,12 +225,12 @@ export const HeaderTimer: React.FC<{ timer: TimerState; serverOffset: React.Muta
     : 'bg-emerald-50 border-emerald-200 text-emerald-700';
   return (
     <div className="flex items-center gap-1 shrink-0">
-      <button onClick={onOpen} title="Süre sekmesine git" className={`h-9 md:h-10 px-1.5 md:px-3 rounded-lg border flex items-center gap-1 font-black tabular-nums ${look}`}>
+      <button onClick={onOpen} title="Süre sekmesine git" className={`h-11 px-2 md:px-3 rounded-lg border flex items-center gap-1 font-black tabular-nums ${look}`}>
         <span className="text-[9px] md:text-[11px] opacity-70">{phase === 'decide' ? '1' : '2'}</span>
         <span className="text-lg md:text-2xl leading-none">{fmt(left)}</span>
       </button>
       {canControl && (
-        <TapButton onTap={onNext} className="h-9 md:h-10 px-2.5 md:px-3 !rounded-lg bg-emerald-600 text-white text-[11px] md:text-sm shadow">Sonraki ›</TapButton>
+        <TapButton onTap={onNext} className="h-11 px-3 md:px-4 !rounded-lg bg-emerald-600 text-white text-xs md:text-sm shadow">Sonraki ›</TapButton>
       )}
     </div>
   );

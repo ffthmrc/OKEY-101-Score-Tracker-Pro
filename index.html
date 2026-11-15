@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Score Tracker</title>
     
     <!-- PWA / iOS Home Screen Tags -->
@@ -25,13 +25,7 @@
         input {
             user-select: text;
         }
-        /* Handle safe area for iPhone notches */
-        header {
-            padding-top: env(safe-area-inset-top);
-        }
-        footer, .mobile-tabs {
-            padding-bottom: env(safe-area-inset-bottom);
-        }
+        /* iPhone çentik / yuvarlak köşe / ev çizgisi boşlukları bileşenlerde (env(safe-area-inset-*)) verilir */
     </style>
 </head>
 <body>

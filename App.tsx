@@ -268,53 +268,8 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
   };
 
   return (
-    <div className="h-screen font-sans bg-slate-50 flex flex-col overflow-hidden">
-      {/* Tek üst satır: logo (bağlantı noktası) · sayaç + Sonraki · geri/ileri (ya da Katıl) · ☰ menü */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm px-2 md:px-4 h-12 md:h-14 flex items-center gap-1.5 md:gap-2 shrink-0">
-        <div className="relative bg-slate-900 w-7 h-7 rounded flex items-center justify-center text-white shrink-0" title="Score Tracker">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-          <span className={`absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white ${statusDot}`} />
-        </div>
-        <div className="min-w-0 flex-1">{headerStatus}</div>
-        <HeaderTimer timer={timerState} serverOffset={serverOffset} onOpen={() => setActiveTab('timer')} canControl={canEdit && activeTab !== 'timer'} onNext={onTimerNext} />
-        <div className="flex items-center gap-1.5 shrink-0">
-          {headerJoin}
-          {canEdit && <div className="flex bg-slate-100/90 rounded-lg p-0.5 border border-slate-300 shadow-inner">
-            <button
-              onClick={undo}
-              disabled={!canUndo || !canEdit}
-              title="Backward / Undo"
-              className="px-1.5 py-1 md:px-3 md:py-1.5 rounded-md transition-all active:scale-90 disabled:opacity-20 disabled:grayscale disabled:scale-100 hover:bg-white flex items-center justify-center"
-            >
-              <span className="text-sm md:text-xl" role="img" aria-label="Backward">⏪</span>
-            </button>
-            <div className="w-px h-5 md:h-7 bg-slate-300 self-center mx-0.5 md:mx-1" />
-            <button
-              onClick={redo}
-              disabled={!canRedo || !canEdit}
-              title="Forward / Redo"
-              className="px-1.5 py-1 md:px-3 md:py-1.5 rounded-md transition-all active:scale-90 disabled:opacity-20 disabled:grayscale disabled:scale-100 hover:bg-white flex items-center justify-center"
-            >
-              <span className="text-sm md:text-xl" role="img" aria-label="Forward">⏩</span>
-            </button>
-          </div>}
-          <button onClick={onMenu} className="h-9 w-9 md:h-10 md:w-10 rounded-lg bg-slate-900 text-white text-lg leading-none flex items-center justify-center" aria-haspopup="dialog" aria-label="Masa menüsü">☰</button>
-        </div>
-      </header>
-
-      {roomBar}
-
-      {/* Sekmeler: büyük harf, aralarında çizgi, seçili olan altı çizili */}
-      <nav className="flex bg-white border-b-2 border-slate-200 shrink-0 divide-x divide-slate-200">
-        {([['table', 'Tablo'], ['charts', 'Sıra'], ['timer', 'Süre'], ['archive', 'Arşiv'], ['dice', 'Zar']] as const).map(([tab, label]) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`flex-1 min-w-0 py-2.5 md:py-3 text-[11px] md:text-sm font-black uppercase tracking-tight truncate transition-all border-b-[3px] -mb-[2px] ${activeTab === tab ? 'text-indigo-700 bg-indigo-50 border-indigo-600' : 'text-slate-600 border-transparent hover:bg-slate-50'}`}
-          >{label}</button>
-        ))}
-      </nav>
-
+    <div className="h-dvh font-sans bg-slate-50 flex flex-col overflow-hidden"
+      style={{ paddingTop: 'env(safe-area-inset-top)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
       <main className="max-w-7xl mx-auto w-full px-1.5 md:px-6 py-1.5 md:py-3 pb-0 md:pb-3 flex flex-col flex-1 gap-1.5 md:gap-3 overflow-hidden">
         {activeTab === 'table' && (
           <div className="w-full shrink-0 bg-slate-100/30 rounded-xl">
@@ -413,6 +368,55 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
           {activeTab === 'archive' && archive}
         </div>
       </main>
+
+
+      {roomBar}
+
+      {/* Sekmeler alt satırın hemen üstünde: büyük harf, aralarında çizgi, seçili olanın üstü çizili */}
+      <nav className="flex bg-white border-t-2 border-slate-200 shrink-0 divide-x divide-slate-200">
+        {([['table', 'Tablo'], ['charts', 'Sıra'], ['timer', 'Süre'], ['archive', 'Arşiv'], ['dice', 'Zar']] as const).map(([tab, label]) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`flex-1 min-w-0 py-2.5 md:py-3 text-[11px] md:text-sm font-black uppercase tracking-tight truncate transition-all border-t-[3px] -mt-[2px] ${activeTab === tab ? 'text-indigo-700 bg-indigo-50 border-indigo-600' : 'text-slate-600 border-transparent hover:bg-slate-50'}`}
+          >{label}</button>
+        ))}
+      </nav>
+
+      {/* Alt satır (başparmak bölgesi): logo (bağlantı noktası) · sayaç + Sonraki · geri/ileri (ya da Katıl) · ☰ menü.
+          iPhone ev çizgisi ve yuvarlak köşeler için alttan güvenli boşluk */}
+      <footer className="bg-white border-t border-slate-200 z-50 px-3 md:px-4 pt-2 flex items-center gap-1.5 md:gap-2 shrink-0"
+        style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
+        <div className="relative bg-slate-900 w-7 h-7 rounded flex items-center justify-center text-white shrink-0" title="Score Tracker">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+          <span className={`absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white ${statusDot}`} />
+        </div>
+        <div className="min-w-0 flex-1">{headerStatus}</div>
+        <HeaderTimer timer={timerState} serverOffset={serverOffset} onOpen={() => setActiveTab('timer')} canControl={canEdit && activeTab !== 'timer'} onNext={onTimerNext} />
+        <div className="flex items-center gap-1.5 shrink-0">
+          {headerJoin}
+          {canEdit && <div className="flex bg-slate-100/90 rounded-lg p-0.5 border border-slate-300 shadow-inner">
+            <button
+              onClick={undo}
+              disabled={!canUndo || !canEdit}
+              title="Backward / Undo"
+              className="px-2 h-10 md:px-3 rounded-md transition-all active:scale-90 disabled:opacity-20 disabled:grayscale disabled:scale-100 hover:bg-white flex items-center justify-center"
+            >
+              <span className="text-lg md:text-xl" role="img" aria-label="Backward">⏪</span>
+            </button>
+            <div className="w-px h-5 md:h-7 bg-slate-300 self-center mx-0.5 md:mx-1" />
+            <button
+              onClick={redo}
+              disabled={!canRedo || !canEdit}
+              title="Forward / Redo"
+              className="px-2 h-10 md:px-3 rounded-md transition-all active:scale-90 disabled:opacity-20 disabled:grayscale disabled:scale-100 hover:bg-white flex items-center justify-center"
+            >
+              <span className="text-lg md:text-xl" role="img" aria-label="Forward">⏩</span>
+            </button>
+          </div>}
+          <button onClick={onMenu} className="h-11 w-11 rounded-lg bg-slate-900 text-white text-xl leading-none flex items-center justify-center" aria-haspopup="dialog" aria-label="Masa menüsü">☰</button>
+        </div>
+      </footer>
       <NameDialog
         open={renameId !== null}
         initial={players.find(p => p.id === renameId)?.name ?? ''}
@@ -500,7 +504,7 @@ export default function App() {
 
   if (!room || !game) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center gap-3 bg-slate-50">
+      <div className="h-dvh flex flex-col items-center justify-center gap-3 bg-slate-50">
         <span className={`h-3 w-3 rounded-full ${STATUS_DOT[status]}`} />
         <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">Oda {code} · {STATUS_LABEL[status]}…</span>
       </div>
@@ -611,7 +615,7 @@ export default function App() {
       />
       {menuOpen && (
         <div className="fixed inset-0 z-[200] bg-slate-900/50 flex items-end justify-center" onClick={() => setMenuOpen(false)}>
-          <div className="w-full max-w-md bg-white rounded-t-2xl p-4 pb-6 space-y-4 shadow-2xl" onClick={e => e.stopPropagation()} role="dialog" aria-label="Masa">
+          <div className="w-full max-w-md bg-white rounded-t-2xl p-4 space-y-4 shadow-2xl" style={{ paddingBottom: 'max(24px, calc(env(safe-area-inset-bottom) + 12px))' }} onClick={e => e.stopPropagation()} role="dialog" aria-label="Masa">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-black uppercase tracking-tight text-slate-900">Masa · {tableTitle}</h3>
               <button onClick={() => setMenuOpen(false)} className="h-9 px-3 rounded-lg text-slate-400 text-xs font-black uppercase">Kapat</button>
@@ -661,19 +665,19 @@ export default function App() {
         onConfirm={() => { sendOp({ t: 'closeGame' }); setCloseConfirm(false); }}
       />
       {lastDeleted && !error && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[300] bg-slate-900 text-white text-xs font-black pl-4 pr-1.5 py-1.5 rounded-full shadow-xl flex items-center gap-3 whitespace-nowrap">
+        <div className="fixed top-[calc(env(safe-area-inset-top)+12px)] left-1/2 -translate-x-1/2 z-[300] bg-slate-900 text-white text-xs font-black pl-4 pr-1.5 py-1.5 rounded-full shadow-xl flex items-center gap-3 whitespace-nowrap">
           Oyun silindi
           <button onClick={undoDelete} className="h-8 px-3 rounded-full bg-amber-400 text-slate-900 uppercase">Geri al</button>
         </div>
       )}
       {roomNotice && !lastDeleted && !error && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[300] bg-emerald-600 text-white text-xs font-black px-4 py-2 rounded-full shadow-xl">{roomNotice}</div>
+        <div className="fixed top-[calc(env(safe-area-inset-top)+12px)] left-1/2 -translate-x-1/2 z-[300] bg-emerald-600 text-white text-xs font-black px-4 py-2 rounded-full shadow-xl">{roomNotice}</div>
       )}
       {notice && !error && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[300] bg-slate-800 text-white text-xs font-black px-4 py-2 rounded-full shadow-xl">{notice}</div>
+        <div className="fixed top-[calc(env(safe-area-inset-top)+12px)] left-1/2 -translate-x-1/2 z-[300] bg-slate-800 text-white text-xs font-black px-4 py-2 rounded-full shadow-xl">{notice}</div>
       )}
       {error && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[300] bg-red-600 text-white text-xs font-black px-4 py-2 rounded-full shadow-xl">{error}</div>
+        <div className="fixed top-[calc(env(safe-area-inset-top)+12px)] left-1/2 -translate-x-1/2 z-[300] bg-red-600 text-white text-xs font-black px-4 py-2 rounded-full shadow-xl">{error}</div>
       )}
     </>
   );
