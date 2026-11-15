@@ -334,6 +334,7 @@ export class Room {
       }
       case 'newGame': {
         this.commit(freshGame(game.players, new Date(now)), null, now);
+        this.stopTimer();
         return { ok: true };
       }
       case 'closeGame': {
@@ -354,11 +355,21 @@ export class Room {
         // Oyun gecesi bitti: herkes masadan kalkar, kapatanın sandalyesi (tüm cihazlarıyla) kalır ki gelenleri onaylayabilsin
         const closerSeat = this.seatOf(clientId);
         for (const pid of Object.keys(seats)) if (pid !== closerSeat) seats[pid] = [];
+        this.stopTimer();
         this.setGame(next);
         return { ok: true, archived };
       }
     }
     return { ok: false, error: 'Bilinmeyen işlem' };
+  }
+
+  // Oyun bitince (kapat / temizle) çalışan sayaç durur; ayarlanmış süreler kalır
+  private stopTimer() {
+    const t = this.data.timer;
+    if (t && t.phase !== 'idle') {
+      this.data.timer = idleTimer(t.decideSec, t.openSec);
+      this.touch();
+    }
   }
 
   // onlineClientIds: odaya bağlı cihazlar (aynı cihazın birden çok sekmesi tek sayılır)

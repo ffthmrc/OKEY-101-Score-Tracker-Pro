@@ -346,3 +346,24 @@ test('masadakiler bağlı değilken masa açma PIN\'ini bilen onay beklemeden ke
     Room.openPin = '';
   }
 });
+
+test('oyunu kapat ve tabloyu temizle çalışan sayacı durdurur, ayarlanmış süreler kalır', () => {
+  const room = setup();
+  sit(room, 'fatih', 'Fatih');
+  room.apply('fatih', { t: 'timerDurations', decideSec: 45, openSec: 90 });
+  room.apply('fatih', { t: 'timer', action: 'start' }, 1000);
+  room.apply('fatih', { t: 'setScore', round: 0, playerId: 'p1', value: 50 });
+  assert.equal(room.view('x', 0, []).timer.phase, 'decide');
+  assert.equal(room.apply('fatih', { t: 'newGame' }).ok, true);
+  let v = room.view('x', 0, []).timer;
+  assert.equal(v.phase, 'idle');
+  assert.equal(v.decideSec, 45);
+  assert.equal(v.openSec, 90);
+  room.apply('fatih', { t: 'timer', action: 'start' }, 2000);
+  room.apply('fatih', { t: 'timer', action: 'open' }, 3000);
+  room.apply('fatih', { t: 'setScore', round: 0, playerId: 'p1', value: 50 });
+  assert.equal(room.apply('fatih', { t: 'closeGame' }).ok, true);
+  v = room.view('x', 0, []).timer;
+  assert.equal(v.phase, 'idle');
+  assert.equal(v.decideSec, 45);
+});
