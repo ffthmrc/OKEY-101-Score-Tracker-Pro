@@ -13,7 +13,7 @@ import { TimerPanel, HeaderTimer } from './TimerPanel';
 
 // --- Sub-components ---
 
-// emoji: 🏆 🥈 🥉 🏅 💩 (shared/game.ts placeEmoji); boşsa henüz puanı yok, rozet gösterilmez
+// emoji: 🏆 🥈 🥉 4️⃣ 5️⃣ 💩 (shared/game.ts placeEmoji); boşsa henüz puanı yok, rozet gösterilmez
 const Badge = ({ emoji, visible, size = 'small' }: { emoji: string, visible: boolean, size?: 'small' | 'large' }) => {
   if (!visible || !emoji) return <div className={`${size === 'large' ? 'h-[30px] md:h-[45px]' : 'h-4 md:h-6'}`} />;
 

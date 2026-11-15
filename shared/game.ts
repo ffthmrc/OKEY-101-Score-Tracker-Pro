@@ -59,12 +59,13 @@ export const isLastPlace = (place: number | null, places: Record<string, number 
   return place !== null && ranked.length >= 4 && worst >= 3 && place === worst;
 };
 
-// Sıra rozeti: 1. 🏆, 2. 🥈, 3. 🥉, sonuncu 💩 (en az 4 kişide), aradakiler (5-6 kişide 4., 5.) 🏅
+// Sıra rozeti: 1. 🏆, 2. 🥈, 3. 🥉, sonuncu 💩 (en az 4 kişide), aradakiler (5-6 kişide) 4️⃣ 5️⃣
+// (4. ve 5. için madalya emojisi yok; 🏅 sıra bildirmediği için numara kullanılır)
 export const placeEmoji = (place: number | null, places: Record<string, number | null>) => {
   if (place === null) return '';
   if (place === 1) return '🏆';
   if (isLastPlace(place, places)) return '💩';
-  return ['🥈', '🥉'][place - 2] ?? '🏅';
+  return ['🥈', '🥉', '4️⃣', '5️⃣'][place - 2] ?? `${place}.`;
 };
 
 // Sıralı oyuncular, toplama göre artan
