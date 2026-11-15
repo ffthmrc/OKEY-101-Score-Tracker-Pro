@@ -274,11 +274,13 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
   return (
     // Üst boşluk: sadece iPhone saat çubuğu kadar (Android'de 0)
     <div className="h-dvh font-sans bg-slate-50 flex flex-col overflow-hidden"
-      style={{ paddingTop: 'env(safe-area-inset-top)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
-      {/* iOS 26.1+: ana ekrana eklenmiş uygulamada sayfanın üst ~40 pt'sini buzlu cam efektiyle bulanıklaştırıyor.
+      style={{ paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
+      <div className="ios-top-space shrink-0" />
+      {/* iOS 26: sayfanın üst kenarına buzlu cam / solma efekti uyguluyor (saat çubuğu düz olsa da).
           WebKit bunu, en üst kenarda tam genişlikte, tek ve dolu renkli sabit bir kutu varsa yapmıyor.
-          Bu şerit saat çubuğu kadar yüksek, zeminle aynı renkte (görünmez); dokunuşları engellemez. */}
-      <div aria-hidden="true" className="fixed top-0 inset-x-0 z-[250] bg-slate-50 pointer-events-none" style={{ height: 'env(safe-area-inset-top)' }} />
+          Şerit sadece iPhone'da (index.css .ios-top-strip), en az 12 pt; zeminle aynı renk, dokunuşu engellemez.
+          Altındaki .ios-top-space içeriği şerit kadar aşağı alır. */}
+      <div aria-hidden="true" className="ios-top-strip fixed top-0 inset-x-0 z-[250] bg-slate-50 pointer-events-none" />
       <main className="max-w-7xl mx-auto w-full px-1.5 md:px-6 pt-0.5 md:pt-3 pb-0 md:pb-3 flex flex-col flex-1 gap-1.5 md:gap-3 overflow-hidden">
         {activeTab === 'table' && (
           <div className="w-full shrink-0 bg-slate-100/30 rounded-xl">

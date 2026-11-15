@@ -324,3 +324,25 @@ test('ortak sayaç: masadakiler başlatır / oyun açtı / sıfırlar; izleyici 
   room.apply('fatih', { t: 'timer', action: 'start' }, 0);
   assert.equal(room.apply('fatih', { t: 'timer', action: 'open' }, 50_000).ok, false);
 });
+
+test('masadakiler bağlı değilken masa açma PIN\'ini bilen onay beklemeden kendi koltuğuna oturur', () => {
+  Room.openPin = '9999';
+  try {
+    const room = setup();
+    room.apply('eski-telefon', { t: 'join', name: 'Fatih', openPin: '9999' }, 0, ['eski-telefon']);
+    // uygulama silinip yeniden kuruldu: yeni cihaz kimliği, eski kimlik koltukta ve bağlı değil
+    const v = room.view('yeni-telefon', 0, ['yeni-telefon']);
+    assert.equal(v.needsOpenPin, false);
+    assert.equal(v.approversOnline, false);
+    assert.equal(room.apply('yeni-telefon', { t: 'join', name: 'Fatih', openPin: '1234' }, 0, ['yeni-telefon']).ok, false);
+    assert.equal(room.seatOf('yeni-telefon'), null);
+    assert.equal(room.apply('yeni-telefon', { t: 'join', name: 'Fatih', openPin: '9999' }, 0, ['yeni-telefon']).ok, true);
+    assert.equal(room.seatOf('yeni-telefon'), 'p1');
+    // PIN'siz katılan yine onaya düşer
+    room.apply('zeki', { t: 'join', name: 'Zeki' }, 0, ['zeki']);
+    assert.equal(room.seatOf('zeki'), null);
+    assert.equal(room.view('zeki', 0, []).myRequest, 'Zeki');
+  } finally {
+    Room.openPin = '';
+  }
+});

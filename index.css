@@ -40,3 +40,12 @@
 @media (prefers-reduced-motion: reduce) {
   .emoji-trophy, .emoji-trophy::after, .emoji-poo { animation: none; }
 }
+
+/* iPhone üst kenarı: saat çubuğu ölçüsü (saydam saat çubuğunda) ya da en az 12 pt dolu şerit.
+   Sadece iOS'ta (-webkit-touch-callout yalnız iOS Safari'de var); Android ve masaüstünde yok. */
+.ios-top-strip { display: none; }
+.ios-top-space { height: 0; }
+@supports (-webkit-touch-callout: none) {
+  .ios-top-strip { display: block; height: max(env(safe-area-inset-top), 12px); }
+  .ios-top-space { height: max(env(safe-area-inset-top), 12px); }
+}

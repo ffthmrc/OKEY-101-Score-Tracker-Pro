@@ -185,6 +185,14 @@ export class Room {
           this.pinFails.delete(clientId);
           return this.seat(clientId, name);
         }
+        // Masa açma PIN'ini bilen onay beklemeden oturur (masadakilerin telefonu kapalı / uygulama silinip
+        // yeniden kurulduğu için koltuk eski cihaz kimliğinde kaldığında onaylayacak kimse olmayabilir)
+        if (Room.openPin && op.openPin) {
+          if (op.openPin !== Room.openPin) return wrong('Masa açma PIN\'i yanlış');
+          this.pinFails.delete(clientId);
+          this.dropRequests(clientId);
+          return this.seat(clientId, name);
+        }
         this.pinFails.delete(clientId);
         const existing = this.requests.find(r => r.clientId === clientId);
         if (existing) existing.name = name;

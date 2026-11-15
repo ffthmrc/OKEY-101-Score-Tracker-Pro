@@ -157,15 +157,18 @@ export const JoinDialog: React.FC<JoinDialogProps> = ({ open, needPin, needOpenP
   useEffect(() => { if (!open) { setName(''); setPin(''); setOpenPin(''); } }, [open]);
   if (!open) return null;
   const trimmed = name.trim();
-  const ready = !!trimmed && (!needPin || pin.length >= 4) && (!needOpenPin || openPin.length >= 4);
+  // Masadakilerin hiçbiri bağlı değilse masa açma PIN'i isteğe bağlı: bilen hemen oturur, bilmeyen onay bekler
+  const optionalOpenPin = !needOpenPin && !approversOnline;
+  const showOpenPin = needOpenPin || optionalOpenPin;
+  const ready = !!trimmed && (!needPin || pin.length >= 4) && (!needOpenPin || openPin.length >= 4) && (!optionalOpenPin || openPin.length === 0 || openPin.length >= 4);
   return (
     <Overlay onClose={onCancel}>
-      <form onSubmit={e => { e.preventDefault(); if (ready) onJoin(trimmed, needPin ? pin : undefined, needOpenPin ? openPin : undefined); }}>
+      <form onSubmit={e => { e.preventDefault(); if (ready) onJoin(trimmed, needPin ? pin : undefined, showOpenPin && openPin ? openPin : undefined); }}>
         <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 mb-1">Masaya katıl</h3>
         <p className="text-xs text-slate-500 mb-3">{needOpenPin
             ? 'Masada kimse yok. Masayı açmak için masa açma PIN\'ini gir; sonra gelenleri sen onaylarsın.'
             : 'Masadaki biri onaylayınca oturursun. Adın masada yazılıysa o sandalyeye, değilse boş bir sandalyeye (P1, P5…) geçersin.'}
-          {!needOpenPin && !approversOnline && ' Masadakilerin telefonu şu an kapalı; açınca isteğini görürler, bu ekranı açık tut.'}</p>
+          {optionalOpenPin && ' Masadakilerin hiçbiri şu an bağlı değil. Masa açma PIN\'ini biliyorsan gir, hemen otur; bilmiyorsan boş bırak, telefonlarını açınca isteğini görürler.'}</p>
         <input
           autoFocus
           value={name}
@@ -174,7 +177,7 @@ export const JoinDialog: React.FC<JoinDialogProps> = ({ open, needPin, needOpenP
           placeholder="Adın"
           className="w-full h-11 rounded-lg border border-slate-200 px-3 text-base font-black uppercase tracking-tight focus:outline-none focus:ring-2 focus:ring-indigo-300 mb-4"
         />
-        {needOpenPin && (
+        {showOpenPin && (
           <input
             type="password"
             inputMode="numeric"
@@ -182,7 +185,7 @@ export const JoinDialog: React.FC<JoinDialogProps> = ({ open, needPin, needOpenP
             maxLength={6}
             value={openPin}
             onChange={e => setOpenPin(e.target.value.replace(/\D/g, ''))}
-            placeholder="Masa açma PIN'i"
+            placeholder={optionalOpenPin ? "Masa açma PIN'i (biliyorsan)" : "Masa açma PIN'i"}
             className="w-full h-11 rounded-lg border border-slate-200 px-3 text-base font-black tracking-[0.4em] focus:outline-none focus:ring-2 focus:ring-indigo-300 mb-4"
           />
         )}
