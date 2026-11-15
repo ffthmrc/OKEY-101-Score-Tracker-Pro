@@ -1,3 +1,42 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Sıra rozeti hareketleri: ufak ve seyrek (abartısız). Telefonda "hareketi azalt" açıksa durur. */
+@keyframes trophy-glow {
+  0%, 78%, 100% { filter: drop-shadow(0 0 0 rgba(251, 191, 36, 0)); }
+  86% { filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.95)); }
+}
+@keyframes trophy-sparkle {
+  0%, 80%, 100% { opacity: 0; transform: scale(0.3) rotate(0deg); }
+  87% { opacity: 1; transform: scale(1) rotate(25deg); }
+  94% { opacity: 0; transform: scale(0.5) rotate(50deg); }
+}
+@keyframes poo-squish {
+  0%, 84%, 100% { transform: scale(1, 1); }
+  88% { transform: scale(1.1, 0.85); }
+  92% { transform: scale(0.95, 1.07); }
+  96% { transform: scale(1.02, 0.98); }
+}
+.emoji-trophy {
+  display: inline-block;
+  position: relative;
+  animation: trophy-glow 4s ease-in-out infinite;
+}
+.emoji-trophy::after {
+  content: '✨';
+  position: absolute;
+  top: -0.3em;
+  right: -0.4em;
+  font-size: 0.45em;
+  opacity: 0;
+  animation: trophy-sparkle 4s ease-in-out infinite;
+}
+.emoji-poo {
+  display: inline-block;
+  transform-origin: 50% 100%;
+  animation: poo-squish 5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .emoji-trophy, .emoji-trophy::after, .emoji-poo { animation: none; }
+}

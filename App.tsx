@@ -3,7 +3,7 @@ import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { Player, RoundScore, PlayerStats } from './types';
 import type { CellValue, TimerState } from './shared/protocol';
 import { parseScoreInput, placesOf, placeEmoji, hasAnyScore, MAX_TITLE_LEN } from './shared/game';
-import { scoreTextClass, formatDay, playChime, scoreInputProps, scoreValue, SCORE_INPUT_CLASS } from './ui';
+import { scoreTextClass, formatDay, playChime, playDiceRoll, emojiAnimClass, scoreInputProps, scoreValue, SCORE_INPUT_CLASS } from './ui';
 import { useRoom } from './useRoom';
 import { ConfirmDialog, JoinDialog, NameDialog, TablePinDialog } from './Dialogs';
 import { ArchivePanel } from './ArchivePanel';
@@ -19,7 +19,7 @@ const Badge = ({ emoji, visible, size = 'small' }: { emoji: string, visible: boo
 
   const emojiSize = size === 'large' ? 'text-[24px] md:text-4xl' : 'text-sm md:text-xl';
 
-  return <span className={`${emojiSize} drop-shadow-sm select-none leading-none animate-in zoom-in duration-300`}>{emoji}</span>;
+  return <span className={`${emojiSize} select-none leading-none ${emojiAnimClass(emoji) || 'drop-shadow-sm'}`}>{emoji}</span>;
 };
 
 interface StatCardProps {
@@ -79,6 +79,7 @@ const DiceRoller = () => {
   const rollDice = () => {
     if (isRolling) return;
     setIsRolling(true);
+    playDiceRoll();
 
     const nextRoll = Math.floor(Math.random() * 6) + 1;
     const newX = rotation.x + 720 + Math.floor(Math.random() * 360);
@@ -130,10 +131,17 @@ const DiceRoller = () => {
     );
   };
 
+  // Dik: zar ortada, altta skor + Roll. Yan çevrilmiş telefon: tam ekran, solda zar, sağda skor + Roll.
+  // Geçmiş tuşu iki yönde de sağ üstte.
   return (
-    <div className="flex-1 w-full bg-[#310000] flex flex-col relative overflow-hidden">
+    <div className="flex-1 w-full bg-[#310000] flex flex-col relative overflow-hidden
+      phoneland:fixed phoneland:inset-0 phoneland:z-[100] phoneland:flex-row
+      phoneland:pl-[max(12px,env(safe-area-inset-left))] phoneland:pr-[max(12px,env(safe-area-inset-right))]">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_#5a0000_0%,_#1a0000_100%)] pointer-events-none" />
-      <div className="flex-1 flex flex-col items-center justify-center z-10 p-4 mb-24 md:mb-32">
+      <button onClick={() => setShowHistory(true)} aria-label="Zar geçmişi" className="absolute top-3 right-3 phoneland:right-[max(12px,env(safe-area-inset-right))] z-30 w-12 h-12 md:w-16 md:h-16 bg-white/5 border border-white/10 rounded-full flex items-center justify-center text-white/50 hover:bg-white/10 hover:text-white transition-all active:scale-90">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 md:h-8 md:w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+      </button>
+      <div className="flex-1 min-h-0 flex items-center justify-center z-10 p-4">
         <div className="relative w-40 h-40 md:w-56 md:h-56 perspective-1000">
           <div
             className="relative w-full h-full transition-transform duration-700 ease-out preserve-3d"
@@ -149,17 +157,12 @@ const DiceRoller = () => {
           <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-32 h-6 bg-black/50 blur-xl rounded-full" />
         </div>
       </div>
-      <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 z-20 flex flex-col items-center gap-4">
-        <button onClick={() => setShowHistory(true)} className="absolute left-6 bottom-6 md:left-10 md:bottom-10 w-12 h-12 md:w-16 md:h-16 bg-white/5 border border-white/5 rounded-full flex items-center justify-center text-white/40 hover:bg-white/10 hover:text-white transition-all active:scale-90">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 md:h-8 md:w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+      <div className="shrink-0 z-20 flex flex-col items-center justify-center gap-3 md:gap-4 p-6 md:p-10 phoneland:w-[42%] phoneland:p-4">
+        <h2 className="text-[#fde68a] text-xl md:text-3xl font-serif tracking-tight drop-shadow-lg uppercase font-medium whitespace-nowrap">King's Score: <span className="font-bold">{roll}</span></h2>
+        <button onClick={rollDice} disabled={isRolling} className="w-full max-w-[220px] md:max-w-[320px] h-14 md:h-16 bg-gradient-to-b from-[#92400e] to-[#451a03] hover:from-[#b45309] hover:to-[#78350f] text-white rounded-full flex items-center justify-center gap-4 shadow-2xl active:scale-95 transition-all border border-[#f59e0b]/20">
+          <div className="w-0 h-0 border-t-[8px] border-t-transparent border-l-[14px] border-l-white border-b-[8px] border-b-transparent ml-1" />
+          <span className="text-xl md:text-2xl font-black tracking-[0.15em] uppercase">Roll</span>
         </button>
-        <div className="flex flex-col items-center gap-2 md:gap-4 w-full max-w-[200px] md:max-w-[320px]">
-          <h2 className="text-[#fde68a] text-xl md:text-3xl font-serif tracking-tight drop-shadow-lg uppercase font-medium">King's Score: <span className="font-bold">{roll}</span></h2>
-          <button onClick={rollDice} disabled={isRolling} className="w-full h-14 md:h-16 bg-gradient-to-b from-[#92400e] to-[#451a03] hover:from-[#b45309] hover:to-[#78350f] text-white rounded-full flex items-center justify-center gap-4 shadow-2xl active:scale-95 transition-all border border-[#f59e0b]/20">
-            <div className="w-0 h-0 border-t-[8px] border-t-transparent border-l-[14px] border-l-white border-b-[8px] border-b-transparent ml-1" />
-            <span className="text-xl md:text-2xl font-black tracking-[0.15em] uppercase">Roll</span>
-          </button>
-        </div>
       </div>
       {showHistory && (
         <div className="absolute inset-0 z-50 bg-[#1a0000]/98 flex flex-col p-6 animate-in fade-in slide-in-from-bottom-4 duration-300">

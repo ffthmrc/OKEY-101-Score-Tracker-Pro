@@ -115,3 +115,44 @@ const playFailTones = (audio: AudioContext) => {
     osc.stop(t + at + len + 0.02);
   }
 };
+
+// Zar sesi: masada yuvarlanan zarın kısa tıkırtıları (giderek seyrek ve kısık), sonunda küçük bir "tok"
+export const playDiceRoll = () => whenAudioReady(audio => {
+  const t0 = audio.currentTime;
+  const noise = audio.createBuffer(1, Math.floor(audio.sampleRate * 0.05), audio.sampleRate);
+  const data = noise.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+  const click = (at: number, vol: number, freq: number) => {
+    const src = audio.createBufferSource();
+    src.buffer = noise;
+    const band = audio.createBiquadFilter();
+    band.type = 'bandpass';
+    band.frequency.value = freq;
+    band.Q.value = 3;
+    const gain = audio.createGain();
+    gain.gain.setValueAtTime(vol, t0 + at);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + at + 0.045);
+    src.connect(band).connect(gain).connect(audio.destination);
+    src.start(t0 + at);
+    src.stop(t0 + at + 0.05);
+  };
+  let at = 0;
+  for (let i = 0; i < 9; i++) {
+    click(at, 0.5 * (1 - i / 12), 1800 + Math.random() * 1600);
+    at += 0.035 + i * 0.012 + Math.random() * 0.02;
+  }
+  // son duruş
+  const osc = audio.createOscillator();
+  const g = audio.createGain();
+  osc.frequency.setValueAtTime(180, t0 + at);
+  osc.frequency.exponentialRampToValueAtTime(90, t0 + at + 0.12);
+  g.gain.setValueAtTime(0.35, t0 + at);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + 0.14);
+  osc.connect(g).connect(audio.destination);
+  osc.start(t0 + at);
+  osc.stop(t0 + at + 0.15);
+});
+
+// Sıra rozetine hafif hareket (index.css): 🏆 ara ara parlar, 💩 ara ara basılıp geri gelir
+export const emojiAnimClass = (emoji: string) =>
+  emoji === '🏆' ? 'emoji-trophy' : emoji === '💩' ? 'emoji-poo' : '';
