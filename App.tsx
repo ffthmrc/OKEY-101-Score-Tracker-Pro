@@ -273,11 +273,11 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
   return (
     <div className="h-dvh font-sans bg-slate-50 flex flex-col overflow-hidden"
       style={{ paddingTop: 'env(safe-area-inset-top)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
-      <main className="max-w-7xl mx-auto w-full px-1.5 md:px-6 py-1.5 md:py-3 pb-0 md:pb-3 flex flex-col flex-1 gap-1.5 md:gap-3 overflow-hidden">
+      <main className="max-w-7xl mx-auto w-full px-1.5 md:px-6 pt-0.5 md:pt-3 pb-0 md:pb-3 flex flex-col flex-1 gap-1.5 md:gap-3 overflow-hidden">
         {activeTab === 'table' && (
           <div className="w-full shrink-0 bg-slate-100/30 rounded-xl">
             {/* Kartlar tek satırda, eşit genişlikte; sıraları tablonun sütunlarıyla aynı */}
-            <section className="grid gap-1 p-1 md:gap-4 md:p-4" style={{ gridTemplateColumns: `repeat(${players.length}, minmax(0, 1fr))` }}>
+            <section className="grid gap-1 px-1 pb-1 pt-0.5 md:gap-4 md:p-4" style={{ gridTemplateColumns: `repeat(${players.length}, minmax(0, 1fr))` }}>
               {stats.map(stat => {
                 const p = players.find(player => player.id === stat.id);
                 if (!p) return null;
