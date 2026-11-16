@@ -156,3 +156,32 @@ export const playDiceRoll = () => whenAudioReady(audio => {
 // Sıra rozetine hafif hareket (index.css): 🏆 ara ara parlar, 💩 ara ara basılıp geri gelir
 export const emojiAnimClass = (emoji: string) =>
   emoji === '🏆' ? 'emoji-trophy' : emoji === '💩' ? 'emoji-poo' : '';
+
+// Geri sayım bipi: son 5 saniyede her saniye kısa "dit" (son saniye biraz daha tiz). Süre bitince zaten zil çalar.
+export const playTick = (last: boolean) => whenAudioReady(audio => {
+  const t = audio.currentTime;
+  const osc = audio.createOscillator();
+  const gain = audio.createGain();
+  osc.type = 'square';
+  osc.frequency.value = last ? 1320 : 1000;
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.exponentialRampToValueAtTime(0.18, t + 0.005);
+  gain.gain.setValueAtTime(0.18, t + 0.07);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.1);
+  osc.connect(gain).connect(audio.destination);
+  osc.start(t);
+  osc.stop(t + 0.11);
+  navigator.vibrate?.(40);
+});
+
+// Geri sayım bipi açık/kapalı: telefon başına ayar (☰ menüden), varsayılan açık
+const TICK_KEY = 'okey101.countdownTick';
+const tickListeners = new Set<() => void>();
+let tickOn = (() => { try { return localStorage.getItem(TICK_KEY) !== '0'; } catch { return true; } })();
+export const countdownTickOn = () => tickOn;
+export const setCountdownTick = (on: boolean) => {
+  tickOn = on;
+  try { localStorage.setItem(TICK_KEY, on ? '1' : '0'); } catch { /* yok say */ }
+  tickListeners.forEach(f => f());
+};
+export const subscribeCountdownTick = (f: () => void) => { tickListeners.add(f); return () => { tickListeners.delete(f); }; };

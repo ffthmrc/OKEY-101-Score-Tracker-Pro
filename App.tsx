@@ -1,9 +1,9 @@
 
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import { Player, RoundScore, PlayerStats } from './types';
 import type { CellValue, TimerState } from './shared/protocol';
 import { parseScoreInput, placesOf, placeEmoji, hasAnyScore, MAX_TITLE_LEN } from './shared/game';
-import { scoreTextClass, formatDay, playChime, playDiceRoll, emojiAnimClass, scoreInputProps, scoreValue, SCORE_INPUT_CLASS } from './ui';
+import { scoreTextClass, formatDay, playChime, playDiceRoll, emojiAnimClass, countdownTickOn, setCountdownTick, subscribeCountdownTick, scoreInputProps, scoreValue, SCORE_INPUT_CLASS } from './ui';
 import { useRoom } from './useRoom';
 import { ConfirmDialog, JoinDialog, NameDialog, TablePinDialog } from './Dialogs';
 import { ArchivePanel } from './ArchivePanel';
@@ -459,6 +459,7 @@ export default function App() {
   const [titleOpen, setTitleOpen] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);       // ☰ Masa menüsü
+  const tickOn = useSyncExternalStore(subscribeCountdownTick, countdownTickOn); // son 5 sn bipi (telefon başına)
   const [clearConfirm, setClearConfirm] = useState(false); // tabloyu arşivlemeden temizle
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -645,6 +646,10 @@ export default function App() {
               {canEdit && <button onClick={() => { setMenuOpen(false); setTitleOpen(true); }} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700">✏️ Masa adı</button>}
               {canEdit && <button onClick={() => { setMenuOpen(false); setPinOpen(true); }} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700">{room.pinSet ? '🔒 Masa şifresi' : '🔓 Masa şifresi'}</button>}
               {canEdit && <button onClick={() => { setMenuOpen(false); sendOp({ t: 'leave' }); }} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700">🚪 Masadan ayrıl</button>}
+              <button onClick={() => setCountdownTick(!tickOn)} aria-pressed={tickOn}
+                className={`col-span-2 h-12 rounded-xl border ${tickOn ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
+                {tickOn ? '🔊 Son 5 sn bip: açık' : '🔇 Son 5 sn bip: kapalı'}
+              </button>
             </div>
             {canEdit ? (
               <div className="space-y-2 pt-3 border-t border-slate-100">
