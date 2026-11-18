@@ -232,7 +232,18 @@ export const HeaderTimer: React.FC<{ timer: TimerState; serverOffset: React.Muta
     const id = setInterval(tick, 250);
     return () => clearInterval(id);
   }, [phase, serverOffset]);
-  if (phase === 'idle') return null;
+  // Sayaç durmuşken (ilk açılış ya da mola sonrası) alt satırda tek büyük Başlat: basınca 1. sayaç başlar,
+  // yerine Oyun açtı · sayaç · Sonraki gelir. Sıfırla (mola) sadece Süre sekmesinde.
+  if (phase === 'idle') {
+    if (!canControl) return null;
+    return (
+      <div className="flex items-center min-w-0 flex-1">
+        <TapButton onTap={onNext} className="h-14 w-full !rounded-xl bg-emerald-600 text-white text-base md:text-lg shadow whitespace-nowrap">
+          <span aria-hidden="true" className="inline-block w-0 h-0 mr-2 border-y-[7px] border-y-transparent border-l-[11px] border-l-white" />Başlat <span className="ml-1 opacity-80 tabular-nums">{fmt(timer.decideSec * 1000)}</span>
+        </TapButton>
+      </div>
+    );
+  }
   const end = phase === 'decide' ? timer.decideEndsAt : timer.openEndsAt;
   const left = (end ?? now) - now;
   const look = left <= 0 ? 'bg-red-600 border-red-700 text-white animate-pulse'
