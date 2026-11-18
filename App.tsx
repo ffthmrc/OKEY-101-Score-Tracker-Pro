@@ -6,6 +6,7 @@ import { parseScoreInput, placesOf, placeEmoji, hasAnyScore, MAX_TITLE_LEN } fro
 import { scoreTextClass, formatDay, playChime, playDiceRoll, playNextBeep, playOpenBeep, emojiAnimClass, countdownTickOn, setCountdownTick, subscribeCountdownTick, scoreInputProps, scoreValue, SCORE_INPUT_CLASS } from './ui';
 import { useRoom } from './useRoom';
 import { seatColors } from './constants';
+import { personKey } from './shared/stats';
 import { ConfirmDialog, JoinDialog, NameDialog, TablePinDialog } from './Dialogs';
 import { ArchivePanel } from './ArchivePanel';
 import { GapPanel } from './GapPanel';
@@ -560,6 +561,8 @@ export default function App() {
   const canEdit = room.mySeat !== null; // masaya oturan her şeyi yapar, oturmayan sadece izler
   const tableTitle = room.title ?? formatDay(new Date()); // masa adı yoksa bugünün tarihi
   const coloredPlayers = seatColors(game.players); // renkler sıraya göre (ekran için)
+  // Lig listesinde masadaki oyuncu Tablo'daki rengiyle görünür
+  const liveColors = Object.fromEntries(coloredPlayers.map(p => [personKey(p.name), p.color]));
   const hasScore = game.rounds.some(r => Object.values(r.scores).some(v => typeof v === 'number'));
 
   // Masa adı tablonun sol üstünde: oturan dokununca değiştirir
@@ -637,7 +640,7 @@ export default function App() {
         }
         archive={
           <ArchivePanel
-            items={archiveItems} game={archiveGame} savedId={archiveSavedId} deletedId={archiveDeletedId} unlockSeq={archiveUnlockSeq} canEdit={canEdit}
+            items={archiveItems} liveColors={liveColors} game={archiveGame} savedId={archiveSavedId} deletedId={archiveDeletedId} unlockSeq={archiveUnlockSeq} canEdit={canEdit}
             onOpen={openArchiveGame} onUnlock={unlockArchive} onSave={saveArchiveGame} onDelete={deleteArchiveGame}
           />
         }

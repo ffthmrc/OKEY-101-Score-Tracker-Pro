@@ -7,7 +7,7 @@ import { scoreTextClass, scoreInputProps, scoreValue, SCORE_INPUT_CLASS } from '
 import { buildReportCards, personKey, isCoreGame, isCorePlayer, karnePlace, CORE_PLAYERS, PLACE_POINTS } from './shared/stats';
 import { GameCharts } from './GameCharts';
 import { ConfirmDialog } from './Dialogs';
-import { seatColors } from './constants';
+import { seatColors, PLAYER_COLORS } from './constants';
 import { CARD, DARK_HEAD, TH_LABEL, PlayerDot, PlayerTag } from './PlayerTag';
 
 // Excel'den aktarılan oyunların saati bilinmez (roomCode 'EXCEL'), sadece tarih gösterilir
@@ -27,6 +27,7 @@ const Chip: React.FC<{ on: boolean; onClick: () => void; children: React.ReactNo
 
 interface ArchivePanelProps {
   items: ArchiveSummary[];
+  liveColors?: Record<string, string>; // masadaki oyuncuların Tablo'daki rengi (personKey → renk)
   game: ArchivedGame | null;
   savedId: string | null;
   deletedId: string | null;
@@ -39,7 +40,7 @@ interface ArchivePanelProps {
 }
 
 // Arşivde düzenleme ve silme arşiv PIN'i ister (sunucuda tanımlı; masaya katılmak gerekmez)
-export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId, deletedId, unlockSeq, canEdit, onOpen, onUnlock, onSave, onDelete }) => {
+export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items: rawItems, liveColors = {}, game, savedId, deletedId, unlockSeq, canEdit, onOpen, onUnlock, onSave, onDelete }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ players: Player[]; rounds: RoundScore[] } | null>(null);
   const [confirm, setConfirm] = useState<'edit' | 'save' | 'delete' | null>(null);
@@ -54,6 +55,10 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
   // Karnede bir oyuncuya dokununca Oyunlar listesi o oyuncunun oyunlarına süzülür
   const [filter, setFilter] = useState<{ key: string; name: string; core: boolean } | null>(null);
   const [winsOnly, setWinsOnly] = useState(false); // Liderlik: sadece 1. olduğu oyunlar
+  // Renkler Tablo ile aynı kurala göre: oyuncunun o oyundaki sırası (eski kayıtlı renkler birbirine yakındı)
+  const items = useMemo(() => rawItems.map(i => ({
+    ...i, players: i.players.map((p, idx) => ({ ...p, color: PLAYER_COLORS[idx % PLAYER_COLORS.length] })),
+  })), [rawItems]);
   const years = useMemo(() => [...new Set(items.map(i => yearOf(i.closedAt)))].sort((a, b) => b - a), [items]);
   const months = useMemo(
     () => (year === null ? [] : [...new Set(items.filter(i => yearOf(i.closedAt) === year).map(i => monthOf(i.closedAt)))].sort((a, b) => a - b)),
@@ -174,7 +179,7 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
                     <td className="py-1.5 pl-2 text-slate-400">{c.rank ?? ''}</td>
                     <td className="py-1.5 text-left">
                       <div className="flex items-center gap-1.5">
-                        <PlayerDot color={c.color} />
+                        <PlayerDot color={liveColors[personKey(c.name)] ?? c.color} />
                         <div className="min-w-0">
                           <div className="uppercase truncate tracking-tight">{c.name} <span className="text-slate-300">›</span></div>
                         </div>
