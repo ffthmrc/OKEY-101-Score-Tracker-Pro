@@ -222,6 +222,14 @@ interface GameDashboardProps {
 // Sekmeler (sırası kaydırma sırasıdır)
 const TABS = [['table', 'Tablo'], ['charts', 'Sıra'], ['timer', 'Süre'], ['archive', 'Arşiv'], ['dice', 'Zar']] as const;
 type TabId = typeof TABS[number][0];
+// Sekme simgeleri (çizgi simgeler, yazı rengini alır)
+const TAB_ICONS: Record<TabId, React.ReactNode> = {
+  table: <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 9h18M3 14.5h18M9 4v16M15 4v16" /></>,
+  charts: <><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z" /><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3" /></>,
+  timer: <><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2.5 2.5M10 2h4" /></>,
+  archive: <><rect x="3" y="4" width="18" height="5" rx="1" /><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4" /></>,
+  dice: <><rect x="4" y="4" width="16" height="16" rx="3" /><circle cx="9" cy="9" r="1.1" fill="currentColor" /><circle cx="15" cy="15" r="1.1" fill="currentColor" /><circle cx="15" cy="9" r="1.1" fill="currentColor" /><circle cx="9" cy="15" r="1.1" fill="currentColor" /><circle cx="12" cy="12" r="1.1" fill="currentColor" /></>,
+};
 
 const GameDashboard: React.FC<GameDashboardProps> = ({
   players, rounds, actions, onAddPlayer, onRemovePlayer,
@@ -347,24 +355,28 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                     onClick={onAddPlayer}
                     className="flex bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-md p-0.5 items-center px-2 text-white shadow-sm transition-all h-7 md:h-10"
                   >
-                    <span className="text-xs font-bold mr-1">+</span>
-                    <span className="text-[8px] md:text-[10px] font-black uppercase tracking-tighter">Player</span>
+                    <span className="text-sm font-bold mr-1 leading-none">+</span>
+                    <span className="text-[11px] md:text-sm font-semibold">Player</span>
                   </button>}
                   <div className={`flex bg-slate-900 rounded-md p-0.5 gap-0.5 items-center px-2 h-7 md:h-10 ${canEdit ? '' : 'opacity-30'}`}>
-                    <button onClick={addNewRound} disabled={!canEdit} className="text-white text-xs font-bold p-0.5">+</button>
-                    <span className="text-[8px] md:text-[10px] font-black text-white uppercase tracking-tighter">Round</span>
-                    <button onClick={removeLastRound} disabled={!canEdit || rounds.length === 0} className="text-white text-xs font-bold p-0.5 disabled:opacity-30">-</button>
+                    <button onClick={addNewRound} disabled={!canEdit} className="text-white text-sm font-bold p-0.5 leading-none">+</button>
+                    <span className="text-[11px] md:text-sm font-semibold text-white px-0.5">Round</span>
+                    <button onClick={removeLastRound} disabled={!canEdit || rounds.length === 0} className="text-white text-sm font-bold p-0.5 leading-none disabled:opacity-30">−</button>
                   </div>
                 </div>
               </div>
               <div className="overflow-auto rounded-lg border border-slate-100 flex-1 bg-white">
                 <table className="w-full text-left border-collapse min-w-[280px] min-h-full">
-                  <thead className="sticky top-0 z-20 bg-slate-50 shadow-sm">
-                    <tr className="border-b border-slate-100">
-                      <th className="py-1 md:py-2.5 px-1.5 md:px-2 text-[10px] md:text-xs font-black text-slate-500 uppercase w-9 md:w-20 tracking-tighter">Rnd</th>
+                  {/* Lacivert başlık (Toplam satırıyla aynı): ad beyaz, oyuncunun rengi yanındaki noktada (sarı ad da okunur) */}
+                  <thead className="sticky top-0 z-20 bg-slate-900 text-white">
+                    <tr>
+                      <th className="py-1 md:py-2.5 px-1.5 md:px-2 text-[10px] md:text-xs font-semibold text-slate-400 w-9 md:w-20">Rnd</th>
                       {players.map(p => (
-                        <th key={p.id} className="py-1 md:py-2.5 text-center">
-                          <button type="button" disabled={!canEdit} onClick={() => setRenameId(p.id)} className="text-[11px] xs:text-xs md:text-base font-black text-center bg-transparent border-0 w-full truncate uppercase tracking-tighter py-1" style={{ color: p.color }}>{p.name}</button>
+                        <th key={p.id} className="py-1 md:py-2.5 px-0.5 text-center">
+                          <button type="button" disabled={!canEdit} onClick={() => setRenameId(p.id)} className="flex items-center justify-center gap-1 w-full min-w-0 bg-transparent border-0 py-1 text-[11px] xs:text-xs md:text-base font-bold uppercase tracking-tight">
+                            <span className="h-2 w-2 md:h-2.5 md:w-2.5 rounded-full shrink-0 ring-1 ring-white/70" style={{ backgroundColor: p.color }} />
+                            <span className="truncate">{p.name}</span>
+                          </button>
                         </th>
                       ))}
                     </tr>
@@ -372,10 +384,10 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                   <tbody className="divide-y divide-slate-50">
                     {rounds.map((r, rIdx) => (
                       <tr key={rIdx} className="hover:bg-slate-50/40 transition-colors">
-                        <td className="py-0 md:py-2 px-1.5 md:px-2 text-[11px] md:text-sm font-black text-slate-500">R{r.round}</td>
+                        <td className="py-0 md:py-2 px-1.5 md:px-2 text-[11px] md:text-sm font-semibold text-slate-400 tabular-nums">R{r.round}</td>
                         {players.map(p => (
                           <td key={p.id} className="px-0.5 py-px md:p-1">
-                            <input {...scoreInputProps} value={scoreValue(r.scores[p.id])} readOnly={!canEdit} onChange={(e) => handleScoreChange(rIdx, p.id, e.target.value)} className={`${SCORE_INPUT_CLASS} w-full bg-slate-50/50 border-0 rounded-md py-0.5 md:py-2 text-center font-black ${scoreTextClass(r.scores[p.id])} text-[16px] md:text-xl focus:bg-white focus:ring-1 focus:ring-indigo-200 transition-all placeholder:text-slate-200`} placeholder="0" />
+                            <input {...scoreInputProps} value={scoreValue(r.scores[p.id])} readOnly={!canEdit} onChange={(e) => handleScoreChange(rIdx, p.id, e.target.value)} className={`${SCORE_INPUT_CLASS} w-full bg-slate-50/50 border-0 rounded-md py-0.5 md:py-2 text-center font-black ${scoreTextClass(r.scores[p.id])} text-[16px] md:text-xl focus:bg-white focus:ring-1 focus:ring-indigo-200 transition-all`} />
                           </td>
                         ))}
                       </tr>
@@ -383,7 +395,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                   </tbody>
                   <tfoot className="sticky bottom-0 bg-slate-900 text-white z-20 shadow-lg">
                     <tr>
-                      <td className="py-1.5 md:py-2.5 px-1.5 md:px-2 text-[10px] md:text-xs font-black uppercase tracking-tight">Total</td>
+                      <td className="py-1.5 md:py-2.5 px-1.5 md:px-2 text-[10px] md:text-xs font-semibold text-slate-400">Total</td>
                       {players.map(p => (
                         <td key={p.id} className="py-1.5 md:py-2.5 text-center text-[18px] md:text-2xl font-black tabular-nums">{stats.find(s => s.id === p.id)?.totalScore}</td>
                       ))}
@@ -421,8 +433,11 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 min-w-0 py-2.5 md:py-3 text-[11px] md:text-sm font-black uppercase tracking-tight truncate transition-all border-t-[3px] -mt-[2px] ${activeTab === tab ? 'text-indigo-700 bg-indigo-50 border-indigo-600' : 'text-slate-600 border-transparent hover:bg-slate-50'}`}
-          >{label}</button>
+            className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 pt-1.5 pb-1 md:py-2 text-[10px] md:text-xs font-semibold truncate transition-all border-t-[3px] -mt-[2px] ${activeTab === tab ? 'text-indigo-700 bg-indigo-50 border-indigo-600' : 'text-slate-500 border-transparent hover:bg-slate-50'}`}
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 md:h-6 md:w-6" fill="none" stroke="currentColor" strokeWidth={activeTab === tab ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">{TAB_ICONS[tab]}</svg>
+            <span className="leading-none">{label}</span>
+          </button>
         ))}
       </nav>
 
@@ -549,16 +564,16 @@ export default function App() {
 
   // Masa adı tablonun sol üstünde: oturan dokununca değiştirir
   const headerTitle = canEdit ? (
-    <button onClick={() => setTitleOpen(true)} className="max-w-full text-left line-clamp-2 break-words leading-tight text-[13px] md:text-base font-black uppercase tracking-tight text-indigo-700 underline decoration-dotted decoration-indigo-300 underline-offset-4" title="Masa adını değiştir">{tableTitle}</button>
+    <button onClick={() => setTitleOpen(true)} className="max-w-full text-left line-clamp-2 break-words leading-tight text-[15px] md:text-lg font-bold tracking-tight text-slate-900 underline decoration-dotted decoration-slate-300 underline-offset-4" title="Masa adını değiştir">{tableTitle}</button>
   ) : (
-    <span className="line-clamp-2 break-words leading-tight text-[13px] md:text-base font-black uppercase tracking-tight text-indigo-700">{tableTitle}</span>
+    <span className="line-clamp-2 break-words leading-tight text-[15px] md:text-lg font-bold tracking-tight text-slate-900">{tableTitle}</span>
   );
   // Bağlantı yoksa üst satırda uyarı (bağlıyken logo köşesindeki yeşil nokta yeter)
   const headerStatus = status !== 'online'
     ? <span className="block truncate text-[11px] md:text-sm font-black uppercase tracking-tight text-amber-600">{STATUS_LABEL[status]}…</span>
     : null;
   // Tablonun üstünde + Player yanında: oturan için Ayrıl (iki dokunuş), oturmayan için Katıl
-  const JOIN_BTN = 'flex items-center px-2.5 h-7 md:h-10 rounded-md text-[10px] md:text-xs font-black uppercase tracking-tight shadow-sm active:scale-95 transition-all';
+  const JOIN_BTN = 'flex items-center px-2.5 h-7 md:h-10 rounded-md text-[11px] md:text-sm font-semibold shadow-sm active:scale-95 transition-all';
   const headerJoin = room.mySeat ? (
     <button onClick={() => { if (leaveArmed) { setLeaveArmed(false); sendOp({ t: 'leave' }); } else setLeaveArmed(true); }}
       className={`${JOIN_BTN} ${leaveArmed ? 'bg-red-600 text-white' : 'bg-white border border-slate-300 text-slate-600'}`}>
