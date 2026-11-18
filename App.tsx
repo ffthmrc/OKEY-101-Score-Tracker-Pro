@@ -5,7 +5,7 @@ import type { CellValue, TimerState } from './shared/protocol';
 import { parseScoreInput, placesOf, placeEmoji, hasAnyScore, MAX_TITLE_LEN } from './shared/game';
 import { scoreTextClass, formatDay, playChime, playDiceRoll, playNextBeep, playOpenBeep, emojiAnimClass, countdownTickOn, setCountdownTick, subscribeCountdownTick, scoreInputProps, scoreValue, SCORE_INPUT_CLASS } from './ui';
 import { useRoom } from './useRoom';
-import { seatColors } from './constants';
+import { playerColors } from './colors';
 import { personKey } from './shared/stats';
 import { ConfirmDialog, JoinDialog, NameDialog, TablePinDialog } from './Dialogs';
 import { ArchivePanel } from './ArchivePanel';
@@ -560,7 +560,7 @@ export default function App() {
 
   const canEdit = room.mySeat !== null; // masaya oturan her şeyi yapar, oturmayan sadece izler
   const tableTitle = room.title ?? formatDay(new Date()); // masa adı yoksa bugünün tarihi
-  const coloredPlayers = seatColors(game.players); // renkler sıraya göre (ekran için)
+  const coloredPlayers = playerColors(game.players); // renk ada göre: sabit dört kişinin kendi rengi (colors.ts)
   // Lig listesinde masadaki oyuncu Tablo'daki rengiyle görünür
   const liveColors = Object.fromEntries(coloredPlayers.map(p => [personKey(p.name), p.color]));
   const hasScore = game.rounds.some(r => Object.values(r.scores).some(v => typeof v === 'number'));

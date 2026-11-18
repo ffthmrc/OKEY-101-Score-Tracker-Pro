@@ -12,9 +12,7 @@ export const PLAYER_COLORS = [
   '#92400e', '#ec4899'
 ];
 
-// Ekranda renk oyuncunun sırasından gelir (eski oyunlarda kayıtlı renkler birbirine yakındı)
-export const seatColors = (players: Player[]): Player[] =>
-  players.map((p, i) => ({ ...p, color: PLAYER_COLORS[i % PLAYER_COLORS.length] }));
+// Ekranda renk ada göre verilir (colors.ts); buradaki renk yalnız kayıt içindir
 
 export const getInitialPlayers = (): Player[] => [
   { id: 'p1', name: 'P1', color: PLAYER_COLORS[0] },

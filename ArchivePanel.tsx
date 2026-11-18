@@ -7,7 +7,7 @@ import { scoreTextClass, scoreInputProps, scoreValue, SCORE_INPUT_CLASS } from '
 import { buildReportCards, personKey, isCoreGame, isCorePlayer, karnePlace, CORE_PLAYERS, PLACE_POINTS } from './shared/stats';
 import { GameCharts } from './GameCharts';
 import { ConfirmDialog } from './Dialogs';
-import { seatColors, PLAYER_COLORS } from './constants';
+import { playerColors } from './colors';
 import { CARD, DARK_HEAD, TH_LABEL, PlayerDot, PlayerTag } from './PlayerTag';
 
 // Excel'den aktarılan oyunların saati bilinmez (roomCode 'EXCEL'), sadece tarih gösterilir
@@ -55,10 +55,8 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items: rawItems, liv
   // Karnede bir oyuncuya dokununca Oyunlar listesi o oyuncunun oyunlarına süzülür
   const [filter, setFilter] = useState<{ key: string; name: string; core: boolean } | null>(null);
   const [winsOnly, setWinsOnly] = useState(false); // Liderlik: sadece 1. olduğu oyunlar
-  // Renkler Tablo ile aynı kurala göre: oyuncunun o oyundaki sırası (eski kayıtlı renkler birbirine yakındı)
-  const items = useMemo(() => rawItems.map(i => ({
-    ...i, players: i.players.map((p, idx) => ({ ...p, color: PLAYER_COLORS[idx % PLAYER_COLORS.length] })),
-  })), [rawItems]);
+  // Renkler Tablo ile aynı kurala göre (ada göre; eski kayıtlı renkler birbirine yakındı)
+  const items = useMemo(() => rawItems.map(i => ({ ...i, players: playerColors(i.players) })), [rawItems]);
   const years = useMemo(() => [...new Set(items.map(i => yearOf(i.closedAt)))].sort((a, b) => b - a), [items]);
   const months = useMemo(
     () => (year === null ? [] : [...new Set(items.filter(i => yearOf(i.closedAt) === year).map(i => monthOf(i.closedAt)))].sort((a, b) => a - b)),
@@ -313,7 +311,7 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items: rawItems, liv
             <thead className={DARK_HEAD}>
               <tr>
                 <th className={`py-1 md:py-2.5 px-2 w-10 md:w-20 ${TH_LABEL}`}>Rnd</th>
-                {seatColors(table.players).map(p => (
+                {playerColors(table.players).map(p => (
                   <th key={p.id} className="py-1 md:py-2.5 px-0.5 text-center">
                     {editing ? (
                       <div className="flex items-center justify-center gap-1 min-w-0">
@@ -364,9 +362,9 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items: rawItems, liv
 
       {table && (
         <>
-          <GameCharts players={seatColors(table.players)} rounds={table.rounds} idPrefix="arsiv" show="ranking" />
-          <GapPanel players={seatColors(table.players)} rounds={table.rounds} embedded />
-          <GameCharts players={seatColors(table.players)} rounds={table.rounds} idPrefix="arsiv" show="trend" />
+          <GameCharts players={playerColors(table.players)} rounds={table.rounds} idPrefix="arsiv" show="ranking" />
+          <GapPanel players={playerColors(table.players)} rounds={table.rounds} embedded />
+          <GameCharts players={playerColors(table.players)} rounds={table.rounds} idPrefix="arsiv" show="trend" />
         </>
       )}
 
