@@ -46,7 +46,7 @@ export const GameCharts: React.FC<{ players: Player[]; rounds: RoundScore[]; idP
       {show !== 'trend' && (
       <div className={`${CARD} shrink-0`}>
         <div className={SECTION_HEAD}>
-          <h2 className={SECTION_TITLE}>Ranking</h2>
+          <h2 className={SECTION_TITLE}>Sıralama</h2>
           <span className={SECTION_NOTE}>el el sıra</span>
         </div>
         <div className="overflow-x-auto">
@@ -122,7 +122,7 @@ export const GameCharts: React.FC<{ players: Player[]; rounds: RoundScore[]; idP
       {show !== 'ranking' && (
       <div className={`${CARD} shrink-0`}>
         <div className={SECTION_HEAD}>
-          <h2 className={SECTION_TITLE}>Performance Trend</h2>
+          <h2 className={SECTION_TITLE}>Performans Grafiği</h2>
           <span className={SECTION_NOTE}>toplam puan, el el</span>
         </div>
         {/* renk açıklaması: çizgiler adla eşleşsin */}

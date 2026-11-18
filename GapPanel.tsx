@@ -25,7 +25,7 @@ export const GapPanel: React.FC<{ players: Player[]; rounds: RoundScore[]; embed
       {/* Sıralama: lidere ve bir üsttekine fark */}
       <div className={CARD}>
         <div className={SECTION_HEAD}>
-          <h2 className={SECTION_TITLE}>Sıralama</h2>
+          <h2 className={SECTION_TITLE}>Sıralama puan farkı</h2>
           <span className={SECTION_NOTE}>{playedRounds}/{rounds.length} el tamam</span>
         </div>
         <table className="w-full text-center border-collapse">
@@ -66,8 +66,7 @@ export const GapPanel: React.FC<{ players: Player[]; rounds: RoundScore[]; embed
       {/* Herkesin herkese farkı (Excel'deki matris) */}
       <div className={CARD}>
         <div className={SECTION_HEAD}>
-          <h2 className={SECTION_TITLE}>Fark?</h2>
-          <span className={SECTION_NOTE}>kim kime kaç puan</span>
+          <h2 className={SECTION_TITLE}>Oyuncular arası puan tablosu</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-center border-collapse">
