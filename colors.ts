@@ -2,12 +2,12 @@
 // Diğerleri (misafir, henüz adı girilmemiş P1…) sabit renklerden uzak ayrı bir sıradan alır.
 import { CORE_PLAYERS, personKey } from './shared/stats';
 
-// CORE_PLAYERS sırasıyla: Fatih mavi, Ketenci yeşil, Hasan sarı, Zeki kırmızı
-const CORE_COLORS = ['#2563eb', '#16a34a', '#eab308', '#dc2626'];
+// CORE_PLAYERS sırasıyla: Fatih kırmızı, Ketenci yeşil, Hasan sarı, Zeki lacivert
+const CORE_COLORS = ['#dc2626', '#16a34a', '#eab308', '#1e3a8a'];
 export const CORE_COLOR: Record<string, string> = Object.fromEntries(CORE_PLAYERS.map((n, i) => [personKey(n), CORE_COLORS[i]]));
 
-// Misafirler: mor, siyah, gri, kahverengi, pembe (mavi/yeşil/sarı/kırmızıya benzemez)
-const GUEST_COLORS = ['#9333ea', '#111827', '#64748b', '#92400e', '#db2777'];
+// Misafirler: mor, pembe, gri, kahverengi, camgöbeği (kırmızı/yeşil/sarı/laciverte benzemez)
+const GUEST_COLORS = ['#9333ea', '#db2777', '#64748b', '#92400e', '#06b6d4'];
 
 export const colorOfName = (name: string): string | undefined => CORE_COLOR[personKey(name)];
 
