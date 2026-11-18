@@ -219,13 +219,47 @@ interface GameDashboardProps {
   serverOffset: React.MutableRefObject<number>;
 }
 
+// Sekmeler (sırası kaydırma sırasıdır)
+const TABS = [['table', 'Tablo'], ['charts', 'Sıra'], ['timer', 'Süre'], ['archive', 'Arşiv'], ['dice', 'Zar']] as const;
+type TabId = typeof TABS[number][0];
+
 const GameDashboard: React.FC<GameDashboardProps> = ({
   players, rounds, actions, onAddPlayer, onRemovePlayer,
   canEdit, occupied, mySeat, onVacate, roomBar, archive, timer, timerState, serverOffset,
   headerTitle, headerStatus, headerJoin, statusDot, onMenu, onTimerNext, onTimerOpenGame
 }) => {
   const [renameId, setRenameId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'table' | 'charts' | 'dice' | 'timer' | 'archive'>('table');
+  const [activeTab, setActiveTab] = useState<TabId>('table');
+
+  // Sağa / sola kaydırınca yan sekmeye geç (sekmelere dokunmak da çalışır).
+  // Yana kayabilen bir kutunun (geniş tablo) içinde, grafik üzerinde ya da yan çevrilmiş tam ekran sayaç / zarda kaydırma sekme değiştirmez.
+  const mainRef = useRef<HTMLElement>(null);
+  const swipe = useRef<{ x: number; y: number; t: number; skip: boolean } | null>(null);
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) { swipe.current = null; return; }
+    const tch = e.touches[0];
+    let skip = window.matchMedia('(orientation: landscape) and (max-height: 540px)').matches;
+    for (let el = e.target as HTMLElement | null; el && el !== e.currentTarget && !skip; el = el.parentElement) {
+      if (el.classList.contains('recharts-wrapper')) skip = true;
+      const ox = getComputedStyle(el).overflowX;
+      if ((ox === 'auto' || ox === 'scroll') && el.scrollWidth > el.clientWidth + 2) skip = true;
+    }
+    swipe.current = { x: tch.clientX, y: tch.clientY, t: Date.now(), skip };
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const s = swipe.current;
+    swipe.current = null;
+    if (!s || s.skip) return;
+    const tch = e.changedTouches[0];
+    const dx = tch.clientX - s.x, dy = tch.clientY - s.y;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 2 || Date.now() - s.t > 700) return;
+    const i = TABS.findIndex(([id]) => id === activeTab);
+    const next = TABS[i + (dx < 0 ? 1 : -1)];
+    if (!next) return;
+    setActiveTab(next[0]);
+    // kısa kayma: yeni sekme kaydırılan yönden gelir
+    mainRef.current?.animate?.([{ transform: `translateX(${dx < 0 ? 40 : -40}px)`, opacity: 0.4 }, { transform: 'none', opacity: 1 }], { duration: 180, easing: 'ease-out' });
+  };
 
   // Check if any non-null input has been made across all rounds
   const hasGameStarted = useMemo(() => hasAnyScore(rounds), [rounds]);
@@ -278,7 +312,8 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
           Şerit sadece iPhone'da (index.css .ios-top-strip), en az 12 pt; zeminle aynı renk, dokunuşu engellemez.
           Altındaki .ios-top-space içeriği şerit kadar aşağı alır. */}
       <div aria-hidden="true" className="ios-top-strip fixed top-0 inset-x-0 z-[250] bg-slate-50 pointer-events-none" />
-      <main className="max-w-7xl mx-auto w-full px-1.5 md:px-6 pt-0.5 md:pt-3 pb-0 md:pb-3 flex flex-col flex-1 gap-1.5 md:gap-3 overflow-hidden">
+      <main ref={mainRef} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} onTouchCancel={() => { swipe.current = null; }}
+        className="max-w-7xl mx-auto w-full px-1.5 md:px-6 pt-0.5 md:pt-3 pb-0 md:pb-3 flex flex-col flex-1 gap-1.5 md:gap-3 overflow-hidden">
         {activeTab === 'table' && (
           <div className="w-full shrink-0 bg-slate-100/30 rounded-xl">
             {/* Kartlar tek satırda, eşit genişlikte; sıraları tablonun sütunlarıyla aynı */}
@@ -382,7 +417,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
 
       {/* Sekmeler alt satırın hemen üstünde: büyük harf, aralarında çizgi, seçili olanın üstü çizili */}
       <nav className="flex bg-white border-t-2 border-slate-200 shrink-0 divide-x divide-slate-200">
-        {([['table', 'Tablo'], ['charts', 'Sıra'], ['timer', 'Süre'], ['archive', 'Arşiv'], ['dice', 'Zar']] as const).map(([tab, label]) => (
+        {TABS.map(([tab, label]) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
