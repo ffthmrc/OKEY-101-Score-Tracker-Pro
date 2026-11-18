@@ -185,3 +185,26 @@ export const setCountdownTick = (on: boolean) => {
   tickListeners.forEach(f => f());
 };
 export const subscribeCountdownTick = (f: () => void) => { tickListeners.add(f); return () => { tickListeners.delete(f); }; };
+
+// Sayaç tuşu sesleri (basan telefonda): duyulsun ki dokunuş alındı
+const beep = (audio: AudioContext, freq: number, at: number, len: number, type: OscillatorType, vol = 0.22) => {
+  const t = audio.currentTime + at;
+  const osc = audio.createOscillator();
+  const gain = audio.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+  gain.gain.setValueAtTime(vol, t + len - 0.03);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + len);
+  osc.connect(gain).connect(audio.destination);
+  osc.start(t);
+  osc.stop(t + len + 0.01);
+};
+// Sonraki / Başlat: tek, net "diit"
+export const playNextBeep = () => whenAudioReady(audio => beep(audio, 1568, 0, 0.16, 'sine', 0.3));
+// Oyun açtı: iki notalı, yükselen "du-diit" (Sonraki'den kolay ayrılır)
+export const playOpenBeep = () => whenAudioReady(audio => {
+  beep(audio, 784, 0, 0.11, 'triangle', 0.35);
+  beep(audio, 1175, 0.13, 0.2, 'triangle', 0.35);
+});

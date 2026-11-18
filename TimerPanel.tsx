@@ -222,7 +222,7 @@ export const TimerPanel: React.FC<TimerPanelProps> = ({ timer, serverOffset, can
 
 // Üst çubukta canlı kalan süre: sayaç çalışırken her sekmede görünür, dokununca Süre sekmesine gider
 // Masadakiler için yanında Sonraki: Süre sekmesine gitmeden sıradaki oyuncuya geçilir
-export const HeaderTimer: React.FC<{ timer: TimerState; serverOffset: React.MutableRefObject<number>; onOpen: () => void; canControl: boolean; onNext: () => void }> = ({ timer, serverOffset, onOpen, canControl, onNext }) => {
+export const HeaderTimer: React.FC<{ timer: TimerState; serverOffset: React.MutableRefObject<number>; onOpen: () => void; canControl: boolean; onNext: () => void; onOpenGame: () => void }> = ({ timer, serverOffset, onOpen, canControl, onNext, onOpenGame }) => {
   const { phase } = timer;
   const [now, setNow] = useState(() => Date.now() + serverOffset.current);
   useEffect(() => {
@@ -238,14 +238,20 @@ export const HeaderTimer: React.FC<{ timer: TimerState; serverOffset: React.Muta
   const look = left <= 0 ? 'bg-red-600 border-red-700 text-white animate-pulse'
     : left <= 10_000 ? 'bg-amber-100 border-amber-300 text-amber-700'
     : 'bg-emerald-50 border-emerald-200 text-emerald-700';
+  // Oyun açtı sadece 1. sayaç sürerken (ilk kez açan için); değilse soluk
+  const canOpenGame = phase === 'decide' && left > 0;
   return (
-    <div className="flex items-center gap-1 shrink-0">
-      <button onClick={onOpen} title="Süre sekmesine git" className={`h-11 px-1 md:px-3 rounded-lg border flex items-center gap-0.5 font-black tabular-nums tracking-tighter ${look}`}>
-        <span className="text-[8px] md:text-[11px] opacity-70">{phase === 'decide' ? '1' : '2'}</span>
-        <span className="text-[24px] md:text-3xl leading-none">{fmt(left)}</span>
+    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+      <button onClick={onOpen} title="Süre sekmesine git" className={`h-14 px-1.5 md:px-3 rounded-xl border-2 flex items-center gap-0.5 font-black tabular-nums tracking-tighter shrink-0 ${look}`}>
+        <span className="text-[9px] md:text-[11px] opacity-70">{phase === 'decide' ? '1' : '2'}</span>
+        <span className="text-[30px] md:text-4xl leading-none">{fmt(left)}</span>
       </button>
       {canControl && (
-        <TapButton onTap={onNext} className="h-11 px-3 md:px-4 !rounded-lg bg-emerald-600 text-white text-xs md:text-sm shadow">Sonraki ›</TapButton>
+        <>
+          <TapButton onTap={onOpenGame} disabled={!canOpenGame}
+            className={`h-14 flex-1 min-w-0 px-1 !rounded-xl text-[13px] xs:text-sm md:text-base leading-tight ${canOpenGame ? 'bg-indigo-600 text-white shadow' : 'bg-slate-100 text-slate-300'}`}>Oyun açtı</TapButton>
+          <TapButton onTap={onNext} className="h-14 flex-1 min-w-0 px-1 !rounded-xl bg-emerald-600 text-white text-[13px] xs:text-sm md:text-base shadow whitespace-nowrap">Sonraki<span className="hidden xs:inline"> ›</span></TapButton>
+        </>
       )}
     </div>
   );

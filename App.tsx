@@ -3,7 +3,7 @@ import React, { useState, useMemo, useCallback, useEffect, useRef, useSyncExtern
 import { Player, RoundScore, PlayerStats } from './types';
 import type { CellValue, TimerState } from './shared/protocol';
 import { parseScoreInput, placesOf, placeEmoji, hasAnyScore, MAX_TITLE_LEN } from './shared/game';
-import { scoreTextClass, formatDay, playChime, playDiceRoll, emojiAnimClass, countdownTickOn, setCountdownTick, subscribeCountdownTick, scoreInputProps, scoreValue, SCORE_INPUT_CLASS } from './ui';
+import { scoreTextClass, formatDay, playChime, playDiceRoll, playNextBeep, playOpenBeep, emojiAnimClass, countdownTickOn, setCountdownTick, subscribeCountdownTick, scoreInputProps, scoreValue, SCORE_INPUT_CLASS } from './ui';
 import { useRoom } from './useRoom';
 import { ConfirmDialog, JoinDialog, NameDialog, TablePinDialog } from './Dialogs';
 import { ArchivePanel } from './ArchivePanel';
@@ -200,10 +200,6 @@ interface GameDashboardProps {
   actions: GameActions;
   onAddPlayer: () => void;
   onRemovePlayer: (id: string) => void;
-  undo: () => void;
-  redo: () => void;
-  canUndo: boolean;
-  canRedo: boolean;
   canEdit: boolean;
   occupied: Record<string, boolean>;
   mySeat: string | null;
@@ -215,6 +211,7 @@ interface GameDashboardProps {
   statusDot: string;              // logodaki bağlantı noktası rengi
   onMenu: () => void;
   onTimerNext: () => void;
+  onTimerOpenGame: () => void;
   archive: React.ReactNode;
   timer: React.ReactNode;
   timerState: TimerState;
@@ -222,9 +219,9 @@ interface GameDashboardProps {
 }
 
 const GameDashboard: React.FC<GameDashboardProps> = ({
-  players, rounds, actions, onAddPlayer, onRemovePlayer, undo, redo, canUndo, canRedo,
+  players, rounds, actions, onAddPlayer, onRemovePlayer,
   canEdit, occupied, mySeat, onVacate, roomBar, archive, timer, timerState, serverOffset,
-  headerTitle, headerStatus, headerJoin, statusDot, onMenu, onTimerNext
+  headerTitle, headerStatus, headerJoin, statusDot, onMenu, onTimerNext, onTimerOpenGame
 }) => {
   const [renameId, setRenameId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'table' | 'charts' | 'dice' | 'timer' | 'archive'>('table');
@@ -339,10 +336,10 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                   <tbody className="divide-y divide-slate-50">
                     {rounds.map((r, rIdx) => (
                       <tr key={rIdx} className="hover:bg-slate-50/40 transition-colors">
-                        <td className="py-0.5 md:py-2 px-1.5 md:px-2 text-[11px] md:text-sm font-black text-slate-500">R{r.round}</td>
+                        <td className="py-0 md:py-2 px-1.5 md:px-2 text-[11px] md:text-sm font-black text-slate-500">R{r.round}</td>
                         {players.map(p => (
-                          <td key={p.id} className="p-0.5 md:p-1">
-                            <input {...scoreInputProps} value={scoreValue(r.scores[p.id])} readOnly={!canEdit} onChange={(e) => handleScoreChange(rIdx, p.id, e.target.value)} className={`${SCORE_INPUT_CLASS} w-full bg-slate-50/50 border-0 rounded-md py-1 md:py-2 text-center font-black ${scoreTextClass(r.scores[p.id])} text-[16px] md:text-xl focus:bg-white focus:ring-1 focus:ring-indigo-200 transition-all placeholder:text-slate-200`} placeholder="0" />
+                          <td key={p.id} className="px-0.5 py-px md:p-1">
+                            <input {...scoreInputProps} value={scoreValue(r.scores[p.id])} readOnly={!canEdit} onChange={(e) => handleScoreChange(rIdx, p.id, e.target.value)} className={`${SCORE_INPUT_CLASS} w-full bg-slate-50/50 border-0 rounded-md py-0.5 md:py-2 text-center font-black ${scoreTextClass(r.scores[p.id])} text-[16px] md:text-xl focus:bg-white focus:ring-1 focus:ring-indigo-200 transition-all placeholder:text-slate-200`} placeholder="0" />
                           </td>
                         ))}
                       </tr>
@@ -403,29 +400,10 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
           <span className={`absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white ${statusDot}`} />
         </div>
-        <div className="min-w-0 flex-1">{headerStatus}</div>
-        <HeaderTimer timer={timerState} serverOffset={serverOffset} onOpen={() => setActiveTab('timer')} canControl={canEdit && activeTab !== 'timer'} onNext={onTimerNext} />
-        <div className="flex items-center gap-1.5 shrink-0">
+        {headerStatus && <div className="min-w-0 flex-1">{headerStatus}</div>}
+        <HeaderTimer timer={timerState} serverOffset={serverOffset} onOpen={() => setActiveTab('timer')} canControl={canEdit && activeTab !== 'timer'} onNext={onTimerNext} onOpenGame={onTimerOpenGame} />
+        <div className="flex items-center gap-1.5 shrink-0 ml-auto">
           {headerJoin}
-          {canEdit && <div className="flex bg-slate-100/90 rounded-lg p-0.5 border border-slate-300 shadow-inner">
-            <button
-              onClick={undo}
-              disabled={!canUndo || !canEdit}
-              title="Backward / Undo"
-              className="px-2 h-10 md:px-3 rounded-md transition-all active:scale-90 disabled:opacity-20 disabled:grayscale disabled:scale-100 hover:bg-white flex items-center justify-center"
-            >
-              <span className="text-lg md:text-xl" role="img" aria-label="Backward">⏪</span>
-            </button>
-            <div className="w-px h-5 md:h-7 bg-slate-300 self-center mx-0.5 md:mx-1" />
-            <button
-              onClick={redo}
-              disabled={!canRedo || !canEdit}
-              title="Forward / Redo"
-              className="px-2 h-10 md:px-3 rounded-md transition-all active:scale-90 disabled:opacity-20 disabled:grayscale disabled:scale-100 hover:bg-white flex items-center justify-center"
-            >
-              <span className="text-lg md:text-xl" role="img" aria-label="Forward">⏩</span>
-            </button>
-          </div>}
           <button onClick={onMenu} className="h-11 w-11 rounded-lg bg-slate-900 text-white text-xl leading-none flex items-center justify-center" aria-haspopup="dialog" aria-label="Masa menüsü">☰</button>
         </div>
       </footer>
@@ -568,10 +546,6 @@ export default function App() {
         actions={actions}
         onAddPlayer={() => sendOp({ t: 'addPlayer' })}
         onRemovePlayer={handleRemovePlayer}
-        undo={() => sendOp({ t: 'undo' })}
-        redo={() => sendOp({ t: 'redo' })}
-        canUndo={room.canUndo}
-        canRedo={room.canRedo}
         canEdit={canEdit}
         occupied={room.occupied}
         mySeat={room.mySeat}
@@ -582,7 +556,8 @@ export default function App() {
         headerJoin={headerJoin}
         statusDot={STATUS_DOT[status]}
         onMenu={() => setMenuOpen(true)}
-        onTimerNext={() => sendOp({ t: 'timer', action: 'start' })}
+        onTimerNext={() => { playNextBeep(); sendOp({ t: 'timer', action: 'start' }); }}
+        onTimerOpenGame={() => { playOpenBeep(); sendOp({ t: 'timer', action: 'open' }); }}
         timerState={room.timer}
         serverOffset={serverOffset}
         timer={
@@ -590,7 +565,10 @@ export default function App() {
             timer={room.timer}
             serverOffset={serverOffset}
             canControl={canEdit}
-            onAction={action => sendOp({ t: 'timer', action })}
+            onAction={action => {
+              if (action === 'start') playNextBeep(); else if (action === 'open') playOpenBeep();
+              sendOp({ t: 'timer', action });
+            }}
             onDurations={(decideSec, openSec) => sendOp({ t: 'timerDurations', decideSec, openSec })}
           />
         }
@@ -641,6 +619,12 @@ export default function App() {
                 </span>
               ))}
             </div>
+            {canEdit && (
+              <div className="grid grid-cols-2 gap-2 text-xs font-black uppercase">
+                <button onClick={() => sendOp({ t: 'undo' })} disabled={!room.canUndo} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 disabled:opacity-30">⏪ Geri al</button>
+                <button onClick={() => sendOp({ t: 'redo' })} disabled={!room.canRedo} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 disabled:opacity-30">İleri al ⏩</button>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-2 text-xs font-black uppercase">
               <button onClick={copyLink} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700">{copied ? '✓ Kopyalandı' : '🔗 Linki kopyala'}</button>
               {canEdit && <button onClick={() => { setMenuOpen(false); setTitleOpen(true); }} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700">✏️ Masa adı</button>}
