@@ -208,7 +208,7 @@ interface GameDashboardProps {
   headerTitle: React.ReactNode;   // masa adı (Leaderboard yazısının yanında)
   headerStatus: React.ReactNode;  // bağlantı yoksa üst satırda uyarı
   headerJoin: React.ReactNode;    // oturmayan için Katıl
-  statusDot: string;              // logodaki bağlantı noktası rengi
+  statusDot: string;              // ☰ tuşundaki bağlantı noktası rengi
   onMenu: () => void;
   onTimerNext: () => void;
   onTimerOpenGame: () => void;
@@ -390,21 +390,20 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
         ))}
       </nav>
 
-      {/* Alt satır (başparmak bölgesi): logo (bağlantı noktası) · sayaç + Sonraki · geri/ileri (ya da Katıl) · ☰ menü.
+      {/* Alt satır (başparmak bölgesi): Oyun açtı · sayaç · Sonraki · geri/ileri (ya da Katıl) · ☰ menü.
           iPhone ev çizgisi ve yuvarlak köşeler için alttan güvenli boşluk */}
       {/* Yanlarda geniş boşluk: iPhone'un yuvarlak alt köşeleri logoyu ve ☰'yi kesmesin.
           Altta en az 14 px (iOS 26'da ekran kenarı ölçüsü bazen 0 geliyor) */}
       <footer className="bg-white border-t border-slate-200 z-50 px-5 md:px-6 pt-2 flex items-center gap-1.5 md:gap-2 shrink-0"
         style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}>
-        <div className="relative bg-slate-900 w-7 h-7 rounded flex items-center justify-center text-white shrink-0" title="Score Tracker">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-          <span className={`absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white ${statusDot}`} />
-        </div>
         {headerStatus && <div className="min-w-0 flex-1">{headerStatus}</div>}
         <HeaderTimer timer={timerState} serverOffset={serverOffset} onOpen={() => setActiveTab('timer')} canControl={canEdit && activeTab !== 'timer'} onNext={onTimerNext} onOpenGame={onTimerOpenGame} />
         <div className="flex items-center gap-1.5 shrink-0 ml-auto">
           {headerJoin}
-          <button onClick={onMenu} className="h-11 w-11 rounded-lg bg-slate-900 text-white text-xl leading-none flex items-center justify-center" aria-haspopup="dialog" aria-label="Masa menüsü">☰</button>
+          <button onClick={onMenu} className="relative h-14 w-12 rounded-xl bg-slate-900 text-white text-xl leading-none flex items-center justify-center" aria-haspopup="dialog" aria-label="Masa menüsü">☰
+            {/* bağlantı noktası (yeşil bağlı, sarı bağlanıyor, kırmızı yok) */}
+            <span className={`absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-white ${statusDot}`} />
+          </button>
         </div>
       </footer>
       <NameDialog

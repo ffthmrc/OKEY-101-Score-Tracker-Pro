@@ -241,17 +241,18 @@ export const HeaderTimer: React.FC<{ timer: TimerState; serverOffset: React.Muta
   // Oyun açtı sadece 1. sayaç sürerken (ilk kez açan için); değilse soluk
   const canOpenGame = phase === 'decide' && left > 0;
   return (
-    <div className="flex items-center gap-1.5 min-w-0 flex-1">
-      <button onClick={onOpen} title="Süre sekmesine git" className={`h-14 px-1.5 md:px-3 rounded-xl border-2 flex items-center gap-0.5 font-black tabular-nums tracking-tighter shrink-0 ${look}`}>
-        <span className="text-[9px] md:text-[11px] opacity-70">{phase === 'decide' ? '1' : '2'}</span>
-        <span className="text-[30px] md:text-4xl leading-none">{fmt(left)}</span>
+    // Solda Oyun açtı · ortada sayaç · sağda Sonraki (sayaç iki elin ortasında, en büyük)
+    <div className={`flex items-center gap-1.5 min-w-0 flex-1 ${canControl ? '' : 'justify-center'}`}>
+      {canControl && (
+        <TapButton onTap={onOpenGame} disabled={!canOpenGame}
+          className={`h-14 flex-1 min-w-0 px-1 !rounded-xl text-[13px] xs:text-sm md:text-base leading-tight ${canOpenGame ? 'bg-indigo-600 text-white shadow' : 'bg-slate-100 text-slate-300'}`}>Oyun açtı</TapButton>
+      )}
+      <button onClick={onOpen} title="Süre sekmesine git" className={`relative h-14 px-2 md:px-4 rounded-xl border-2 flex items-center justify-center font-black tabular-nums tracking-tighter shrink-0 ${look}`}>
+        <span className="absolute top-0.5 left-1 text-[9px] md:text-[11px] leading-none opacity-70">{phase === 'decide' ? '1' : '2'}</span>
+        <span className="text-[36px] md:text-5xl leading-none">{fmt(left)}</span>
       </button>
       {canControl && (
-        <>
-          <TapButton onTap={onOpenGame} disabled={!canOpenGame}
-            className={`h-14 flex-1 min-w-0 px-1 !rounded-xl text-[13px] xs:text-sm md:text-base leading-tight ${canOpenGame ? 'bg-indigo-600 text-white shadow' : 'bg-slate-100 text-slate-300'}`}>Oyun açtı</TapButton>
-          <TapButton onTap={onNext} className="h-14 flex-1 min-w-0 px-1 !rounded-xl bg-emerald-600 text-white text-[13px] xs:text-sm md:text-base shadow whitespace-nowrap">Sonraki<span className="hidden xs:inline"> ›</span></TapButton>
-        </>
+        <TapButton onTap={onNext} className="h-14 flex-1 min-w-0 px-1 !rounded-xl bg-emerald-600 text-white text-[13px] xs:text-sm md:text-base shadow whitespace-nowrap">Sonraki<span className="hidden xs:inline"> ›</span></TapButton>
       )}
     </div>
   );
