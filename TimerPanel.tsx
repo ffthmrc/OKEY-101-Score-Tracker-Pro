@@ -8,7 +8,7 @@ import { playFail, playTick, countdownTickOn } from './ui';
 // "Sonraki": sıra yan oyuncuya geçince 1. sayaç baştan başlar (Sıfırla + Başlat yerine tek tuş).
 // Durum sunucuda; herkes aynı sayacı görür, sadece masadakiler kullanır.
 // Süre bitince zil sadece sayaca son dokunan telefonda çalar (masada 4 telefon birden çalmasın).
-// Son 5 saniyede aynı telefonda her saniye kısa bip (☰ menüden kapatılabilir).
+// Son 10 saniyede aynı telefonda her saniye kısa bip (☰ menüden kapatılabilir).
 
 const STEP = 15;           // süre ayarı adımı (sn)
 const MIN_SEC = 15;
@@ -129,11 +129,11 @@ export const TimerPanel: React.FC<TimerPanelProps> = ({ timer, serverOffset, can
     if (now - runningEnd < 30_000) playFail();
   }, [timer.mine, runningEnd, decideDone, openDone, now]);
 
-  // Son 5 saniye: her saniye bir kez "dit" (5-4-3-2-1), 0'da zil
+  // Son 10 saniye: her saniye bir kez "dit" (10…1), 0'da zil
   useEffect(() => {
     if (!timer.mine || runningEnd === null || !countdownTickOn()) return;
     const left = runningEnd - now;
-    if (left <= 0 || left > 5000) return;
+    if (left <= 0 || left > 10_000) return;
     const sec = Math.ceil(left / 1000);
     const key = `${runningEnd}:${sec}`;
     if (tickedFor.current === key) return;
@@ -211,7 +211,7 @@ export const TimerPanel: React.FC<TimerPanelProps> = ({ timer, serverOffset, can
               <li>5. Daha önce açmış oyuncuya sıra geldi → ek süre yok. Sadece 1. sayaç: taş çeker, işler, yana atar → <b className={B}>Sonraki</b>.</li>
               <li>6. Oyunu durdurmak için (mola) → <b className={B}>Sıfırla</b>. Devam etmek için tekrar <b className={B}>Başlat</b>.</li>
               <li>7. Telefonu yan çevirince sayaç tam ekran olur. Dik çevirince sekmeler geri gelir.</li>
-              <li className="pt-1 text-slate-300">Sayaç herkeste görünür. Son 5 saniyede bip, süre bitince zil, sayaca son dokunan telefonda çalar. Bipi ☰ menüden kapatabilirsin.</li>
+              <li className="pt-1 text-slate-300">Sayaç herkeste görünür. Son 10 saniyede bip, süre bitince zil, sayaca son dokunan telefonda çalar. Bipi ☰ menüden kapatabilirsin.</li>
             </ol>
           </details>
         )}

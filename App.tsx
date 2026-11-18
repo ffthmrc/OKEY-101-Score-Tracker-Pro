@@ -5,6 +5,7 @@ import type { CellValue, TimerState } from './shared/protocol';
 import { parseScoreInput, placesOf, placeEmoji, hasAnyScore, MAX_TITLE_LEN } from './shared/game';
 import { scoreTextClass, formatDay, playChime, playDiceRoll, playNextBeep, playOpenBeep, emojiAnimClass, countdownTickOn, setCountdownTick, subscribeCountdownTick, scoreInputProps, scoreValue, SCORE_INPUT_CLASS } from './ui';
 import { useRoom } from './useRoom';
+import { seatColors } from './constants';
 import { ConfirmDialog, JoinDialog, NameDialog, TablePinDialog } from './Dialogs';
 import { ArchivePanel } from './ArchivePanel';
 import { GapPanel } from './GapPanel';
@@ -205,7 +206,7 @@ interface GameDashboardProps {
   mySeat: string | null;
   onVacate: (id: string) => void;
   roomBar: React.ReactNode;       // katılma istekleri şeridi
-  headerTitle: React.ReactNode;   // masa adı (Leaderboard yazısının yanında)
+  headerTitle: React.ReactNode;   // masa adı (tablonun sol üstünde)
   headerStatus: React.ReactNode;  // bağlantı yoksa üst satırda uyarı
   headerJoin: React.ReactNode;    // oturmayan için Katıl
   statusDot: string;              // ☰ tuşundaki bağlantı noktası rengi
@@ -303,9 +304,8 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
           {activeTab === 'table' && (
             <div className="p-1.5 md:p-3 flex flex-col flex-1 overflow-hidden">
               <div className="flex items-center justify-between mb-1 px-1 shrink-0">
-                <h2 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-tight shrink-0">Leaderboard</h2>
-                {/* bu tablonun ait olduğu masa */}
-                <div className="min-w-0 flex-1 px-2 text-center">{headerTitle}</div>
+                {/* bu tablonun ait olduğu masa (Leaderboard yazısının yerinde) */}
+                <div className="min-w-0 flex-1 pr-2">{headerTitle}</div>
                 <div className="flex items-center gap-1 shrink-0">
                   {canEdit && <button
                     onClick={onAddPlayer}
@@ -328,7 +328,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                       <th className="py-1 md:py-2.5 px-1.5 md:px-2 text-[10px] md:text-xs font-black text-slate-500 uppercase w-9 md:w-20 tracking-tighter">Rnd</th>
                       {players.map(p => (
                         <th key={p.id} className="py-1 md:py-2.5 text-center">
-                          <button type="button" disabled={!canEdit} onClick={() => setRenameId(p.id)} className="text-[9px] md:text-sm font-black text-center bg-transparent border-0 w-full truncate uppercase tracking-tighter py-1" style={{ color: p.color }}>{p.name}</button>
+                          <button type="button" disabled={!canEdit} onClick={() => setRenameId(p.id)} className="text-[11px] xs:text-xs md:text-base font-black text-center bg-transparent border-0 w-full truncate uppercase tracking-tighter py-1" style={{ color: p.color }}>{p.name}</button>
                         </th>
                       ))}
                     </tr>
@@ -436,7 +436,7 @@ export default function App() {
   const [titleOpen, setTitleOpen] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);       // ☰ Masa menüsü
-  const tickOn = useSyncExternalStore(subscribeCountdownTick, countdownTickOn); // son 5 sn bipi (telefon başına)
+  const tickOn = useSyncExternalStore(subscribeCountdownTick, countdownTickOn); // son 10 sn bipi (telefon başına)
   const [clearConfirm, setClearConfirm] = useState(false); // tabloyu arşivlemeden temizle
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -503,13 +503,14 @@ export default function App() {
 
   const canEdit = room.mySeat !== null; // masaya oturan her şeyi yapar, oturmayan sadece izler
   const tableTitle = room.title ?? formatDay(new Date()); // masa adı yoksa bugünün tarihi
+  const coloredPlayers = seatColors(game.players); // renkler sıraya göre (ekran için)
   const hasScore = game.rounds.some(r => Object.values(r.scores).some(v => typeof v === 'number'));
 
-  // Masa adı Leaderboard yazısının yanında: oturan dokununca değiştirir
+  // Masa adı tablonun sol üstünde: oturan dokununca değiştirir
   const headerTitle = canEdit ? (
-    <button onClick={() => setTitleOpen(true)} className="max-w-full line-clamp-2 break-words leading-tight text-[11px] md:text-sm font-black uppercase tracking-tight text-indigo-700 underline decoration-dotted decoration-indigo-300 underline-offset-4" title="Masa adını değiştir">{tableTitle}</button>
+    <button onClick={() => setTitleOpen(true)} className="max-w-full text-left line-clamp-2 break-words leading-tight text-[13px] md:text-base font-black uppercase tracking-tight text-indigo-700 underline decoration-dotted decoration-indigo-300 underline-offset-4" title="Masa adını değiştir">{tableTitle}</button>
   ) : (
-    <span className="line-clamp-2 break-words leading-tight text-[11px] md:text-sm font-black uppercase tracking-tight text-indigo-700">{tableTitle}</span>
+    <span className="line-clamp-2 break-words leading-tight text-[13px] md:text-base font-black uppercase tracking-tight text-indigo-700">{tableTitle}</span>
   );
   // Bağlantı yoksa üst satırda uyarı (bağlıyken logo köşesindeki yeşil nokta yeter)
   const headerStatus = status !== 'online'
@@ -540,7 +541,7 @@ export default function App() {
   return (
     <>
       <GameDashboard
-        players={game.players}
+        players={coloredPlayers}
         rounds={game.rounds}
         actions={actions}
         onAddPlayer={() => sendOp({ t: 'addPlayer' })}
@@ -631,7 +632,7 @@ export default function App() {
               {canEdit && <button onClick={() => { setMenuOpen(false); sendOp({ t: 'leave' }); }} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700">🚪 Masadan ayrıl</button>}
               <button onClick={() => setCountdownTick(!tickOn)} aria-pressed={tickOn}
                 className={`col-span-2 h-12 rounded-xl border ${tickOn ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
-                {tickOn ? '🔊 Son 5 sn bip: açık' : '🔇 Son 5 sn bip: kapalı'}
+                {tickOn ? '🔊 Son 10 sn bip: açık' : '🔇 Son 10 sn bip: kapalı'}
               </button>
             </div>
             {canEdit ? (

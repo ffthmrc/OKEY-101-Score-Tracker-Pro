@@ -157,7 +157,7 @@ export const playDiceRoll = () => whenAudioReady(audio => {
 export const emojiAnimClass = (emoji: string) =>
   emoji === '🏆' ? 'emoji-trophy' : emoji === '💩' ? 'emoji-poo' : '';
 
-// Geri sayım bipi: son 5 saniyede her saniye kısa "dit" (son saniye biraz daha tiz). Süre bitince zaten zil çalar.
+// Geri sayım bipi: son 10 saniyede her saniye kısa "dit" (son saniye biraz daha tiz). Süre bitince zaten zil çalar.
 export const playTick = (last: boolean) => whenAudioReady(audio => {
   const t = audio.currentTime;
   const osc = audio.createOscillator();

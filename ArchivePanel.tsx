@@ -7,6 +7,7 @@ import { scoreTextClass, scoreInputProps, scoreValue, SCORE_INPUT_CLASS } from '
 import { buildReportCards, personKey, isCoreGame, isCorePlayer, karnePlace, CORE_PLAYERS, PLACE_POINTS } from './shared/stats';
 import { GameCharts } from './GameCharts';
 import { ConfirmDialog } from './Dialogs';
+import { seatColors } from './constants';
 
 // Excel'den aktarılan oyunların saati bilinmez (roomCode 'EXCEL'), sadece tarih gösterilir
 const formatDate = (iso: string, roomCode: string) =>
@@ -350,9 +351,9 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
 
       {table && (
         <>
-          <GameCharts players={table.players} rounds={table.rounds} idPrefix="arsiv" show="ranking" />
-          <GapPanel players={table.players} rounds={table.rounds} embedded />
-          <GameCharts players={table.players} rounds={table.rounds} idPrefix="arsiv" show="trend" />
+          <GameCharts players={seatColors(table.players)} rounds={table.rounds} idPrefix="arsiv" show="ranking" />
+          <GapPanel players={seatColors(table.players)} rounds={table.rounds} embedded />
+          <GameCharts players={seatColors(table.players)} rounds={table.rounds} idPrefix="arsiv" show="trend" />
         </>
       )}
 
