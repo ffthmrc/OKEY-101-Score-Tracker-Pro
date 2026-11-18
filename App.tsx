@@ -208,7 +208,7 @@ interface GameDashboardProps {
   roomBar: React.ReactNode;       // katılma istekleri şeridi
   headerTitle: React.ReactNode;   // masa adı (tablonun sol üstünde)
   headerStatus: React.ReactNode;  // bağlantı yoksa üst satırda uyarı
-  headerJoin: React.ReactNode;    // oturmayan için Katıl
+  headerJoin: React.ReactNode;    // + Player yanında Katıl / Ayrıl
   statusDot: string;              // ☰ tuşundaki bağlantı noktası rengi
   onMenu: () => void;
   onTimerNext: () => void;
@@ -307,14 +307,15 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                 {/* bu tablonun ait olduğu masa (Leaderboard yazısının yerinde) */}
                 <div className="min-w-0 flex-1 pr-2">{headerTitle}</div>
                 <div className="flex items-center gap-1 shrink-0">
+                  {headerJoin}
                   {canEdit && <button
                     onClick={onAddPlayer}
-                    className="flex bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-md p-0.5 items-center px-2 text-white shadow-sm transition-all h-6 md:h-10"
+                    className="flex bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-md p-0.5 items-center px-2 text-white shadow-sm transition-all h-7 md:h-10"
                   >
                     <span className="text-xs font-bold mr-1">+</span>
                     <span className="text-[8px] md:text-[10px] font-black uppercase tracking-tighter">Player</span>
                   </button>}
-                  <div className={`flex bg-slate-900 rounded-md p-0.5 gap-0.5 items-center px-2 h-6 md:h-10 ${canEdit ? '' : 'opacity-30'}`}>
+                  <div className={`flex bg-slate-900 rounded-md p-0.5 gap-0.5 items-center px-2 h-7 md:h-10 ${canEdit ? '' : 'opacity-30'}`}>
                     <button onClick={addNewRound} disabled={!canEdit} className="text-white text-xs font-bold p-0.5">+</button>
                     <span className="text-[8px] md:text-[10px] font-black text-white uppercase tracking-tighter">Round</span>
                     <button onClick={removeLastRound} disabled={!canEdit || rounds.length === 0} className="text-white text-xs font-bold p-0.5 disabled:opacity-30">-</button>
@@ -399,7 +400,6 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
         {headerStatus && <div className="min-w-0 flex-1">{headerStatus}</div>}
         <HeaderTimer timer={timerState} serverOffset={serverOffset} onOpen={() => setActiveTab('timer')} canControl={canEdit && activeTab !== 'timer'} onNext={onTimerNext} onOpenGame={onTimerOpenGame} />
         <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-          {headerJoin}
           <button onClick={onMenu} className="relative h-14 w-12 rounded-xl bg-slate-900 text-white text-xl leading-none flex items-center justify-center" aria-haspopup="dialog" aria-label="Masa menüsü">☰
             {/* bağlantı noktası (yeşil bağlı, sarı bağlanıyor, kırmızı yok) */}
             <span className={`absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-white ${statusDot}`} />
@@ -436,6 +436,12 @@ export default function App() {
   const [titleOpen, setTitleOpen] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);       // ☰ Masa menüsü
+  const [leaveArmed, setLeaveArmed] = useState(false); // Ayrıl: yanlışlıkla basılmasın, ikinci dokunuşta ayrılır
+  useEffect(() => {
+    if (!leaveArmed) return;
+    const id = setTimeout(() => setLeaveArmed(false), 3000);
+    return () => clearTimeout(id);
+  }, [leaveArmed]);
   const tickOn = useSyncExternalStore(subscribeCountdownTick, countdownTickOn); // son 10 sn bipi (telefon başına)
   const [clearConfirm, setClearConfirm] = useState(false); // tabloyu arşivlemeden temizle
   const [notice, setNotice] = useState<string | null>(null);
@@ -516,10 +522,17 @@ export default function App() {
   const headerStatus = status !== 'online'
     ? <span className="block truncate text-[11px] md:text-sm font-black uppercase tracking-tight text-amber-600">{STATUS_LABEL[status]}…</span>
     : null;
-  const headerJoin = room.mySeat ? null : room.myRequest ? (
-    <button onClick={() => { cancelledByMe.current = true; sendOp({ t: 'cancelJoin' }); }} className="px-2 h-9 rounded-lg bg-amber-100 text-amber-700 text-[10px] font-black uppercase animate-pulse" title="İptal etmek için dokun">Onay bekleniyor…</button>
+  // Tablonun üstünde + Player yanında: oturan için Ayrıl (iki dokunuş), oturmayan için Katıl
+  const JOIN_BTN = 'flex items-center px-2.5 h-7 md:h-10 rounded-md text-[10px] md:text-xs font-black uppercase tracking-tight shadow-sm active:scale-95 transition-all';
+  const headerJoin = room.mySeat ? (
+    <button onClick={() => { if (leaveArmed) { setLeaveArmed(false); sendOp({ t: 'leave' }); } else setLeaveArmed(true); }}
+      className={`${JOIN_BTN} ${leaveArmed ? 'bg-red-600 text-white' : 'bg-white border border-slate-300 text-slate-600'}`}>
+      {leaveArmed ? 'Emin? Dokun' : '🚪 Ayrıl'}
+    </button>
+  ) : room.myRequest ? (
+    <button onClick={() => { cancelledByMe.current = true; sendOp({ t: 'cancelJoin' }); }} className={`${JOIN_BTN} bg-amber-100 text-amber-700 animate-pulse`} title="İptal etmek için dokun">Onay bekleniyor…</button>
   ) : (
-    <button onClick={() => setJoinOpen(true)} className="px-3 h-9 rounded-lg bg-indigo-600 text-white text-xs font-black uppercase shadow">Katıl</button>
+    <button onClick={() => setJoinOpen(true)} className={`${JOIN_BTN} bg-emerald-600 text-white`}>Katıl</button>
   );
 
   const roomBar = (
