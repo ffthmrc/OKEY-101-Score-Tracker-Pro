@@ -8,6 +8,7 @@ import { buildReportCards, personKey, isCoreGame, isCorePlayer, karnePlace, CORE
 import { GameCharts } from './GameCharts';
 import { ConfirmDialog } from './Dialogs';
 import { seatColors } from './constants';
+import { CARD, DARK_HEAD, TH_LABEL, PlayerDot, PlayerTag } from './PlayerTag';
 
 // Excel'den aktarılan oyunların saati bilinmez (roomCode 'EXCEL'), sadece tarih gösterilir
 const formatDate = (iso: string, roomCode: string) =>
@@ -21,7 +22,7 @@ const monthOf = (iso: string) => new Date(iso).getMonth();
 
 // Dönem seçici düğmesi
 const Chip: React.FC<{ on: boolean; onClick: () => void; children: React.ReactNode }> = ({ on, onClick, children }) => (
-  <button onClick={onClick} className={`shrink-0 h-7 px-2.5 rounded-md text-[10px] md:text-xs font-black uppercase tracking-tight border ${on ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-500'}`}>{children}</button>
+  <button onClick={onClick} className={`shrink-0 h-7 px-2.5 rounded-md text-[12px] md:text-sm font-semibold border ${on ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-500'}`}>{children}</button>
 );
 
 interface ArchivePanelProps {
@@ -117,7 +118,7 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
   if (!selectedId) {
     return (
       <div className="p-2 md:p-4 flex-1 overflow-auto custom-scrollbar space-y-2">
-        <div className="flex bg-slate-100 rounded-lg p-0.5 text-[10px] md:text-xs font-black uppercase tracking-tight">
+        <div className="flex bg-slate-100 rounded-lg p-0.5 text-[13px] md:text-sm font-bold">
           {([['games', 'Oyunlar'], ['cards', 'Lig']] as const).map(([v, label]) => (
             <button key={v} onClick={() => setView(v)} className={`flex-1 py-1.5 rounded-md transition-all ${view === v ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>{label}</button>
           ))}
@@ -137,10 +138,10 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
           </div>
         )}
         {view === 'cards' && (
-          <div className="bg-white border border-slate-100 rounded-xl shadow-sm overflow-hidden">
+          <div className={CARD}>
             <table className="w-full text-center border-collapse">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr className="text-[9px] md:text-[11px] font-black uppercase text-slate-400 tracking-tighter">
+              <thead className={DARK_HEAD}>
+                <tr className={TH_LABEL}>
                   <th className="py-2 pl-2 w-5 md:w-8">#</th>
                   <th className="py-2 text-left">Oyuncu</th>
                   <th className="py-2">Oyun</th>
@@ -156,7 +157,7 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
                   {c.rank === null && (i === 0 || cards[i - 1].rank !== null) && (
                     <tr className="bg-slate-50">
                       <td colSpan={4 + placeCols} className="p-0 border-t-2 border-slate-300">
-                        <button onClick={() => setShowUnranked(v => !v)} aria-expanded={showUnranked} className="w-full py-2 text-[10px] md:text-xs font-black uppercase tracking-tight text-slate-500 hover:bg-slate-100">
+                        <button onClick={() => setShowUnranked(v => !v)} aria-expanded={showUnranked} className="w-full py-2 text-[12px] md:text-sm font-semibold text-slate-500 hover:bg-slate-100">
                           {showUnranked ? '▾' : '▸'} Misafirler · sıralamaya girmez ({cards.filter(x => x.rank === null).length} kişi)
                         </button>
                       </td>
@@ -168,19 +169,19 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
                     title={`${c.name} oyunlarını göster`}
                     onClick={() => pickFilter(c.name)}
                     onKeyDown={e => { if (e.key === 'Enter') pickFilter(c.name); }}
-                    className="text-[11px] md:text-sm font-black text-slate-700 cursor-pointer hover:bg-indigo-50/60 active:bg-indigo-50"
+                    className="text-[12px] md:text-sm font-bold text-slate-700 tabular-nums cursor-pointer hover:bg-indigo-50/60 active:bg-indigo-50"
                   >
                     <td className="py-1.5 pl-2 text-slate-400">{c.rank ?? ''}</td>
                     <td className="py-1.5 text-left">
                       <div className="flex items-center gap-1.5">
-                        <span className="h-2.5 w-1 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
+                        <PlayerDot color={c.color} />
                         <div className="min-w-0">
                           <div className="uppercase truncate tracking-tight">{c.name} <span className="text-slate-300">›</span></div>
                         </div>
                       </div>
                     </td>
                     <td className="py-1.5 text-slate-400">{c.played}</td>
-                    <td className={`py-1.5 ${c.rank !== null ? 'text-indigo-700' : 'text-slate-400'}`}>{c.points}</td>
+                    <td className={`py-1.5 font-black ${c.rank !== null ? 'text-indigo-700' : 'text-slate-400'}`}>{c.points}</td>
                     {Array.from({ length: placeCols }, (_, i) => (
                       <td key={i} className={`py-1.5 ${i === 0 && c.places[0] ? 'text-[#006100] bg-[#c6efce]/50' : ''} ${c.places[i] ? '' : 'text-slate-200'}`}>{c.places[i] ?? 0}</td>
                     ))}
@@ -189,14 +190,14 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
                 ))}
               </tbody>
             </table>
-            {cards.length === 0 && <div className="py-8 text-center text-slate-300 text-xs font-bold uppercase italic">Bu dönemde oyun yok</div>}
+            {cards.length === 0 && <div className="py-8 text-center text-slate-400 text-sm font-semibold">Bu dönemde oyun yok</div>}
           </div>
         )}
         {view === 'cards' && cards.length > 0 && (
-          <div className="text-[10px] md:text-xs font-bold text-slate-400 space-y-1 px-1">
+          <div className="text-[12px] md:text-sm font-medium text-slate-500 space-y-1 px-1">
             <p className="text-center">Oyuncuya dokun: hangi oyunlardan oluştuğunu gör.</p>
             <details className="group">
-            <summary className="cursor-pointer select-none list-none py-1 text-slate-500 font-black uppercase tracking-tight">
+            <summary className="cursor-pointer select-none list-none py-1 text-slate-700 font-bold">
               <span className="inline-block transition-transform group-open:rotate-90">▸</span> Sıralama nasıl yapılır?
             </summary>
             <ul className="list-disc pl-4 space-y-0.5">
@@ -204,7 +205,7 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
               <li>Misafir varsa yok sayılır. Sıra dördü arasında verilir.</li>
               <li>Puan: 1. = {PLACE_POINTS[0]}, 2. = {PLACE_POINTS[1]}, 3. = {PLACE_POINTS[2]}, 4. = {PLACE_POINTS[3]}.</li>
               <li>Eşit bitirenler aynı puanı alır.</li>
-              <li>Sıra <b className="text-slate-500">toplam puana</b> göredir. Puan eşitse birincilik sayısına bakılır.</li>
+              <li>Sıra <b className="text-slate-800">toplam puana</b> göredir. Puan eşitse birincilik sayısına bakılır.</li>
               <li>Misafirler çizginin altında görünür. Oynadıkları tüm oyunlar sayılır (5. ve sonrası {PLACE_POINTS[3]} puan).</li>
             </ul>
             </details>
@@ -212,16 +213,16 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
         )}
         {view === 'games' && filter && (
           <div className="flex items-center justify-between gap-2 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
-            <span className="min-w-0 font-black uppercase tracking-tight text-indigo-700 leading-tight">
-              <span className="block truncate text-[11px] md:text-xs">{filter.name} · {shownItems.length} oyun</span>
-              <span className="block truncate text-[9px] md:text-[10px] text-indigo-400">{winsOnly ? '1. olduğu oyunlar' : filter.core ? 'lige sayılan oyunlar' : 'tüm oyunları'}</span>
+            <span className="min-w-0 font-bold text-indigo-700 leading-tight">
+              <span className="block truncate text-[13px] md:text-sm"><span className="uppercase">{filter.name}</span> · {shownItems.length} oyun</span>
+              <span className="block truncate text-[11px] md:text-xs font-semibold text-indigo-400">{winsOnly ? '1. olduğu oyunlar' : filter.core ? 'lige sayılan oyunlar' : 'tüm oyunları'}</span>
             </span>
-            <button onClick={() => setWinsOnly(v => !v)} aria-pressed={winsOnly} className={`shrink-0 h-7 px-2 rounded-md border text-[10px] font-black uppercase ${winsOnly ? 'bg-amber-400 border-amber-500 text-slate-900' : 'bg-white border-indigo-200 text-indigo-600'}`}>🏆 Liderlik</button>
-            <button onClick={() => { setFilter(null); setWinsOnly(false); }} className="shrink-0 h-7 px-2 rounded-md bg-white border border-indigo-200 text-indigo-600 text-[10px] font-black uppercase">✕ Tümü</button>
+            <button onClick={() => setWinsOnly(v => !v)} aria-pressed={winsOnly} className={`shrink-0 h-8 px-2 rounded-md border text-[12px] font-semibold ${winsOnly ? 'bg-amber-400 border-amber-500 text-slate-900' : 'bg-white border-indigo-200 text-indigo-600'}`}>🏆 Liderlik</button>
+            <button onClick={() => { setFilter(null); setWinsOnly(false); }} className="shrink-0 h-8 px-2 rounded-md bg-white border border-indigo-200 text-indigo-600 text-[12px] font-semibold">✕ Tümü</button>
           </div>
         )}
         {view === 'games' && shownItems.length === 0 && (
-          <div className="py-8 flex items-center justify-center text-slate-300 text-xs font-bold uppercase italic">{items.length ? 'Bu dönemde oyun yok' : 'Arşivde oyun yok'}</div>
+          <div className="py-8 flex items-center justify-center text-slate-400 text-sm font-semibold">{items.length ? 'Bu dönemde oyun yok' : 'Arşivde oyun yok'}</div>
         )}
         {view === 'games' && shownItems.map(item => {
           const sorted = [...item.players].sort((a, b) => a.total - b.total);
@@ -229,14 +230,14 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
           return (
             <button key={item.id} onClick={() => open(item.id)} className="w-full text-left bg-white border border-slate-100 rounded-xl p-3 shadow-sm hover:shadow-md active:scale-[0.99] transition-all">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] md:text-xs font-black text-slate-900 uppercase tracking-tight">{formatDate(item.closedAt, item.roomCode)}</span>
-                <span className="text-[9px] font-black text-slate-300 uppercase">{item.roomCode}</span>
+                <span className="text-[14px] md:text-base font-bold text-slate-900 tracking-tight">{formatDate(item.closedAt, item.roomCode)}</span>
+                <span className="text-[11px] font-semibold text-slate-300">{item.roomCode}</span>
               </div>
               <div className={`grid gap-1 ${item.players.length <= 4 ? 'grid-cols-4' : 'grid-cols-3'}`}>
                 {sorted.map(p => (
                   <div key={p.id} className={`rounded-md px-1 py-1 text-center border-b-2 ${filter && personKey(p.name) === filter.key ? 'bg-indigo-100 ring-1 ring-indigo-300' : 'bg-slate-50'}`} style={{ borderColor: p.color }}>
-                    <div className="text-[9px] md:text-[11px] font-black uppercase truncate text-slate-700">{placeEmoji(places[p.id], places)} {p.name}</div>
-                    <div className="text-[11px] md:text-sm font-black text-slate-500">{p.total}</div>
+                    <div className="text-[10px] xs:text-[11px] md:text-xs font-bold uppercase tracking-tight truncate text-slate-700">{placeEmoji(places[p.id], places)} {p.name}</div>
+                    <div className="text-[13px] md:text-base font-black tabular-nums text-slate-800">{p.total}</div>
                   </div>
                 ))}
               </div>
@@ -276,40 +277,47 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
   return (
     <div className="p-1.5 md:p-3 flex flex-col flex-1 gap-3 overflow-auto custom-scrollbar">
       <div className="flex items-center justify-between px-1 shrink-0 gap-2">
-        <button onClick={() => { setSelectedId(null); setDraft(null); }} className="text-[10px] md:text-xs font-black text-indigo-600 uppercase">‹ Arşiv</button>
-        <span className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-tight truncate">{loaded ? formatDate(loaded.closedAt, loaded.roomCode) : ''}</span>
+        <button onClick={() => { setSelectedId(null); setDraft(null); }} className="text-[13px] md:text-sm font-bold text-indigo-600">‹ Arşiv</button>
+        <span className="text-[13px] md:text-sm font-bold text-slate-900 tracking-tight truncate">{loaded ? formatDate(loaded.closedAt, loaded.roomCode) : ''}</span>
         <div className="flex items-center gap-1">
           {!editing && canEdit && (
-            <button onClick={() => setConfirm('delete')} disabled={!loaded} className="h-7 md:h-9 px-2 rounded-md border border-red-200 bg-red-50 text-red-600 text-[9px] md:text-[10px] font-black uppercase disabled:opacity-30">Sil</button>
+            <button onClick={() => setConfirm('delete')} disabled={!loaded} className="h-8 md:h-9 px-2.5 rounded-md border border-red-200 bg-red-50 text-red-600 text-[12px] md:text-sm font-semibold disabled:opacity-30">Sil</button>
           )}
           {!editing && canEdit && (
-            <button onClick={() => setConfirm('edit')} disabled={!loaded || pendingPin !== null} className="h-7 md:h-9 px-2 rounded-md bg-slate-900 text-white text-[9px] md:text-[10px] font-black uppercase disabled:opacity-30">Düzenle</button>
+            <button onClick={() => setConfirm('edit')} disabled={!loaded || pendingPin !== null} className="h-8 md:h-9 px-2.5 rounded-md bg-slate-900 text-white text-[12px] md:text-sm font-semibold disabled:opacity-30">Düzenle</button>
           )}
           {editing && (
             <>
-              <div className="flex bg-slate-900 rounded-md gap-0.5 items-center px-2 h-7 md:h-9">
-                <button onClick={addRound} className="text-white text-xs font-bold p-0.5">+</button>
-                <span className="text-[8px] md:text-[10px] font-black text-white uppercase tracking-tighter">Round</span>
-                <button onClick={removeRound} className="text-white text-xs font-bold p-0.5">-</button>
+              <div className="flex bg-slate-900 rounded-md gap-0.5 items-center px-2 h-8 md:h-9">
+                <button onClick={addRound} className="text-white text-sm font-bold p-0.5 leading-none">+</button>
+                <span className="text-[12px] md:text-sm font-semibold text-white px-0.5">Round</span>
+                <button onClick={removeRound} className="text-white text-sm font-bold p-0.5 leading-none">−</button>
               </div>
-              <button onClick={() => setDraft(null)} className="h-7 md:h-9 px-2 rounded-md border border-slate-200 text-slate-500 text-[9px] md:text-[10px] font-black uppercase">İptal</button>
-              <button onClick={() => setConfirm('save')} disabled={saving} className="h-7 md:h-9 px-2 rounded-md bg-indigo-600 text-white text-[9px] md:text-[10px] font-black uppercase disabled:opacity-40">{saving ? '...' : 'Kaydet'}</button>
+              <button onClick={() => setDraft(null)} className="h-8 md:h-9 px-2.5 rounded-md border border-slate-200 text-slate-500 text-[12px] md:text-sm font-semibold">İptal</button>
+              <button onClick={() => setConfirm('save')} disabled={saving} className="h-8 md:h-9 px-2.5 rounded-md bg-indigo-600 text-white text-[12px] md:text-sm font-semibold disabled:opacity-40">{saving ? '...' : 'Kaydet'}</button>
             </>
           )}
         </div>
       </div>
 
       {!table ? (
-        <div className="flex-1 flex items-center justify-center text-slate-300 text-xs font-bold uppercase">Yükleniyor…</div>
+        <div className="flex-1 flex items-center justify-center text-slate-400 text-sm font-semibold">Yükleniyor…</div>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-slate-100 bg-white shrink-0">
           <table className="w-full text-left border-collapse min-w-[280px]">
-            <thead className="bg-slate-50 shadow-sm">
-              <tr className="border-b border-slate-100">
-                <th className="py-1 md:py-2.5 px-2 text-[8px] md:text-[10px] font-black text-slate-400 uppercase w-10 md:w-20 tracking-tighter">Rnd</th>
-                {table.players.map(p => (
-                  <th key={p.id} className="py-1 md:py-2.5 text-center">
-                    <input type="text" value={p.name} readOnly={!editing} onChange={e => setName(p.id, e.target.value)} maxLength={MAX_NAME_LEN} className="text-[9px] md:text-sm font-black text-center bg-transparent border-0 focus:ring-0 w-full truncate uppercase tracking-tighter" style={{ color: p.color }} />
+            <thead className={DARK_HEAD}>
+              <tr>
+                <th className={`py-1 md:py-2.5 px-2 w-10 md:w-20 ${TH_LABEL}`}>Rnd</th>
+                {seatColors(table.players).map(p => (
+                  <th key={p.id} className="py-1 md:py-2.5 px-0.5 text-center">
+                    {editing ? (
+                      <div className="flex items-center justify-center gap-1 min-w-0">
+                        <PlayerDot color={p.color} onDark />
+                        <input type="text" value={p.name} onChange={e => setName(p.id, e.target.value)} maxLength={MAX_NAME_LEN} className="min-w-0 w-full text-[11px] xs:text-xs md:text-sm font-bold text-center border-0 focus:ring-0 truncate uppercase tracking-tight text-white bg-white/10 rounded" />
+                      </div>
+                    ) : (
+                      <PlayerTag color={p.color} name={p.name} onDark center className="text-[11px] xs:text-xs md:text-sm font-bold" />
+                    )}
                   </th>
                 ))}
               </tr>
@@ -317,10 +325,10 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
             <tbody className="divide-y divide-slate-50">
               {table.rounds.map((r, rIdx) => (
                 <tr key={rIdx}>
-                  <td className="py-0.5 md:py-2 px-2 text-[8px] md:text-[10px] font-black text-slate-300">R{r.round}</td>
+                  <td className="py-0.5 md:py-2 px-2 text-[11px] md:text-sm font-semibold text-slate-400 tabular-nums">R{r.round}</td>
                   {table.players.map(p => (
                     <td key={p.id} className="p-0.5 md:p-1">
-                      <input {...scoreInputProps} value={scoreValue(r.scores[p.id])} readOnly={!editing} onChange={e => setScore(rIdx, p.id, e.target.value)} className={`${SCORE_INPUT_CLASS} w-full border-0 rounded-md py-1 md:py-2 text-center font-black ${scoreTextClass(r.scores[p.id])} text-[11px] md:text-base transition-all ${editing ? 'bg-amber-50 focus:bg-white focus:ring-1 focus:ring-amber-300' : 'bg-slate-50/50'}`} />
+                      <input {...scoreInputProps} value={scoreValue(r.scores[p.id])} readOnly={!editing} onChange={e => setScore(rIdx, p.id, e.target.value)} className={`${SCORE_INPUT_CLASS} w-full border-0 rounded-md py-1 md:py-2 text-center font-black tabular-nums ${scoreTextClass(r.scores[p.id])} text-[14px] md:text-base transition-all ${editing ? 'bg-amber-50 focus:bg-white focus:ring-1 focus:ring-amber-300' : 'bg-slate-50/50'}`} />
                     </td>
                   ))}
                 </tr>
@@ -328,16 +336,16 @@ export const ArchivePanel: React.FC<ArchivePanelProps> = ({ items, game, savedId
             </tbody>
             <tfoot className="bg-slate-900 text-white">
               <tr>
-                <td className="py-1 md:py-2.5 px-2 text-[8px] md:text-[10px] font-black uppercase tracking-widest">Total</td>
+                <td className={`py-1 md:py-2.5 px-2 ${TH_LABEL}`}>Total</td>
                 {table.players.map(p => (
-                  <td key={p.id} className="py-1 md:py-2.5 text-center text-[11px] md:text-xl font-black">{totalOf(table.rounds, p.id)}</td>
+                  <td key={p.id} className="py-1 md:py-2.5 text-center text-[15px] md:text-xl font-black tabular-nums">{totalOf(table.rounds, p.id)}</td>
                 ))}
               </tr>
               {hasAnyScore(table.rounds) && (() => {
                 const places = placesOf(table.players, table.rounds);
                 return (
                   <tr className="bg-slate-800">
-                    <td className="py-1 md:py-2 px-2 text-[8px] md:text-[10px] font-black uppercase tracking-widest">SCR</td>
+                    <td className={`py-1 md:py-2 px-2 ${TH_LABEL}`}>SCR</td>
                     {table.players.map(p => (
                       <td key={p.id} className="py-1 md:py-2 text-center text-sm md:text-xl leading-none">{placeEmoji(places[p.id], places)}</td>
                     ))}

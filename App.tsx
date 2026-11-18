@@ -552,7 +552,7 @@ export default function App() {
     return (
       <div className="h-dvh flex flex-col items-center justify-center gap-3 bg-slate-50">
         <span className={`h-3 w-3 rounded-full ${STATUS_DOT[status]}`} />
-        <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">Oda {code} · {STATUS_LABEL[status]}…</span>
+        <span className="text-sm font-semibold text-slate-400">Oda {code} · {STATUS_LABEL[status]}…</span>
       </div>
     );
   }
@@ -570,7 +570,7 @@ export default function App() {
   );
   // Bağlantı yoksa üst satırda uyarı (bağlıyken logo köşesindeki yeşil nokta yeter)
   const headerStatus = status !== 'online'
-    ? <span className="block truncate text-[11px] md:text-sm font-black uppercase tracking-tight text-amber-600">{STATUS_LABEL[status]}…</span>
+    ? <span className="block truncate text-[12px] md:text-sm font-bold text-amber-600">{STATUS_LABEL[status]}…</span>
     : null;
   // Tablonun üstünde + Player yanında: oturan için Ayrıl (iki dokunuş), oturmayan için Katıl
   const JOIN_BTN = 'flex items-center px-2.5 h-7 md:h-10 rounded-md text-[11px] md:text-sm font-semibold shadow-sm active:scale-95 transition-all';
@@ -591,9 +591,9 @@ export default function App() {
       <div className="bg-amber-50 border-b border-amber-200 px-3 py-2 flex flex-col gap-1.5 shrink-0">
         {room.requests.map(r => (
           <div key={r.id} className="flex items-center gap-2 text-[11px] md:text-xs font-black text-amber-900">
-            <span className="flex-1 min-w-0 leading-tight"><span className="uppercase">🔔 {r.name} katılmak istiyor</span><br /><span className="font-bold text-amber-700">{r.target}</span></span>
-            <button onClick={() => sendOp({ t: 'reject', id: r.id })} className="h-7 px-2 rounded-md border border-amber-300 bg-white text-amber-800 uppercase">Reddet</button>
-            <button onClick={() => sendOp({ t: 'approve', id: r.id })} className="h-7 px-2 rounded-md bg-emerald-600 text-white uppercase shadow">Onayla</button>
+            <span className="flex-1 min-w-0 leading-tight"><span>🔔 <span className="uppercase">{r.name}</span> katılmak istiyor</span><br /><span className="font-bold text-amber-700">{r.target}</span></span>
+            <button onClick={() => sendOp({ t: 'reject', id: r.id })} className="h-7 px-2 rounded-md border border-amber-300 bg-white text-amber-800">Reddet</button>
+            <button onClick={() => sendOp({ t: 'approve', id: r.id })} className="h-7 px-2 rounded-md bg-emerald-600 text-white shadow">Onayla</button>
           </div>
         ))}
       </div>
@@ -671,10 +671,10 @@ export default function App() {
         <div className="fixed inset-0 z-[200] bg-slate-900/50 flex items-end justify-center" onClick={() => setMenuOpen(false)}>
           <div className="w-full max-w-md bg-white rounded-t-2xl p-4 space-y-4 shadow-2xl" style={{ paddingBottom: 'max(24px, calc(env(safe-area-inset-bottom) + 12px))' }} onClick={e => e.stopPropagation()} role="dialog" aria-label="Masa">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-black uppercase tracking-tight text-slate-900">Masa · {tableTitle}</h3>
-              <button onClick={() => setMenuOpen(false)} className="h-9 px-3 rounded-lg text-slate-400 text-xs font-black uppercase">Kapat</button>
+              <h3 className="text-base font-bold tracking-tight text-slate-900 truncate">Masa · {tableTitle}</h3>
+              <button onClick={() => setMenuOpen(false)} className="h-9 px-3 rounded-lg text-slate-500 text-sm font-semibold">Kapat</button>
             </div>
-            <div className="flex flex-wrap gap-1.5 text-[10px] font-black uppercase tracking-tight">
+            <div className="flex flex-wrap gap-1.5 text-[12px] font-semibold">
               <span className="text-slate-400 py-1">👁 Bağlı {room.viewers}:</span>
               {room.online.map((o, i) => (
                 <span key={i} className={`px-2 py-1 rounded ${o.name ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>
@@ -683,12 +683,12 @@ export default function App() {
               ))}
             </div>
             {canEdit && (
-              <div className="grid grid-cols-2 gap-2 text-xs font-black uppercase">
+              <div className="grid grid-cols-2 gap-2 text-sm font-semibold">
                 <button onClick={() => sendOp({ t: 'undo' })} disabled={!room.canUndo} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 disabled:opacity-30">⏪ Geri al</button>
                 <button onClick={() => sendOp({ t: 'redo' })} disabled={!room.canRedo} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 disabled:opacity-30">İleri al ⏩</button>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-2 text-xs font-black uppercase">
+            <div className="grid grid-cols-2 gap-2 text-sm font-semibold">
               <button onClick={copyLink} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700">{copied ? '✓ Kopyalandı' : '🔗 Linki kopyala'}</button>
               {canEdit && <button onClick={() => { setMenuOpen(false); setTitleOpen(true); }} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700">✏️ Masa adı</button>}
               {canEdit && <button onClick={() => { setMenuOpen(false); setPinOpen(true); }} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700">{room.pinSet ? '🔒 Masa şifresi' : '🔓 Masa şifresi'}</button>}
@@ -700,9 +700,9 @@ export default function App() {
             </div>
             {canEdit ? (
               <div className="space-y-2 pt-3 border-t border-slate-100">
-                <p className="text-[10px] font-black uppercase tracking-tight text-slate-400">Oyun bitince</p>
-                <button onClick={() => { setMenuOpen(false); setCloseConfirm(true); }} disabled={!hasScore} className="w-full h-14 rounded-xl bg-amber-500 text-slate-900 text-sm font-black uppercase shadow disabled:opacity-30">📦 Oyunu kapat · arşive kaydet</button>
-                <button onClick={() => { setMenuOpen(false); setClearConfirm(true); }} disabled={!hasScore} className="w-full h-11 rounded-xl border-2 border-red-200 bg-red-50 text-red-600 text-xs font-black uppercase disabled:opacity-30">🗑 Tabloyu temizle · arşive kaydetmez</button>
+                <p className="text-xs font-semibold text-slate-400">Oyun bitince</p>
+                <button onClick={() => { setMenuOpen(false); setCloseConfirm(true); }} disabled={!hasScore} className="w-full h-14 rounded-xl bg-amber-500 text-slate-900 text-[15px] font-bold shadow disabled:opacity-30">📦 Oyunu kapat · arşive kaydet</button>
+                <button onClick={() => { setMenuOpen(false); setClearConfirm(true); }} disabled={!hasScore} className="w-full h-11 rounded-xl border-2 border-red-200 bg-red-50 text-red-600 text-sm font-semibold disabled:opacity-30">🗑 Tabloyu temizle · arşive kaydetmez</button>
               </div>
             ) : (
               <p className="text-[11px] font-bold text-slate-400">Oyunu kapatmak ve masa ayarları için önce masaya katıl.</p>
@@ -731,7 +731,7 @@ export default function App() {
       {lastDeleted && !error && (
         <div className="fixed top-[calc(env(safe-area-inset-top)+12px)] left-1/2 -translate-x-1/2 z-[300] bg-slate-900 text-white text-xs font-black pl-4 pr-1.5 py-1.5 rounded-full shadow-xl flex items-center gap-3 whitespace-nowrap">
           Oyun silindi
-          <button onClick={undoDelete} className="h-8 px-3 rounded-full bg-amber-400 text-slate-900 uppercase">Geri al</button>
+          <button onClick={undoDelete} className="h-8 px-3 rounded-full bg-amber-400 text-slate-900">Geri al</button>
         </div>
       )}
       {roomNotice && !lastDeleted && !error && (

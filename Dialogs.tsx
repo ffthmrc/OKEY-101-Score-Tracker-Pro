@@ -42,12 +42,12 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ open, title, messa
   return (
     <Overlay onClose={onCancel}>
       <form onSubmit={e => { e.preventDefault(); if (ready) onConfirm(pin); }}>
-        <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 mb-2">{title}</h3>
+        <h3 className="text-base font-bold tracking-tight text-slate-900 mb-2">{title}</h3>
         <p className="text-sm text-slate-600 mb-4">{message}</p>
         {askPin && <PinInput value={pin} onChange={setPin} label={askPin} />}
         <div className="flex gap-2 justify-end">
-          <button type="button" onClick={onCancel} className="h-10 px-4 rounded-lg border border-slate-200 text-[11px] font-black uppercase text-slate-500 hover:bg-slate-50">Vazgeç</button>
-          <button type="submit" disabled={!ready} className={`h-10 px-4 rounded-lg text-[11px] font-black uppercase text-white shadow disabled:opacity-40 ${danger ? 'bg-red-600 hover:bg-red-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>{confirmLabel}</button>
+          <button type="button" onClick={onCancel} className="h-10 px-4 rounded-lg border border-slate-200 text-sm font-semibold text-slate-500 hover:bg-slate-50">Vazgeç</button>
+          <button type="submit" disabled={!ready} className={`h-10 px-4 rounded-lg text-sm font-semibold text-white shadow disabled:opacity-40 ${danger ? 'bg-red-600 hover:bg-red-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>{confirmLabel}</button>
         </div>
       </form>
     </Overlay>
@@ -69,17 +69,17 @@ export const TablePinDialog: React.FC<TablePinDialogProps> = ({ open, pinSet, on
   return (
     <Overlay onClose={onCancel}>
       <form onSubmit={e => { e.preventDefault(); if (pin.length >= 4) onSave(pin); }}>
-        <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 mb-1">Masa şifresi</h3>
+        <h3 className="text-base font-bold tracking-tight text-slate-900 mb-1">Masa şifresi</h3>
         <p className="text-xs text-slate-500 mb-3">
           {pinSet ? 'Şifre konmuş. Yeni şifre yaz ya da kaldır.' : 'Şifre yok. Koyarsan katılmak isteyen önce şifreyi girer, sonra masadan onay bekler.'}
         </p>
         <PinInput value={pin} onChange={setPin} label="4-6 rakam" />
         <div className="flex gap-2 justify-end">
           {pinSet && (
-            <button type="button" onClick={() => onSave(null)} className="h-10 px-3 mr-auto rounded-lg border border-red-200 text-[11px] font-black uppercase text-red-600 hover:bg-red-50">Kaldır</button>
+            <button type="button" onClick={() => onSave(null)} className="h-10 px-3 mr-auto rounded-lg border border-red-200 text-sm font-semibold text-red-600 hover:bg-red-50">Kaldır</button>
           )}
-          <button type="button" onClick={onCancel} className="h-10 px-4 rounded-lg border border-slate-200 text-[11px] font-black uppercase text-slate-500 hover:bg-slate-50">Vazgeç</button>
-          <button type="submit" disabled={pin.length < 4} className="h-10 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-[11px] font-black uppercase text-white shadow">Kaydet</button>
+          <button type="button" onClick={onCancel} className="h-10 px-4 rounded-lg border border-slate-200 text-sm font-semibold text-slate-500 hover:bg-slate-50">Vazgeç</button>
+          <button type="submit" disabled={pin.length < 4} className="h-10 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-sm font-semibold text-white shadow">Kaydet</button>
         </div>
       </form>
     </Overlay>
@@ -112,7 +112,7 @@ export const NameDialog: React.FC<NameDialogProps> = ({
   return (
     <Overlay onClose={onCancel}>
       <form onSubmit={e => { e.preventDefault(); if (trimmed) onSave(trimmed); }}>
-        <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 mb-3">{heading}</h3>
+        <h3 className="text-base font-bold tracking-tight text-slate-900 mb-3">{heading}</h3>
         <input
           autoFocus
           onFocus={e => e.currentTarget.select()}
@@ -124,16 +124,16 @@ export const NameDialog: React.FC<NameDialogProps> = ({
         />
         {onRemove && removeLabel && (
           <button type="button" onClick={() => (removeArmed ? onRemove() : setRemoveArmed(true))}
-            className={`w-full h-10 mb-4 rounded-lg border-2 text-[11px] font-black uppercase ${removeArmed ? 'bg-red-600 border-red-700 text-white' : 'border-red-200 bg-red-50 text-red-600'}`}>
+            className={`w-full h-10 mb-4 rounded-lg border-2 text-sm font-semibold ${removeArmed ? 'bg-red-600 border-red-700 text-white' : 'border-red-200 bg-red-50 text-red-600'}`}>
             {removeArmed ? 'Emin misin? Tekrar dokun: çıkar' : `✕ ${removeLabel}`}
           </button>
         )}
         <div className="flex gap-2 justify-end">
           {onReset && resetLabel && (
-            <button type="button" onClick={onReset} className="h-10 px-3 mr-auto rounded-lg border border-slate-200 text-[11px] font-black uppercase text-indigo-600 hover:bg-slate-50">{resetLabel}</button>
+            <button type="button" onClick={onReset} className="h-10 px-3 mr-auto rounded-lg border border-slate-200 text-sm font-semibold text-indigo-600 hover:bg-slate-50">{resetLabel}</button>
           )}
-          <button type="button" onClick={onCancel} className="h-10 px-4 rounded-lg border border-slate-200 text-[11px] font-black uppercase text-slate-500 hover:bg-slate-50">Vazgeç</button>
-          <button type="submit" disabled={!trimmed} className="h-10 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-[11px] font-black uppercase text-white shadow">Kaydet</button>
+          <button type="button" onClick={onCancel} className="h-10 px-4 rounded-lg border border-slate-200 text-sm font-semibold text-slate-500 hover:bg-slate-50">Vazgeç</button>
+          <button type="submit" disabled={!trimmed} className="h-10 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-sm font-semibold text-white shadow">Kaydet</button>
         </div>
       </form>
     </Overlay>
@@ -164,7 +164,7 @@ export const JoinDialog: React.FC<JoinDialogProps> = ({ open, needPin, needOpenP
   return (
     <Overlay onClose={onCancel}>
       <form onSubmit={e => { e.preventDefault(); if (ready) onJoin(trimmed, needPin ? pin : undefined, showOpenPin && openPin ? openPin : undefined); }}>
-        <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 mb-1">Masaya katıl</h3>
+        <h3 className="text-base font-bold tracking-tight text-slate-900 mb-1">Masaya katıl</h3>
         <p className="text-xs text-slate-500 mb-3">{needOpenPin
             ? 'Masada kimse yok. Masayı açmak için masa açma PIN\'ini gir; sonra gelenleri sen onaylarsın.'
             : 'Masadaki biri onaylayınca oturursun. Adın masada yazılıysa o sandalyeye, değilse boş bir sandalyeye (P1, P5…) geçersin.'}
@@ -202,8 +202,8 @@ export const JoinDialog: React.FC<JoinDialogProps> = ({ open, needPin, needOpenP
           />
         )}
         <div className="flex gap-2 justify-end">
-          <button type="button" onClick={onCancel} className="h-10 px-4 rounded-lg border border-slate-200 text-[11px] font-black uppercase text-slate-500 hover:bg-slate-50">Vazgeç</button>
-          <button type="submit" disabled={!ready} className="h-10 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-[11px] font-black uppercase text-white shadow">Katıl</button>
+          <button type="button" onClick={onCancel} className="h-10 px-4 rounded-lg border border-slate-200 text-sm font-semibold text-slate-500 hover:bg-slate-50">Vazgeç</button>
+          <button type="submit" disabled={!ready} className="h-10 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-sm font-semibold text-white shadow">Katıl</button>
         </div>
       </form>
     </Overlay>

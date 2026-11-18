@@ -40,15 +40,15 @@ const Clock: React.FC<{ label: string; ms: number; total: number; active: boolea
   if (!big) {
     return (
       <div className={`flex items-center justify-between gap-2 bg-white border rounded-xl px-3 py-1.5 ${done ? 'border-red-300 bg-red-50' : 'border-slate-100'}`}>
-        <span className="text-[10px] md:text-xs font-black uppercase tracking-tight text-slate-400 truncate">{label}</span>
-        {status && <span className="text-[10px] font-black uppercase">{status}</span>}
+        <span className="text-[12px] md:text-sm font-semibold text-slate-500 truncate">{label}</span>
+        {status && <span className="text-[12px] font-bold">{status}</span>}
         <span className={`text-2xl md:text-3xl font-black tabular-nums leading-none shrink-0 ${active ? color : 'text-slate-300'}`}>{fmt(ms)}</span>
       </div>
     );
   }
   return (
     <div className={`bg-white border rounded-2xl p-3 md:p-5 shadow-sm phoneland:flex-1 phoneland:flex phoneland:flex-col phoneland:justify-center ${done ? 'border-red-300 bg-red-50' : 'border-slate-100'}`}>
-      <div className="flex items-center justify-between gap-2 text-[10px] md:text-xs font-black uppercase tracking-tight text-slate-400">
+      <div className="flex items-center justify-between gap-2 text-[13px] md:text-base font-bold text-slate-700">
         <span className="truncate">{label}</span>
         {status}
       </div>
@@ -81,7 +81,7 @@ export const TapButton: React.FC<{ onTap: () => void; disabled?: boolean; classN
       disabled={disabled}
       onPointerDown={e => { if (e.pointerType === 'mouse' && e.button !== 0) return; e.preventDefault(); fire(); }}
       onClick={e => { if (e.detail === 0) fire(); }} // klavye (Enter / boşluk)
-      className={`${className} touch-none select-none font-black uppercase tracking-tight rounded-2xl transition-[filter,transform] duration-100 ${flash ? 'brightness-125 scale-[0.98]' : ''}`}
+      className={`${className} touch-none select-none font-bold tracking-tight rounded-2xl transition-[filter,transform] duration-100 ${flash ? 'brightness-125 scale-[0.98]' : ''}`}
     >{children}</button>
   );
 };
@@ -152,13 +152,13 @@ export const TimerPanel: React.FC<TimerPanelProps> = ({ timer, serverOffset, can
     <div className="flex items-center gap-1.5">
       <span className="text-slate-400">{label}</span>
       <button onClick={() => adjust(which, -STEP)} className="h-8 w-8 rounded-md border border-slate-200 bg-white text-slate-600" aria-label={`${label} azalt`}>−</button>
-      <span className="w-10 text-center tabular-nums text-slate-700">{fmt(sec * 1000)}</span>
+      <span className="w-10 text-center tabular-nums font-bold text-slate-800">{fmt(sec * 1000)}</span>
       <button onClick={() => adjust(which, STEP)} className="h-8 w-8 rounded-md border border-slate-200 bg-white text-slate-600" aria-label={`${label} artır`}>+</button>
     </div>
   );
 
   const canOpen = phase === 'decide' && !decideDone;
-  const B = 'text-slate-600';
+  const B = 'font-bold text-slate-800';
 
   return (
     // Dikey: alt alta. Yan çevrilmiş telefon: tam ekran, solda sayaç, sağda tuşlar.
@@ -175,7 +175,7 @@ export const TimerPanel: React.FC<TimerPanelProps> = ({ timer, serverOffset, can
       <div className="flex flex-col gap-2.5 phoneland:min-h-0">
         {canControl && phase === 'idle' && (
           <>
-            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] md:text-xs font-black uppercase tracking-tight">
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[13px] md:text-sm font-semibold">
               {stepper(0, '1. süre', decideSec)}
               {stepper(1, '2. süre', openSec)}
             </div>
@@ -186,7 +186,7 @@ export const TimerPanel: React.FC<TimerPanelProps> = ({ timer, serverOffset, can
           <>
             {/* Yerler hiç değişmez: Oyun açtı kullanılamazken soluk durur, Sonraki hep aynı yerde */}
             <div className="flex justify-end">
-              <TapButton onTap={() => onAction('reset')} className="h-9 px-4 rounded-xl border-2 border-slate-300 bg-white text-slate-500 text-[11px] md:text-xs">Sıfırla (mola)</TapButton>
+              <TapButton onTap={() => onAction('reset')} className="h-9 px-4 rounded-xl border-2 border-slate-300 bg-white text-slate-500 text-[13px] md:text-sm">Sıfırla (mola)</TapButton>
             </div>
             <TapButton onTap={() => onAction('open')} disabled={!canOpen}
               className={`h-16 md:h-20 phoneland:h-auto phoneland:flex-1 text-lg md:text-xl ${canOpen ? 'bg-indigo-600 text-white shadow' : 'bg-slate-100 text-slate-300'}`}>Oyun açtı</TapButton>
@@ -194,13 +194,13 @@ export const TimerPanel: React.FC<TimerPanelProps> = ({ timer, serverOffset, can
           </>
         )}
         {!canControl && (
-          <p className="text-[11px] md:text-xs font-bold text-slate-400 text-center bg-slate-50 rounded-xl py-3 px-2">
+          <p className="text-[13px] md:text-sm font-semibold text-slate-400 text-center bg-slate-50 rounded-xl py-3 px-2">
             Sayacı masadakiler kullanır. Sen canlı izliyorsun.
           </p>
         )}
         {canControl && (
-          <details className="group text-[11px] md:text-xs font-bold text-slate-400 phoneland:hidden">
-            <summary className="cursor-pointer select-none list-none py-1 text-slate-500 font-black uppercase tracking-tight">
+          <details className="group text-[12px] md:text-sm font-medium text-slate-500 phoneland:hidden">
+            <summary className="cursor-pointer select-none list-none py-1 text-slate-700 font-bold">
               <span className="inline-block transition-transform group-open:rotate-90">▸</span> Nasıl kullanılır?
             </summary>
             <ol className="space-y-1 px-1 pt-1">
@@ -211,7 +211,7 @@ export const TimerPanel: React.FC<TimerPanelProps> = ({ timer, serverOffset, can
               <li>5. Daha önce açmış oyuncuya sıra geldi → ek süre yok. Sadece 1. sayaç: taş çeker, işler, yana atar → <b className={B}>Sonraki</b>.</li>
               <li>6. Oyunu durdurmak için (mola) → <b className={B}>Sıfırla</b>. Devam etmek için tekrar <b className={B}>Başlat</b>.</li>
               <li>7. Telefonu yan çevirince sayaç tam ekran olur. Dik çevirince sekmeler geri gelir.</li>
-              <li className="pt-1 text-slate-300">Sayaç herkeste görünür. Son 10 saniyede bip, süre bitince zil, sayaca son dokunan telefonda çalar. Bipi ☰ menüden kapatabilirsin.</li>
+              <li className="pt-1 text-slate-400">Sayaç herkeste görünür. Son 10 saniyede bip, süre bitince zil, sayaca son dokunan telefonda çalar. Bipi ☰ menüden kapatabilirsin.</li>
             </ol>
           </details>
         )}
@@ -259,7 +259,7 @@ export const HeaderTimer: React.FC<{ timer: TimerState; serverOffset: React.Muta
           className={`h-14 flex-1 min-w-0 px-1 !rounded-xl text-[13px] xs:text-sm md:text-base leading-tight ${canOpenGame ? 'bg-indigo-600 text-white shadow' : 'bg-slate-100 text-slate-300'}`}>Oyun açtı</TapButton>
       )}
       <button onClick={onOpen} title="Süre sekmesine git" className={`relative h-14 px-2 md:px-4 rounded-xl border-2 flex items-center justify-center font-black tabular-nums tracking-tighter shrink-0 ${look}`}>
-        <span className="absolute top-0.5 left-1 text-[9px] md:text-[11px] leading-none opacity-70">{phase === 'decide' ? '1' : '2'}</span>
+        <span className="absolute top-0.5 left-1 text-[9px] md:text-[11px] font-semibold leading-none opacity-70">{phase === 'decide' ? '1' : '2'}</span>
         <span className="text-[36px] md:text-5xl leading-none">{fmt(left)}</span>
       </button>
       {canControl && (
