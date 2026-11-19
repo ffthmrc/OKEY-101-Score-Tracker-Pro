@@ -391,8 +391,9 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                       const worst = placeVals.length ? Math.max(...placeVals) : 0;
                       const tint = (pid: string) => {
                         const pl = places[pid] ?? 0;
-                        if (pl === 1) return 'bg-[#c6efce]/60';
-                        if (pl > 1 && pl === worst) return 'bg-[#ffc7ce]/60';
+                        // zemin çok hafif + altta renkli çizgi: -100'ün kırmızı yazısıyla karışmasın
+                        if (pl === 1) return 'bg-[#c6efce]/35 shadow-[inset_0_-3px_0_#22c55e]';
+                        if (pl > 1 && pl === worst) return 'bg-[#ffc7ce]/35 shadow-[inset_0_-3px_0_#f87171]';
                         return 'bg-slate-50/50';
                       };
                       return (
