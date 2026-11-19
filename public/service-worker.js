@@ -1,5 +1,5 @@
 // Sürüm değişince eski önbellekler silinir. Yeni sürümde bu numarayı artır.
-const CACHE_NAME = 'okey-101-v62';
+const CACHE_NAME = 'okey-101-v63';
 
 self.addEventListener('install', () => {
   self.skipWaiting();

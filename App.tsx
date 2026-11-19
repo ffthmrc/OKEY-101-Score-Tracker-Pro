@@ -383,16 +383,29 @@ const GameDashboard: React.FC<GameDashboardProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {rounds.map((r, rIdx) => (
+                    {rounds.map((r, rIdx) => {
+                      // Sıra sekmesindeki renkler, silik: o ele kadarki toplamda 1. yeşil, sonuncu kırmızı (puanı girilmiş ellerde)
+                      const roundHasData = players.some(p => typeof r.scores[p.id] === 'number');
+                      const places = roundHasData ? placesOf(players, rounds.slice(0, rIdx + 1)) : {};
+                      const placeVals = Object.values(places).filter(v => v > 0);
+                      const worst = placeVals.length ? Math.max(...placeVals) : 0;
+                      const tint = (pid: string) => {
+                        const pl = places[pid] ?? 0;
+                        if (pl === 1) return 'bg-[#c6efce]/60';
+                        if (pl > 1 && pl === worst) return 'bg-[#ffc7ce]/60';
+                        return 'bg-slate-50/50';
+                      };
+                      return (
                       <tr key={rIdx} className="hover:bg-slate-50/40 transition-colors">
                         <td className="py-0 md:py-2 px-1.5 md:px-2 text-[11px] md:text-sm font-semibold text-slate-400 tabular-nums">R{r.round}</td>
                         {players.map(p => (
                           <td key={p.id} className="px-0.5 py-px md:p-1">
-                            <input {...scoreInputProps} value={scoreValue(r.scores[p.id])} readOnly={!canEdit} onChange={(e) => handleScoreChange(rIdx, p.id, e.target.value)} className={`${SCORE_INPUT_CLASS} w-full bg-slate-50/50 border-0 rounded-md py-0.5 md:py-2 text-center font-black ${scoreTextClass(r.scores[p.id])} text-[16px] md:text-xl focus:bg-white focus:ring-1 focus:ring-indigo-200 transition-all`} />
+                            <input {...scoreInputProps} value={scoreValue(r.scores[p.id])} readOnly={!canEdit} onChange={(e) => handleScoreChange(rIdx, p.id, e.target.value)} className={`${SCORE_INPUT_CLASS} w-full ${tint(p.id)} border-0 rounded-md py-0.5 md:py-2 text-center font-black ${scoreTextClass(r.scores[p.id])} text-[16px] md:text-xl focus:bg-white focus:ring-1 focus:ring-indigo-200 transition-all`} />
                           </td>
                         ))}
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                   <tfoot className="sticky bottom-0 bg-slate-900 text-white z-20 shadow-lg">
                     <tr>
