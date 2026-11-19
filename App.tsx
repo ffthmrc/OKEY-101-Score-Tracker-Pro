@@ -689,23 +689,26 @@ export default function App() {
               </div>
             )}
             <div className="grid grid-cols-2 gap-2 text-sm font-semibold">
-              <button onClick={copyLink} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700">{copied ? '✓ Kopyalandı' : '🔗 Linki kopyala'}</button>
+              <button onClick={copyLink} className={`${canEdit ? '' : 'col-span-2 '}h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700`}>{copied ? '✓ Kopyalandı' : '🔗 Linki kopyala'}</button>
               {canEdit && <button onClick={() => { setMenuOpen(false); setTitleOpen(true); }} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700">✏️ Masa adı</button>}
               {canEdit && <button onClick={() => { setMenuOpen(false); setPinOpen(true); }} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700">{room.pinSet ? '🔒 Masa şifresi' : '🔓 Masa şifresi'}</button>}
               {canEdit && <button onClick={() => { setMenuOpen(false); sendOp({ t: 'leave' }); }} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-slate-700">🚪 Masadan ayrıl</button>}
+              {/* Ses ayarları sadece masadakilere (izleyici sadece linki kopyalar) */}
+              {canEdit && (<>
               <button onClick={() => setCountdownTick(!tickOn)} aria-pressed={tickOn}
                 className={`col-span-2 h-12 rounded-xl border ${tickOn ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
                 {tickOn ? '🔊 Son 10 sn bip: açık' : '🔇 Son 10 sn bip: kapalı'}
               </button>
-              {/* Ses telefonu: sayaç sesleri tek telefonda (masayı açan) */}
+              {/* Ses telefonu: sayaç sesleri tek telefonda (Fatih masadaysa onun, yoksa masayı açanın) */}
               <div className="col-span-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
                 <span className="flex-1 min-w-0 text-[13px] text-slate-600 leading-tight">
                   🔔 Ses telefonu: {room.timer.mine ? <b className="text-emerald-700">bu telefon</b> : room.soundName ? <b className="text-slate-800">{room.soundName}</b> : <span className="text-slate-400">masada kimse yok</span>}
                 </span>
-                {canEdit && !room.timer.mine && (
+                {!room.timer.mine && (
                   <button onClick={() => sendOp({ t: 'soundHere' })} className="shrink-0 h-9 px-3 rounded-lg bg-indigo-600 text-white text-[13px] font-semibold shadow">Bu telefona al</button>
                 )}
               </div>
+              </>)}
             </div>
             {canEdit ? (
               <div className="space-y-2 pt-3 border-t border-slate-100">
