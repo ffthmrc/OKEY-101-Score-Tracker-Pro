@@ -31,7 +31,8 @@ export interface RoomData {
   adminClientId: string | null;
   title?: string | null; // masa adı (boşsa ekranda bugünün tarihi)
   timer?: TimerState;    // ortak hamle sayacı
-  timerBy?: string | null; // sayaca son dokunan cihaz (zil onda çalar)
+  timerBy?: string | null; // sayaca son dokunan cihaz
+  soundBy?: string | null; // ses telefonu: masayı açan cihaz (sayaç sesleri sadece onda çalar)
   pin?: string | null;   // masa şifresi (katılırken sorulur; istemciye gönderilmez)
   lastSeen?: Record<string, number>; // clientId -> son bağlı olduğu an (ms); sunucu yeniden başlasa da korunur
   createdAt: string;
@@ -134,7 +135,9 @@ export class Room {
     const target = this.seatTarget(name);
     if (!target) return { ok: false, error: 'Masada boş yer yok. Masadaki biri + Player ile yer açabilir.' };
     const { seats } = this.data;
+    const opening = this.tableEmpty();
     seats[target.playerId] = [...seats[target.playerId], clientId];
+    if (opening) this.data.soundBy = clientId; // masayı açan ses telefonu olur
     if (target.rename) {
       // İsim değişikliği geri-al geçmişine girmez; mevcut adımda da güncellenir
       const named = applyGameOp(this.data.game, { t: 'setName', playerId: target.playerId, name })!;
@@ -144,6 +147,15 @@ export class Room {
       this.touch();
     }
     return { ok: true };
+  }
+
+  // Ses telefonu: masayı açan cihaz. Masadan kalktıysa sayaca son dokunan (masadaysa), o da yoksa masadaki ilk cihaz.
+  soundDevice(): string | null {
+    const seatedId = (id?: string | null): id is string => !!id && this.seatOf(id) !== null;
+    if (!seatedId(this.data.soundBy)) {
+      this.data.soundBy = seatedId(this.data.timerBy) ? this.data.timerBy : Object.values(this.data.seats).flat()[0] ?? null;
+    }
+    return this.data.soundBy ?? null;
   }
 
   private tableEmpty() {
@@ -266,6 +278,11 @@ export class Room {
         this.touch();
         return { ok: true };
       }
+      case 'soundHere': {
+        this.data.soundBy = clientId;
+        this.touch();
+        return { ok: true };
+      }
       case 'timerDurations': {
         const t = this.data.timer ?? idleTimer();
         if (t.phase !== 'idle') return { ok: false, error: 'Süreler sayaç dururken değişir' };
@@ -355,6 +372,7 @@ export class Room {
         // Oyun gecesi bitti: herkes masadan kalkar, kapatanın sandalyesi (tüm cihazlarıyla) kalır ki gelenleri onaylayabilsin
         const closerSeat = this.seatOf(clientId);
         for (const pid of Object.keys(seats)) if (pid !== closerSeat) seats[pid] = [];
+        this.data.soundBy = clientId; // yeni masayı açan sayılır
         this.stopTimer();
         this.setGame(next);
         return { ok: true, archived };
@@ -376,6 +394,8 @@ export class Room {
   view(clientId: string, ack: number, onlineClientIds: string[]): RoomView {
     const { code, game, seats } = this.data;
     const unique = [...new Set(onlineClientIds)];
+    const sound = this.soundDevice();
+    const soundSeat = sound ? this.seatOf(sound) : null;
     const online = unique
       .map(id => {
         const seat = this.seatOf(id);
@@ -386,7 +406,8 @@ export class Room {
       code,
       version: this.version,
       title: this.data.title ?? null,
-      timer: { ...(this.data.timer ?? idleTimer()), mine: this.data.timerBy === clientId },
+      timer: { ...(this.data.timer ?? idleTimer()), mine: sound === clientId },
+      soundName: soundSeat ? game.players.find(p => p.id === soundSeat)?.name ?? null : null,
       serverTime: Date.now(),
       pinSet: !!this.data.pin,
       needsOpenPin: !!Room.openPin && this.tableEmpty(),

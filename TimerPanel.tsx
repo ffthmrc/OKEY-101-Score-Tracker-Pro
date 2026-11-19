@@ -1,14 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { TimerState } from './shared/protocol';
-import { playFail, playTick, countdownTickOn } from './ui';
+import { playFail, playTick, countdownTickOn, playNextBeep, playOpenBeep } from './ui';
 
 // Ortak hamle sayacı: sıra gelen oyuncu taş çeker; taş atar, açmışsa işler ya da elini açar: 1. sayaç (varsayılan 1 dk);
 // oyuncu İLK KEZ açınca "Oyun açtı": 1. sayaç durur, işleyip taş atması için 2. sayaç (varsayılan 2 dk) başlar;
 // 1. sayaçta kalan süre 2. sayaca eklenir (20. sn'de açtıysa 40 sn kalır: 2:00 + 0:40 = 2:40).
 // "Sonraki": sıra yan oyuncuya geçince 1. sayaç baştan başlar (Sıfırla + Başlat yerine tek tuş).
 // Durum sunucuda; herkes aynı sayacı görür, sadece masadakiler kullanır.
-// Süre bitince zil sadece sayaca son dokunan telefonda çalar (masada 4 telefon birden çalmasın).
-// Son 10 saniyede aynı telefonda her saniye kısa bip (☰ menüden kapatılabilir).
+// Tüm sayaç sesleri tek telefonda çalar: ses telefonu = masayı açan (☰ menüden başka telefona alınabilir).
+// Kim basarsa bassın Sonraki / Oyun açtı sesi, son 10 sn bip ve zil o telefonda (masada 4 telefon birden çalmasın).
+// Son 10 saniye bip ☰ menüden kapatılabilir.
 
 const STEP = 15;           // süre ayarı adımı (sn)
 const MIN_SEC = 15;
@@ -102,6 +103,18 @@ export const TimerPanel: React.FC<TimerPanelProps> = ({ timer, serverOffset, can
 
   useWakeLock(phase !== 'idle');
 
+  // Sonraki / Oyun açtı sesi: sayaç yeni başlayınca ya da 2. sayaca geçince (kim basarsa bassın) ses telefonunda.
+  // İlk açılışta (sayfa yeni yüklendi) çalmaz.
+  const seenRun = useRef<string | null>(null);
+  const runKey = phase === 'decide' ? `d${timer.decideEndsAt}` : phase === 'open' ? `o${timer.openEndsAt}` : 'idle';
+  useEffect(() => {
+    const prev = seenRun.current;
+    seenRun.current = runKey;
+    if (prev === null || prev === runKey || !timer.mine) return;
+    if (runKey.startsWith('d')) playNextBeep();
+    else if (runKey.startsWith('o')) playOpenBeep();
+  }, [runKey, timer.mine]);
+
   // Sayaç çalışırken ekranı yenile (sunucu saatine göre)
   useEffect(() => {
     if (phase === 'idle') return;
@@ -119,7 +132,7 @@ export const TimerPanel: React.FC<TimerPanelProps> = ({ timer, serverOffset, can
   const decideDone = phase === 'decide' && decideLeft <= 0;
   const openDone = phase === 'open' && openLeft <= 0;
 
-  // Zil: sadece sayaca son dokunan telefonda, her bitiş için bir kez
+  // Zil: sadece ses telefonunda, her bitiş için bir kez
   const runningEnd = phase === 'decide' ? timer.decideEndsAt : phase === 'open' ? timer.openEndsAt : null;
   useEffect(() => {
     if (!timer.mine || runningEnd === null || !(decideDone || openDone)) return;

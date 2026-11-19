@@ -17,7 +17,8 @@ export interface RoomView {
   code: string;
   version: number;
   title: string | null;               // masa adı; null ise ekranda bugünün tarihi görünür
-  timer: TimerState & { mine: boolean }; // mine: sayaca son bu cihaz dokundu (zil sadece onda çalar)
+  timer: TimerState & { mine: boolean }; // mine: bu cihaz ses telefonu (sayaç sesleri sadece onda çalar)
+  soundName: string | null;           // ses telefonu kimin (oyuncu adı)
   serverTime: number;                 // gönderildiği andaki sunucu saati (telefon saati farkını düzeltmek için)
   pinSet: boolean;                    // masa şifresi konmuş mu (şifrenin kendisi gönderilmez)
   needsOpenPin: boolean;              // masada oturan kimse yok: katılan masa açma PIN'i girmeli
@@ -74,7 +75,8 @@ export type RoomOp =
   | { t: 'setTitle'; title: string | null }
   | { t: 'timer'; action: 'start' | 'open' | 'reset' }
   | { t: 'timerDurations'; decideSec: number; openSec: number }
-  | { t: 'vacate'; playerId: string };
+  | { t: 'vacate'; playerId: string }
+  | { t: 'soundHere' };               // sayaç sesleri bu telefonda çalsın
 
 export interface ArchivedGame {
   id: string;

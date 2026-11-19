@@ -3,7 +3,7 @@ import React, { useState, useMemo, useCallback, useEffect, useRef, useSyncExtern
 import { Player, RoundScore, PlayerStats } from './types';
 import type { CellValue, TimerState } from './shared/protocol';
 import { parseScoreInput, placesOf, placeEmoji, hasAnyScore, MAX_TITLE_LEN } from './shared/game';
-import { scoreTextClass, formatDay, playChime, playDiceRoll, playNextBeep, playOpenBeep, emojiAnimClass, countdownTickOn, setCountdownTick, subscribeCountdownTick, scoreInputProps, scoreValue, SCORE_INPUT_CLASS } from './ui';
+import { scoreTextClass, formatDay, playChime, playDiceRoll, emojiAnimClass, countdownTickOn, setCountdownTick, subscribeCountdownTick, scoreInputProps, scoreValue, SCORE_INPUT_CLASS } from './ui';
 import { useRoom } from './useRoom';
 import { playerColors } from './colors';
 import { personKey } from './shared/stats';
@@ -622,8 +622,8 @@ export default function App() {
         headerJoin={headerJoin}
         statusDot={STATUS_DOT[status]}
         onMenu={() => setMenuOpen(true)}
-        onTimerNext={() => { playNextBeep(); sendOp({ t: 'timer', action: 'start' }); }}
-        onTimerOpenGame={() => { playOpenBeep(); sendOp({ t: 'timer', action: 'open' }); }}
+        onTimerNext={() => sendOp({ t: 'timer', action: 'start' })}
+        onTimerOpenGame={() => sendOp({ t: 'timer', action: 'open' })}
         timerState={room.timer}
         serverOffset={serverOffset}
         timer={
@@ -631,10 +631,7 @@ export default function App() {
             timer={room.timer}
             serverOffset={serverOffset}
             canControl={canEdit}
-            onAction={action => {
-              if (action === 'start') playNextBeep(); else if (action === 'open') playOpenBeep();
-              sendOp({ t: 'timer', action });
-            }}
+            onAction={action => sendOp({ t: 'timer', action })}
             onDurations={(decideSec, openSec) => sendOp({ t: 'timerDurations', decideSec, openSec })}
           />
         }
@@ -700,6 +697,15 @@ export default function App() {
                 className={`col-span-2 h-12 rounded-xl border ${tickOn ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
                 {tickOn ? '🔊 Son 10 sn bip: açık' : '🔇 Son 10 sn bip: kapalı'}
               </button>
+              {/* Ses telefonu: sayaç sesleri tek telefonda (masayı açan) */}
+              <div className="col-span-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                <span className="flex-1 min-w-0 text-[13px] text-slate-600 leading-tight">
+                  🔔 Ses telefonu: {room.timer.mine ? <b className="text-emerald-700">bu telefon</b> : room.soundName ? <b className="text-slate-800">{room.soundName}</b> : <span className="text-slate-400">masada kimse yok</span>}
+                </span>
+                {canEdit && !room.timer.mine && (
+                  <button onClick={() => sendOp({ t: 'soundHere' })} className="shrink-0 h-9 px-3 rounded-lg bg-indigo-600 text-white text-[13px] font-semibold shadow">Bu telefona al</button>
+                )}
+              </div>
             </div>
             {canEdit ? (
               <div className="space-y-2 pt-3 border-t border-slate-100">

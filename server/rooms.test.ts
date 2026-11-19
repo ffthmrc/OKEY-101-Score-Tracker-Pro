@@ -367,3 +367,30 @@ test('oyunu kapat ve tabloyu temizle çalışan sayacı durdurur, ayarlanmış s
   assert.equal(v.phase, 'idle');
   assert.equal(v.decideSec, 45);
 });
+
+test('ses telefonu: masayı açan; başkası sayaca bassa da değişmez; kalkınca devredilir; istenince alınır', () => {
+  const room = setup();
+  sit(room, 'fatih', 'Fatih');
+  sit(room, 'zeki', 'Zeki');
+  sit(room, 'hasan', 'Hasan');
+  const mine = (id: string) => room.view(id, 0, []).timer.mine;
+  assert.equal(mine('fatih'), true);
+  assert.equal(room.view('zeki', 0, []).soundName, 'Fatih');
+  room.apply('zeki', { t: 'timer', action: 'start' }, 1000);
+  room.apply('hasan', { t: 'timer', action: 'open' }, 2000);
+  assert.equal(mine('fatih'), true);
+  assert.equal(mine('zeki'), false);
+  assert.equal(mine('hasan'), false);
+  // Fatih kalkınca sayaca son dokunan (Hasan) alır
+  room.apply('fatih', { t: 'leave' });
+  assert.equal(mine('hasan'), true);
+  // Zeki ☰ menüden alır; izleyici alamaz
+  assert.equal(room.apply('izleyici', { t: 'soundHere' }).ok, false);
+  assert.equal(room.apply('zeki', { t: 'soundHere' }).ok, true);
+  assert.equal(mine('zeki'), true);
+  assert.equal(mine('hasan'), false);
+  // oyunu kapatan yeni masada ses telefonu
+  room.apply('hasan', { t: 'setScore', round: 1, playerId: room.data.game.players[2].id, value: 5 });
+  assert.equal(room.apply('hasan', { t: 'closeGame' }).ok, true);
+  assert.equal(mine('hasan'), true);
+});
