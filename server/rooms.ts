@@ -19,6 +19,8 @@ const PIN_LOCK_MS = 60_000;    // 1 dakika bekletilir
 interface JoinRequest { id: string; clientId: string; name: string }
 
 const TIMER_MIN_SEC = 15;
+// Varsayılan ses telefonu: bu oyuncu masadaysa onun telefonu (puanları genelde o girer)
+const SOUND_DEFAULT_PLAYER = 'Fatih';
 const TIMER_MAX_SEC = 300;
 const idleTimer = (decideSec = 60, openSec = 120): TimerState =>
   ({ phase: 'idle', decideSec, openSec, decideEndsAt: null, decideLeftMs: null, openEndsAt: null });
@@ -32,7 +34,8 @@ export interface RoomData {
   title?: string | null; // masa adı (boşsa ekranda bugünün tarihi)
   timer?: TimerState;    // ortak hamle sayacı
   timerBy?: string | null; // sayaca son dokunan cihaz
-  soundBy?: string | null; // ses telefonu: masayı açan cihaz (sayaç sesleri sadece onda çalar)
+  soundBy?: string | null; // ☰ "Bu telefona al" ile seçilen ses telefonu (tablo temizlenene / oyun kapanana kadar)
+  openedBy?: string | null; // masayı açan cihaz
   pin?: string | null;   // masa şifresi (katılırken sorulur; istemciye gönderilmez)
   lastSeen?: Record<string, number>; // clientId -> son bağlı olduğu an (ms); sunucu yeniden başlasa da korunur
   createdAt: string;
@@ -69,7 +72,8 @@ export class Room {
     for (const [pid, v] of Object.entries(data.seats as Record<string, unknown>)) {
       seats[pid] = Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : typeof v === 'string' ? [v] : [];
     }
-    this.data = { ...data, seats, lastSeen: data.lastSeen ?? {} };
+    // soundBy: sunucu yeniden başlayınca seçim unutulur, varsayılan (Fatih) döner
+    this.data = { ...data, seats, lastSeen: data.lastSeen ?? {}, soundBy: null };
     this.history = [data.game];
     // Son görülme kaydı olmayan oturan cihazlara bugünden süre başlat
     const now = Date.now();
@@ -137,7 +141,7 @@ export class Room {
     const { seats } = this.data;
     const opening = this.tableEmpty();
     seats[target.playerId] = [...seats[target.playerId], clientId];
-    if (opening) this.data.soundBy = clientId; // masayı açan ses telefonu olur
+    if (opening) { this.data.openedBy = clientId; this.data.soundBy = null; }
     if (target.rename) {
       // İsim değişikliği geri-al geçmişine girmez; mevcut adımda da güncellenir
       const named = applyGameOp(this.data.game, { t: 'setName', playerId: target.playerId, name })!;
@@ -149,13 +153,21 @@ export class Room {
     return { ok: true };
   }
 
-  // Ses telefonu: masayı açan cihaz. Masadan kalktıysa sayaca son dokunan (masadaysa), o da yoksa masadaki ilk cihaz.
+  // Ses telefonu (sayaç sesleri sadece onda çalar). Sıra:
+  // 1) ☰ "Bu telefona al" ile seçilen (masadaysa), 2) Fatih masadaysa Fatih'in telefonu (birden çok cihazı varsa
+  // sayaca son dokunan, yoksa en son oturan), 3) masayı açan, 4) sayaca son dokunan, 5) masadaki ilk cihaz.
   soundDevice(): string | null {
     const seatedId = (id?: string | null): id is string => !!id && this.seatOf(id) !== null;
-    if (!seatedId(this.data.soundBy)) {
-      this.data.soundBy = seatedId(this.data.timerBy) ? this.data.timerBy : Object.values(this.data.seats).flat()[0] ?? null;
+    if (seatedId(this.data.soundBy)) return this.data.soundBy;
+    const fatih = this.data.game.players.find(p => personKey(p.name) === personKey(SOUND_DEFAULT_PLAYER));
+    const fatihDevices = fatih ? this.data.seats[fatih.id] ?? [] : [];
+    if (fatihDevices.length > 0) {
+      const t = this.data.timerBy;
+      return t && fatihDevices.includes(t) ? t : fatihDevices[fatihDevices.length - 1];
     }
-    return this.data.soundBy ?? null;
+    if (seatedId(this.data.openedBy)) return this.data.openedBy;
+    if (seatedId(this.data.timerBy)) return this.data.timerBy;
+    return Object.values(this.data.seats).flat()[0] ?? null;
   }
 
   private tableEmpty() {
@@ -352,6 +364,7 @@ export class Room {
       case 'newGame': {
         this.commit(freshGame(game.players, new Date(now)), null, now);
         this.stopTimer();
+        this.data.soundBy = null; // tablo temizlenince ses telefonu varsayılana (Fatih) döner
         return { ok: true };
       }
       case 'closeGame': {
@@ -372,7 +385,8 @@ export class Room {
         // Oyun gecesi bitti: herkes masadan kalkar, kapatanın sandalyesi (tüm cihazlarıyla) kalır ki gelenleri onaylayabilsin
         const closerSeat = this.seatOf(clientId);
         for (const pid of Object.keys(seats)) if (pid !== closerSeat) seats[pid] = [];
-        this.data.soundBy = clientId; // yeni masayı açan sayılır
+        this.data.openedBy = clientId; // yeni masayı açan sayılır
+        this.data.soundBy = null;     // seçim sıfırlanır: varsayılan (Fatih) döner
         this.stopTimer();
         this.setGame(next);
         return { ok: true, archived };

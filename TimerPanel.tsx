@@ -7,7 +7,7 @@ import { playFail, playTick, countdownTickOn, playNextBeep, playOpenBeep } from 
 // 1. sayaçta kalan süre 2. sayaca eklenir (20. sn'de açtıysa 40 sn kalır: 2:00 + 0:40 = 2:40).
 // "Sonraki": sıra yan oyuncuya geçince 1. sayaç baştan başlar (Sıfırla + Başlat yerine tek tuş).
 // Durum sunucuda; herkes aynı sayacı görür, sadece masadakiler kullanır.
-// Tüm sayaç sesleri tek telefonda çalar: ses telefonu = masayı açan (☰ menüden başka telefona alınabilir).
+// Tüm sayaç sesleri tek telefonda çalar: ses telefonu = Fatih masadaysa onun, yoksa masayı açanın telefonu (☰ menüden başka telefona alınabilir; tablo temizlenince varsayılana döner).
 // Kim basarsa bassın Sonraki / Oyun açtı sesi, son 10 sn bip ve zil o telefonda (masada 4 telefon birden çalmasın).
 // Son 10 saniye bip ☰ menüden kapatılabilir.
 

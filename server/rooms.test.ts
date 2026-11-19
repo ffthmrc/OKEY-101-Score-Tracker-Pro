@@ -394,3 +394,20 @@ test('ses telefonu: masayı açan; başkası sayaca bassa da değişmez; kalkın
   assert.equal(room.apply('hasan', { t: 'closeGame' }).ok, true);
   assert.equal(mine('hasan'), true);
 });
+
+test('ses telefonu varsayılan Fatih: Zeki açsa da Fatih oturunca Fatih; seçim tablo temizlenince Fatih\'e döner', () => {
+  const room = setup();
+  const mine = (id: string) => room.view(id, 0, []).timer.mine;
+  sit(room, 'zeki', 'Zeki');
+  assert.equal(mine('zeki'), true); // Fatih yokken masayı açan
+  sit(room, 'fatih', 'Fatih');
+  assert.equal(mine('fatih'), true);
+  assert.equal(mine('zeki'), false);
+  room.apply('zeki', { t: 'timer', action: 'start' }, 1000);
+  assert.equal(mine('fatih'), true);
+  room.apply('zeki', { t: 'soundHere' });
+  assert.equal(mine('zeki'), true);
+  room.apply('zeki', { t: 'newGame' }); // Tabloyu temizle
+  assert.equal(mine('fatih'), true);
+  assert.equal(mine('zeki'), false);
+});
